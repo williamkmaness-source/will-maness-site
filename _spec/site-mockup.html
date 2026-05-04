@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Will Maness — visual mockup</title>
+<style>
+  :root {
+    --bg: #F7F3EC;
+    --bg-soft: #EFE9DD;
+    --ink: #1F1E1A;
+    --ink-soft: #4A483F;
+    --muted: #6B665B;
+    --hint: #8A8478;
+    --line: #E5DFD3;
+    --accent: #2D4A3E;
+    --accent-soft: #ECE4D2;
+    --clay: #B85C38;
+    --serif: 'Iowan Old Style', 'Charter', 'Source Serif Pro', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  nav.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 0;
+    margin-bottom: 120px;
+  }
+  .wordmark {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 21px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    font-size: 14px;
+  }
+  .nav-links a {
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 400;
+    transition: color 120ms ease;
+  }
+  .nav-links a:hover { color: var(--accent); }
+  .hero {
+    max-width: 720px;
+    margin-bottom: 140px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: 52px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    margin: 0 0 28px;
+  }
+  .hero h1 em {
+    color: var(--accent);
+    font-style: italic;
+  }
+  .hero .sub {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.55;
+    max-width: 540px;
+    margin: 0;
+  }
+  .hero .currently {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .clay-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--clay);
+    display: inline-block;
+  }
+  .section { margin-bottom: 96px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    margin-bottom: 36px;
+    border-bottom: 0.5px solid var(--line);
+  }
+  .section-label {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .section-link {
+    font-size: 13px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .section-link:hover { color: var(--accent); }
+  .work-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px 64px;
+  }
+  .work-item h3 {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+  }
+  .work-item p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+  }
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--hint);
+    font-family: var(--mono);
+  }
+  .tag {
+    background: var(--accent-soft);
+    color: var(--muted);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--sans);
+    letter-spacing: 0.02em;
+  }
+  .work-item.upcoming { opacity: 0.65; }
+  .work-item.upcoming h3::after {
+    content: " ↗";
+    color: var(--clay);
+  }
+  .writing-list {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    max-width: 720px;
+  }
+  .writing-item .date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--hint);
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+  }
+  .writing-item h3 {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+  }
+  .writing-item p {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+  .read-more {
+    color: var(--accent);
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 0.5px solid var(--accent);
+    padding-bottom: 1px;
+  }
+  footer.site {
+    border-top: 0.5px solid var(--line);
+    padding: 32px 0 48px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  footer.site a {
+    color: var(--ink);
+    text-decoration: none;
+    margin-left: 24px;
+    transition: color 120ms ease;
+  }
+  footer.site a:hover { color: var(--accent); }
+  .footer-right { display: flex; align-items: center; }
+  .footer-right .email {
+    color: var(--ink);
+    margin-left: 0;
+    margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav class="top">
+    <a href="#" class="wordmark">Will Maness</a>
+    <div class="nav-links">
+      <a href="#">Work</a>
+      <a href="#">Writing</a>
+      <a href="#">About</a>
+      <a href="#">Say hi</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>I'm Will. I work on product and strategy in AI infrastructure and data tooling — <em>and I build to keep myself honest.</em></h1>
+    <p class="sub">Strategy and operating background, currently spending more time in the trenches with the AI-and-data stack. This is where I keep the work, the writing, and the things I'm thinking about.</p>
+    <div class="currently"><span class="clay-dot"></span>currently in Boston · casually exploring what's next</div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-label">Selected work</span>
+      <a href="#" class="section-link">All projects →</a>
+    </div>
+    <div class="work-grid">
+      <div class="work-item">
+        <h3>Project Stellar</h3>
+        <p>An indie game in progress. Worldbuilding, mechanics, and the design notes as I go.</p>
+        <div class="meta-row">
+          <span>2024 — present</span>
+          <span class="tag">design</span>
+          <span class="tag">writing</span>
+        </div>
+      </div>
+      <div class="work-item">
+        <h3>This site</h3>
+        <p>A from-scratch personal site, documented as it's built. The codebase, the choices, and what I learned.</p>
+        <div class="meta-row">
+          <span>2026</span>
+          <span class="tag">engineering</span>
+          <span class="tag">writing</span>
+        </div>
+      </div>
+      <div class="work-item">
+        <h3>Local AI techstack</h3>
+        <p>Running modern AI tooling end-to-end on a personal machine. Setup notes, tradeoffs, and a few opinions.</p>
+        <div class="meta-row">
+          <span>2026</span>
+          <span class="tag">engineering</span>
+          <span class="tag">research</span>
+        </div>
+      </div>
+      <div class="work-item upcoming">
+        <h3>Boston civic data</h3>
+        <p>An opinionated data project on Massachusetts and Boston municipal sources. Forthcoming.</p>
+        <div class="meta-row">
+          <span>in progress</span>
+          <span class="tag">data</span>
+          <span class="tag">engineering</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-label">Recent writing</span>
+      <a href="#" class="section-link">All essays →</a>
+    </div>
+    <div class="writing-list">
+      <div class="writing-item">
+        <div class="date">April 2026 · 9 min read</div>
+        <h3>Where the data infrastructure moat actually lives</h3>
+        <p>A working theory of where defensibility shows up in the AI-native data stack — and where it stops being interesting. Notes from a few months of digging into the space, with examples from companies I've watched closely.</p>
+        <a href="#" class="read-more">Read essay →</a>
+      </div>
+      <div class="writing-item">
+        <div class="date">March 2026 · 6 min read</div>
+        <h3>First impressions: living with Anthropic Skills</h3>
+        <p>Three weeks of using the new capability across a handful of real workflows. What's earned its keep, what hasn't, and the surprising places it changed how I work.</p>
+        <a href="#" class="read-more">Read essay →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site">
+    <div>Will Maness · Boston</div>
+    <div class="footer-right">
+      <a href="#" class="email">will@willmaness.com</a>
+      <a href="#">GitHub</a>
+      <a href="#">LinkedIn</a>
+      <a href="#">Twitter</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

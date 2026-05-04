@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — Will Maness</title>
+<style>
+  :root {
+    --bg: #F7F3EC;
+    --bg-soft: #EFE9DD;
+    --bg-mark: #EFE9DD;
+    --ink: #1F1E1A;
+    --ink-soft: #36342E;
+    --prose: #2A2823;
+    --muted: #6B665B;
+    --hint: #8A8478;
+    --line: #E5DFD3;
+    --line-strong: #D6CFC0;
+    --accent: #2D4A3E;
+    --accent-soft: #ECE4D2;
+    --clay: #B85C38;
+    --clay-soft: #F4DDCF;
+    --serif: 'Iowan Old Style', 'Charter', 'Source Serif Pro', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  nav.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 0;
+    margin-bottom: 80px;
+  }
+  .wordmark {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 21px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  .nav-links { display: flex; gap: 32px; font-size: 14px; }
+  .nav-links a {
+    color: var(--ink);
+    text-decoration: none;
+    transition: color 120ms ease;
+  }
+  .nav-links a.active { color: var(--accent); }
+  .nav-links a:hover { color: var(--accent); }
+
+  article { max-width: 720px; margin: 0 auto; }
+  .lede {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 48px;
+    align-items: start;
+    margin-bottom: 64px;
+  }
+  .mark {
+    width: 200px;
+    height: 200px;
+  }
+  .mark-caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--hint);
+    margin-top: 14px;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    max-width: 200px;
+  }
+  .lede-text h1 {
+    font-family: var(--serif);
+    font-size: 42px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    margin: 4px 0 24px;
+  }
+  .lede-text .intro {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .prose p {
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--prose);
+    margin: 0 0 24px;
+  }
+  .prose em { font-style: italic; }
+  .prose .aside {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--clay);
+    line-height: 1.55;
+    border-left: 2px solid var(--clay);
+    padding: 0 0 0 16px;
+    margin: 24px 0;
+  }
+  .prose a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 0.5px solid var(--accent);
+    padding-bottom: 1px;
+  }
+
+  .section-block {
+    margin-top: 72px;
+    border-top: 0.5px solid var(--line);
+    padding-top: 40px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .currently-list { display: flex; flex-direction: column; }
+  .currently-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 16px;
+    align-items: baseline;
+    padding: 14px 0;
+    border-bottom: 0.5px solid var(--line);
+  }
+  .currently-row:last-child { border-bottom: none; }
+  .currently-row .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .currently-row .val {
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--prose);
+    line-height: 1.5;
+  }
+  .currently-row .val em {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .elsewhere {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 32px;
+    margin-top: 4px;
+  }
+  .elsewhere-link {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    text-decoration: none;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--line);
+  }
+  .elsewhere-link .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    min-width: 70px;
+  }
+  .elsewhere-link .handle {
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--ink);
+  }
+  .elsewhere-link:hover .handle { color: var(--accent); }
+
+  .sayhi {
+    background: var(--bg-soft);
+    border-radius: 8px;
+    padding: 32px 36px;
+    margin-top: 72px;
+  }
+  .sayhi .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .sayhi h2 {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+  }
+  .sayhi p {
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--prose);
+    margin: 0 0 24px;
+  }
+  .sayhi-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-email {
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .btn-cal {
+    background: transparent;
+    color: var(--ink);
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    border: 0.5px solid var(--ink);
+  }
+  .sayhi-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .clay-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--clay);
+    display: inline-block;
+  }
+
+  footer.site {
+    border-top: 0.5px solid var(--line);
+    margin-top: 96px;
+    padding: 32px 0 48px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  footer.site a {
+    color: var(--ink);
+    text-decoration: none;
+    margin-left: 24px;
+  }
+  footer.site a:hover { color: var(--accent); }
+  .footer-right { display: flex; align-items: center; }
+  .footer-right .email { margin-left: 0; margin-right: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav class="top">
+    <a href="#" class="wordmark">Will Maness</a>
+    <div class="nav-links">
+      <a href="#">Work</a>
+      <a href="#">Writing</a>
+      <a href="#" class="active">About</a>
+      <a href="#">Say hi</a>
+    </div>
+  </nav>
+
+  <article>
+    <div class="lede">
+      <div>
+        <svg class="mark" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="100" fill="#EFE9DD"/>
+          <path d="M22,138 Q60,118 100,128 T180,120" stroke="#2D4A3E" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.32"/>
+          <path d="M22,114 Q66,92 110,106 T180,96" stroke="#2D4A3E" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.45"/>
+          <path d="M22,90 Q72,68 118,82 T180,72" stroke="#2D4A3E" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+          <path d="M30,66 Q82,46 126,60 T180,48" stroke="#2D4A3E" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.78"/>
+          <path d="M40,42 Q90,26 134,38 T180,28" stroke="#2D4A3E" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.92"/>
+          <circle cx="108" cy="104" r="4.5" fill="#B85C38"/>
+        </svg>
+        <div class="mark-caption">placeholder mark — final art TBD; portrait or commissioned illustration</div>
+      </div>
+      <div class="lede-text">
+        <h1>About</h1>
+        <p class="intro">I'm Will. I work on product strategy in AI infrastructure and data tooling. I keep this site to think out loud — and because the kinds of people I want to work with tend to read more than they post.</p>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>My day job is operating roles — product, strategy, growth — at a mix of companies, some you've heard of and some you haven't. The shape of the work has stayed consistent: figuring out what to build, why, and in what order, then helping the team actually do it.</p>
+
+      <p class="aside">If you're considering me for something specific and want the actual list of companies, just ask. The site does its credibility work in writing; the resume work happens by email.</p>
+
+      <p>The technical fluency is more recent — and the part of the work I find most interesting right now. Modern AI and data tooling has reshaped what a single operator can credibly do, and I've been spending serious time in the trenches trying to understand the new shape of that. The projects on this site are part of that effort. They're not paid client work — that work isn't mine to publish — but together they're a reasonable picture of how I think and what I care about.</p>
+
+      <p>If you've come from an outreach email of mine: thank you for actually clicking through. I tried to write the email so that this page rewards the click rather than repeats it. The fastest way to keep going is to read whatever <em>Selected work</em> entry caught your eye on the homepage, then come back here and email me.</p>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">Currently</div>
+      <div class="currently-list">
+        <div class="currently-row">
+          <span class="key">Building</span>
+          <span class="val">A Boston civic-data project on <em>permitting and 311 data</em> — testing the local AI stack on something with real opinions.</span>
+        </div>
+        <div class="currently-row">
+          <span class="key">Thinking about</span>
+          <span class="val">Where defensibility actually lives in the AI-native data stack, and which parts of it are commoditizing faster than the people building them realize.</span>
+        </div>
+        <div class="currently-row">
+          <span class="key">Reading</span>
+          <span class="val">How Buildings Learn (revisiting), and a stack of recent retrieval-augmentation papers.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">Elsewhere on the internet</div>
+      <div class="elsewhere">
+        <a href="#" class="elsewhere-link">
+          <span class="key">GitHub</span>
+          <span class="handle">@willmaness</span>
+        </a>
+        <a href="#" class="elsewhere-link">
+          <span class="key">LinkedIn</span>
+          <span class="handle">in/willmaness</span>
+        </a>
+        <a href="#" class="elsewhere-link">
+          <span class="key">Twitter</span>
+          <span class="handle">@willmaness</span>
+        </a>
+        <a href="#" class="elsewhere-link">
+          <span class="key">RSS</span>
+          <span class="handle">/feed.xml</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="sayhi">
+      <div class="label">Saying hi</div>
+      <h2>The fastest way to reach me is email.</h2>
+      <p>I read everything. I reply to most things. If you'd rather book a time directly, that works too — pick whatever's easiest. I'm especially interested in talking with people building in AI infrastructure, modern data tooling, or anywhere those two meet.</p>
+      <div class="sayhi-actions">
+        <a href="mailto:will@willmaness.com" class="btn-email">will@willmaness.com</a>
+        <a href="#" class="btn-cal">Book a call →</a>
+      </div>
+      <div class="sayhi-meta">
+        <span class="clay-dot"></span>
+        currently in Boston · mostly on Eastern time
+      </div>
+    </div>
+  </article>
+
+  <footer class="site">
+    <div>Will Maness · Boston</div>
+    <div class="footer-right">
+      <a href="#" class="email">will@willmaness.com</a>
+      <a href="#">GitHub</a>
+      <a href="#">LinkedIn</a>
+      <a href="#">Twitter</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

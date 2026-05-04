@@ -1,26 +1,103 @@
 @import "tailwindcss";
 
+/*
+  globals.css — global styles and design token wiring.
+
+  Two jobs done here:
+  1. @theme block: tells Tailwind v4 about custom colors, fonts, and spacing so
+     utilities like text-accent, bg-bg-soft, border-line work in any className.
+  2. :root block: exposes the same values as bare CSS custom properties (var(--accent),
+     var(--bg-soft), etc.) so MDX content, inline SVGs, and plain CSS can use them.
+
+  No values are defined twice — the @theme block references the :root vars.
+  Tailwind v4 uses CSS-based configuration; there is no tailwind.config.ts in this project.
+*/
+
+/* ─── Raw CSS custom properties ─────────────────────────────────────────── */
+/* These are the canonical values. Everything else references them. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Colors */
+  --bg: #F7F3EC;
+  --bg-soft: #EFE9DD;
+  --bg-code: #F1ECE0;
+  --ink: #1F1E1A;
+  --ink-soft: #36342E;
+  --prose: #2A2823;
+  --muted: #6B665B;
+  --hint: #8A8478;
+  --line: #E5DFD3;
+  --line-strong: #D6CFC0;
+  --accent: #2D4A3E;
+  --accent-soft: #ECE4D2;
+  --clay: #B85C38;
+  --clay-soft: #F4DDCF;
+
+  /* Layout */
+  --container-max: 980px;
+  --article-prose-max: 680px;
+  --article-about-max: 720px;
+  --page-padding-x: 48px;
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
 }
 
+/* ─── Tailwind v4 theme ──────────────────────────────────────────────────── */
+/* inline = also emit these as CSS custom properties (--color-*, --font-*, etc.) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colors — creates utilities: bg-bg, text-ink, border-line, etc. */
+  --color-bg: var(--bg);
+  --color-bg-soft: var(--bg-soft);
+  --color-bg-code: var(--bg-code);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-prose: var(--prose);
+  --color-muted: var(--muted);
+  --color-hint: var(--hint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-clay: var(--clay);
+  --color-clay-soft: var(--clay-soft);
+
+  /* Fonts — creates utilities: font-serif, font-sans, font-mono */
+  /* --font-newsreader is injected by next/font/google in layout.tsx */
+  --font-serif: var(--font-newsreader, 'Iowan Old Style', Charter, 'Source Serif Pro', Georgia, serif);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Spacing — creates utilities: p-xs, m-lg, gap-2xl, etc. */
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 36px;
+  --spacing-2xl: 56px;
+  --spacing-3xl: 80px;
+  --spacing-4xl: 96px;
+  --spacing-5xl: 120px;
+
+  /* Border radius — creates utilities: rounded-xs, rounded-xl, etc. */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base styles ────────────────────────────────────────────────────────── */
+html {
+  background-color: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  min-height: 100dvh;
 }
+
+/* No dark mode at MVP — the cream palette needs a real design pass to go dark. */

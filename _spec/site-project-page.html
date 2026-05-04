@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Building a local AI stack worth using — Will Maness</title>
+<style>
+  :root {
+    --bg: #F7F3EC;
+    --bg-soft: #EFE9DD;
+    --bg-code: #F1ECE0;
+    --ink: #1F1E1A;
+    --ink-soft: #36342E;
+    --prose: #2A2823;
+    --muted: #6B665B;
+    --hint: #8A8478;
+    --line: #E5DFD3;
+    --line-strong: #D6CFC0;
+    --accent: #2D4A3E;
+    --accent-soft: #ECE4D2;
+    --clay: #B85C38;
+    --serif: 'Iowan Old Style', 'Charter', 'Source Serif Pro', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  nav.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 0;
+    margin-bottom: 80px;
+  }
+  .wordmark {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 21px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  .nav-links { display: flex; gap: 32px; font-size: 14px; }
+  .nav-links a {
+    color: var(--ink);
+    text-decoration: none;
+    transition: color 120ms ease;
+  }
+  .nav-links a.active { color: var(--accent); }
+  .nav-links a:hover { color: var(--accent); }
+
+  .crumb {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 32px;
+    letter-spacing: 0.02em;
+  }
+  .crumb a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .crumb a:hover { color: var(--accent); }
+
+  article {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .header { margin-bottom: 56px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--clay);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  article h1 {
+    font-family: var(--serif);
+    font-size: 44px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    margin: 0 0 24px;
+  }
+  .dek {
+    font-family: var(--serif);
+    font-size: 21px;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--muted);
+    margin: 0 0 36px;
+  }
+  .meta-strip {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    padding: 14px 0;
+    border-top: 0.5px solid var(--line);
+    border-bottom: 0.5px solid var(--line);
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--sans);
+  }
+  .meta-strip .pill {
+    background: var(--accent-soft);
+    color: var(--muted);
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .meta-strip .sep { color: var(--line-strong); }
+
+  article h2 {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin: 64px 0 20px;
+    color: var(--ink);
+  }
+  article p {
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--prose);
+    margin: 0 0 24px;
+  }
+  article p .lead-cap::first-letter {
+    font-size: 1em;
+  }
+  article p.lead {
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  article a.in-text {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 0.5px solid var(--accent);
+    padding-bottom: 1px;
+  }
+  article em { font-style: italic; }
+  article code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--bg-code);
+    border-radius: 6px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 28px 0;
+    border: 0.5px solid var(--line);
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: 13.5px;
+  }
+  .comment { color: var(--hint); }
+  .kw { color: var(--accent); }
+  .str { color: var(--clay); }
+
+  blockquote {
+    border-left: 2px solid var(--accent);
+    padding: 4px 0 4px 24px;
+    margin: 36px 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  .stack-list {
+    margin: 32px 0 24px;
+    border-top: 0.5px solid var(--line);
+  }
+  .stack-row {
+    display: grid;
+    grid-template-columns: 22px 1.4fr 2fr 110px;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 0.5px solid var(--line);
+    font-family: var(--sans);
+  }
+  .stack-row .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot-daily { background: var(--accent); }
+  .dot-weekly { background: #8C9D7B; }
+  .dot-rare { background: #C8BFA8; }
+  .stack-row .name {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .stack-row .role {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--prose);
+    line-height: 1.4;
+  }
+  .stack-row .status {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    letter-spacing: 0.02em;
+  }
+  .stack-legend {
+    display: flex;
+    gap: 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+  .stack-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .stack-legend .d {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+
+  .figure {
+    margin: 36px 0;
+  }
+  .figure .img-placeholder {
+    background: var(--bg-soft);
+    border: 0.5px solid var(--line);
+    border-radius: 6px;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--hint);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .figure .caption {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .next-prev {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 96px auto 0;
+    max-width: 680px;
+    border-top: 0.5px solid var(--line);
+    padding-top: 32px;
+  }
+  .np-card {
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .np-card .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .np-card .title {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .np-card.prev { text-align: left; }
+  .np-card.next { text-align: right; }
+  .np-card:hover .title { color: var(--accent); }
+
+  footer.site {
+    border-top: 0.5px solid var(--line);
+    margin-top: 80px;
+    padding: 32px 0 48px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  footer.site a {
+    color: var(--ink);
+    text-decoration: none;
+    margin-left: 24px;
+  }
+  footer.site a:hover { color: var(--accent); }
+  .footer-right { display: flex; align-items: center; }
+  .footer-right .email { margin-left: 0; margin-right: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav class="top">
+    <a href="#" class="wordmark">Will Maness</a>
+    <div class="nav-links">
+      <a href="#" class="active">Work</a>
+      <a href="#">Writing</a>
+      <a href="#">About</a>
+      <a href="#">Say hi</a>
+    </div>
+  </nav>
+
+  <div class="crumb"><a href="#">← All projects</a></div>
+
+  <article>
+    <div class="header">
+      <div class="eyebrow">Engineering · Research</div>
+      <h1>Building a local AI stack worth using</h1>
+      <p class="dek">Six months of running modern AI tooling end-to-end on a personal machine — what earned its keep, what didn't, and what surprised me.</p>
+      <div class="meta-strip">
+        <span>Updated April 2026</span>
+        <span class="sep">·</span>
+        <span>14 min read</span>
+        <span class="sep">·</span>
+        <span class="pill">self-initiated</span>
+      </div>
+    </div>
+
+    <p class="lead">I started this in late 2025 with a question that wouldn't go away: how much of the AI work that's actually interesting could I do on a single laptop, without standing up cloud infrastructure or paying API bills that I'd notice on my credit card statement? The honest answer turned out to be more than I expected — but with a different shape than I assumed going in.</p>
+
+    <p>This is a writeup of the stack I converged on, the trade-offs that surprised me, and the things I'd do differently. It's not a tutorial; it's the version of the story I'd tell a friend over coffee, with enough specifics to be useful and enough opinions to be interesting.</p>
+
+    <h2>Why local at all</h2>
+
+    <p>There's a version of this story where "local" is about sovereignty or privacy, and I think that version is true but not interesting. The interesting version is about <em>iteration friction</em> — how much faster you actually move when "try this model on this data" is two terminal commands instead of a setup meeting with yourself.</p>
+
+    <p>The latency story is real but it isn't the main thing. The main thing is that you stop noticing setup cost, which means you experiment more, which means you learn faster. Privacy is the third reason, and a real one for some of what I've been doing, but it's downstream of the first two.</p>
+
+    <h2>The stack, in order of importance</h2>
+
+    <div class="stack-list">
+      <div class="stack-row">
+        <span class="dot dot-daily"></span>
+        <span class="name">ollama</span>
+        <span class="role">Local LLM runner. The thing I open most.</span>
+        <span class="status">DAILY</span>
+      </div>
+      <div class="stack-row">
+        <span class="dot dot-daily"></span>
+        <span class="name">claude api</span>
+        <span class="role">For the work local can't yet do well.</span>
+        <span class="status">DAILY</span>
+      </div>
+      <div class="stack-row">
+        <span class="dot dot-daily"></span>
+        <span class="name">duckdb</span>
+        <span class="role">Anything tabular touches it first.</span>
+        <span class="status">DAILY</span>
+      </div>
+      <div class="stack-row">
+        <span class="dot dot-weekly"></span>
+        <span class="name">lm studio</span>
+        <span class="role">Model exploration and quick A/B.</span>
+        <span class="status">WEEKLY</span>
+      </div>
+      <div class="stack-row">
+        <span class="dot dot-weekly"></span>
+        <span class="name">qdrant</span>
+        <span class="role">Local vector store for embeddings work.</span>
+        <span class="status">WEEKLY</span>
+      </div>
+      <div class="stack-row">
+        <span class="dot dot-rare"></span>
+        <span class="name">llamafile</span>
+        <span class="role">Shipping a model as a single binary.</span>
+        <span class="status">OCCASIONAL</span>
+      </div>
+    </div>
+
+    <div class="stack-legend">
+      <span><span class="d dot-daily"></span>daily driver</span>
+      <span><span class="d dot-weekly"></span>regular use</span>
+      <span><span class="d dot-rare"></span>specific cases</span>
+    </div>
+
+    <p>The ordering matters. <code>ollama</code> at the top isn't because it's the most powerful piece — it isn't — but because it's the piece I reach for without thinking, which is the piece doing the most real work. The Claude API sits next to it because there's a clean line between "local can do this well" and "local can't yet," and ignoring that line wastes a lot of time.</p>
+
+    <h2>What surprised me</h2>
+
+    <p>Three things I didn't expect going in.</p>
+
+    <p>First, embeddings turned out to be more useful than chat for the workflows that stuck. Chat is the obvious surface, but a small embedding model running locally over my own notes and bookmarks is the thing I actually open every day. The chat output is forgettable; the search-over-my-own-stuff isn't.</p>
+
+    <blockquote>The most useful upgrade wasn't a new model. It was getting the inner loop down to under five seconds.</blockquote>
+
+    <p>Second, modern quantization is shockingly good. The gap between an 8-bit and 4-bit model on tasks I care about is much smaller than I expected, and a 4-bit model that fits in memory and runs at conversational speed is more useful than an 8-bit one that doesn't.</p>
+
+    <p>Third — and this is the one I should have seen coming — the orchestration layer is the actual work. The model is a commodity-ish input. The pipeline you build around it is the thing that's yours. Most of my time has gone into the glue, not the model choice.</p>
+
+    <pre><code><span class="comment"># the inner loop that earned its keep</span>
+<span class="kw">for</span> chunk <span class="kw">in</span> stream_chunks(local_model, prompt):
+    annotate(chunk)
+    <span class="kw">if</span> confident_enough(chunk):
+        commit(chunk)
+    <span class="kw">else</span>:
+        escalate(chunk, fallback=<span class="str">"claude"</span>)</code></pre>
+
+    <p>The escalation pattern at the bottom is doing a lot of work in this codebase. Cheap-and-local for the easy cases, frontier-API for the hard ones, with a calibrated confidence check between them. It's not novel — it's the obvious shape — but getting the threshold right took longer than I'd like to admit.</p>
+
+    <h2>What I'd do differently</h2>
+
+    <p>If I started over today, I'd spend less time on model selection and more time on evaluation. I underweighted the importance of having a small fixed set of tasks I cared about and a way to score outputs against them; without that, you end up vibing on which model is "better," which is fine for a hobby and bad for anything you want to ship.</p>
+
+    <p>I'd also pick the orchestration framework earlier. I rolled my own glue for too long, partly out of stubbornness and partly because I wanted to understand the shape of the problem first. That second reason is defensible; the first one cost me weeks.</p>
+
+    <p>The Boston civic-data project I'm working on next is, in part, a forcing function for that — it's a real workload, with a real evaluation set, on data I actually care about. If you want to know what I'd actually do differently, watch that project.</p>
+  </article>
+
+  <div class="next-prev">
+    <a href="#" class="np-card prev">
+      <div class="label">← Previous</div>
+      <div class="title">Project Stellar</div>
+    </a>
+    <a href="#" class="np-card next">
+      <div class="label">Next →</div>
+      <div class="title">This site</div>
+    </a>
+  </div>
+
+  <footer class="site">
+    <div>Will Maness · Boston</div>
+    <div class="footer-right">
+      <a href="#" class="email">will@willmaness.com</a>
+      <a href="#">GitHub</a>
+      <a href="#">LinkedIn</a>
+      <a href="#">Twitter</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

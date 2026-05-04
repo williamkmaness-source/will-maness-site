@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Will Maness — Personal Site
 
-## Getting Started
+A from-scratch personal site built with Next.js 16, Tailwind CSS v4, and MDX. Fast, semantic, no CMS required.
 
-First, run the development server:
+**Live site:** [willmaness.com](https://willmaness.com) *(coming soon — Phase 1)*
+
+---
+
+## Tech stack
+
+- **Framework:** Next.js 16 with App Router, TypeScript, React 19
+- **Styling:** Tailwind CSS v4 (CSS-based config) + a design token system in `src/lib/tokens.ts`
+- **Content:** MDX via `@next/mdx` — all posts and project writeups are markdown files in `content/`
+- **Typography:** Newsreader via `next/font/google` (self-hosted, zero Google requests at runtime)
+- **Animation:** Framer Motion, used sparingly
+- **Hosting:** Vercel free tier, auto-deploys on push to `main`
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Requires Node.js v20+ and pnpm
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The component gallery is at [http://localhost:3000/dev/components](http://localhost:3000/dev/components) (dev only).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Publishing content
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See [`docs/setup.md`](docs/setup.md) for the full workflow. Short version:
 
-## Learn More
+- **New blog post:** create `content/writing/[slug].mdx` with frontmatter and content, push to `main`.
+- **New project:** create `content/projects/[slug].mdx`, push to `main`.
+- No list to update anywhere — the indexes discover content automatically.
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/           App Router pages and layouts
+  components/    React components (layout/ and ui/ subdirs)
+  lib/           Shared utilities: tokens.ts, content.ts, content-schemas.ts
+content/
+  projects/      One MDX file per project
+  writing/       One MDX file per post
+docs/
+  setup.md       Developer and author workflow
+  concepts.md    Framework concepts explained for a non-engineer
+  build-log.md   Running record of what was built and why
+  quizzes/       Phase completion quizzes
+_spec/           Original design brief and mockups (reference only)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Build phases
 
-## Deploy on Vercel
+- **Phase 0 (complete):** Foundation — toolchain, tokens, layout primitives, MDX pipeline, docs
+- **Phase 1:** Homepage, project pages, writing posts, about page — full MVP launch
+- **Phase 2:** Vienna Opening trainer — interactive chess project embedded in a project page
+- **Phase 3:** Boston civic data project — DuckDB, Anthropic API, real data and opinions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Personal site. Code is open for reference; content is not licensed for reuse.
