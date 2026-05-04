@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-05-03 — Phase 0: Deploy
+
+**GitHub and Vercel.** Created public repo at `github.com/williamkmaness-source/will-maness-site` and deployed to Vercel. Live at `https://website-nine-lemon-70.vercel.app`. Vercel CLI deployed successfully but the GitHub auto-deploy integration (push-to-deploy) needs the GitHub Login Connection configured in the Vercel dashboard — until then, redeploy manually with `vercel --prod` from the project directory.
+
+---
+
 ## 2026-05-03 — Phase 0: Foundation
 
 **Toolchain.** Installed Node.js v25.9.0 and pnpm v10.33.2 via Homebrew. Initialized a Next.js 16 project with TypeScript, App Router, Tailwind v4, and ESLint using `pnpm create next-app`. Moved planning spec documents to `_spec/` to keep them alongside the codebase without polluting the project root.
