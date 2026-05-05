@@ -10,6 +10,16 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-05-05 — Issue #1: 311 Equity Tracker tracer bullet
+
+**Data source discovery.** Analyze Boston has fully migrated from Socrata to CKAN/OpenGov. The legacy `wc8w-udjp` endpoint is gone; data is now split into per-year resources queryable via `datastore_search_sql`. Mapped resource IDs for 2024, 2025, and 2026. The route handler covers year-spanning windows by fetching from each year's resource and merging.
+
+**API route.** Built `src/app/api/311-data/route.ts` — a Next.js route handler that fetches the last 30 days of closed 311 cases from the CKAN SQL endpoint, computes median days to close and Equity Gap Index (max/min median ratio) per request type server-side, and responds with `Cache-Control: s-maxage=86400, stale-while-revalidate`. Whitespace-only neighborhoods are filtered in code (CKAN SQL blocks `TRIM()`).
+
+**Frontend.** Built `DataProvider` (client component, React Context, fetch on mount, loading/error states) and `HeadlineCard` (editorial lede sentence: "Residents in X wait N× longer than residents in Y for the same Z request to be resolved"). Page at `/311` is a server component wrapping both. Recharts installed for upcoming chart issues.
+
+---
+
 ## 2026-05-03 — Phase 0: Foundation
 
 **Toolchain.** Installed Node.js v25.9.0 and pnpm v10.33.2 via Homebrew. Initialized a Next.js 16 project with TypeScript, App Router, Tailwind v4, and ESLint using `pnpm create next-app`. Moved planning spec documents to `_spec/` to keep them alongside the codebase without polluting the project root.
