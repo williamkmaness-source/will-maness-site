@@ -6,16 +6,26 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { TrackerData } from "./types";
 
+export type Metric = "medianDays" | "onTimeRate";
+
 type ContextValue = {
   data: TrackerData | null;
   loading: boolean;
   error: string | null;
+  selectedRequestType: string | null;
+  setSelectedRequestType: (type: string) => void;
+  selectedMetric: Metric;
+  setSelectedMetric: (metric: Metric) => void;
 };
 
 const TrackerContext = createContext<ContextValue>({
   data: null,
   loading: true,
   error: null,
+  selectedRequestType: null,
+  setSelectedRequestType: () => {},
+  selectedMetric: "medianDays",
+  setSelectedMetric: () => {},
 });
 
 export function useTracker() {
@@ -26,6 +36,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<TrackerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRequestType, setSelectedRequestType] = useState<string | null>(null);
+  const [selectedMetric, setSelectedMetric] = useState<Metric>("medianDays");
 
   useEffect(() => {
     fetch("/api/311-data")
@@ -35,6 +47,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       })
       .then((json: TrackerData) => {
         setData(json);
+        // Initialize to featured type only on first load.
+        setSelectedRequestType((prev) => prev ?? json.featured?.requestType ?? null);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -43,7 +57,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <TrackerContext.Provider value={{ data, loading, error }}>
+    <TrackerContext.Provider
+      value={{
+        data,
+        loading,
+        error,
+        selectedRequestType,
+        setSelectedRequestType,
+        selectedMetric,
+        setSelectedMetric,
+      }}
+    >
       {children}
     </TrackerContext.Provider>
   );

@@ -23,7 +23,7 @@ function formatDate(iso: string): string {
 }
 
 export function HeadlineCard() {
-  const { data, loading, error } = useTracker();
+  const { data, loading, error, selectedRequestType } = useTracker();
 
   if (loading) {
     return (
@@ -35,7 +35,12 @@ export function HeadlineCard() {
     );
   }
 
-  if (error || !data?.featured) {
+  const f =
+    data?.requestTypes.find((rt) => rt.requestType === selectedRequestType) ??
+    data?.featured ??
+    null;
+
+  if (error || !f) {
     return (
       <div className="py-[64px]">
         <p className="font-mono text-[12px] tracking-[0.06em] uppercase text-clay mb-[20px]">
@@ -48,7 +53,6 @@ export function HeadlineCard() {
     );
   }
 
-  const f = data.featured;
   const hasGap =
     f.equityGap !== null &&
     f.worstNeighborhood !== null &&
@@ -91,7 +95,9 @@ export function HeadlineCard() {
           <span>City median: {formatDays(f.cityMedian)}</span>
         )}
         <span>
-          {formatDate(data.windowStart)} – {formatDate(data.windowEnd)}
+          {data?.windowStart && data?.windowEnd
+            ? `${formatDate(data.windowStart)} – ${formatDate(data.windowEnd)}`
+            : null}
         </span>
       </div>
     </div>
