@@ -33,5 +33,5 @@ _Last updated: 2026-05-06_
 
 ## Open Questions
 
-- [ ] `willmaness.com` not yet registered — available as of 2026-05-06, register before Phase 1 ships
+- [x] `willmaness.com` registered and live as of 2026-05-06. DNS resolving, apex redirects to www, Vercel serving 200.
 - [ ] Headshot / custom illustration slot on About page
