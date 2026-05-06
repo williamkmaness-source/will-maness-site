@@ -1,0 +1,25 @@
+---
+title: "Vienna Opening Trainer"
+eyebrow: "Engineering · Chess"
+year: "2026"
+status: "complete"
+tags: ["engineering"]
+summary: "An interactive chess opening trainer built into this site — pure state machine, static theory tree, progressive hints, and zero runtime API calls."
+featured: true
+---
+
+The Vienna Opening is a solid, aggressive way for White to start a chess game. Knowing the main responses by heart takes repetition. This trainer covers the three principal lines eight moves deep and nudges you when you go off-book.
+
+<ViennaTrainer />
+
+## How it's built
+
+**Static theory tree, not a live API.** The obvious approach would be hitting the Lichess Masters database at render time to get theory moves. The Lichess API now requires OAuth for that endpoint, which adds auth infrastructure for a static artifact that never changes. Instead, five lines are encoded as arrays of UCI move strings and validated by chess.js at build time. The script produces a `theory.json` file that gets committed alongside the code — no auth, no latency, no API dependency in the critical path. Lighthouse is happier too.
+
+**Pure state machine.** All trainer logic lives in a single `useReducer` with a typed discriminated union. The state shape is: current position in the theory tree, move history as SAN strings, a wrong-attempt counter, a hint level (0–3), and a phase flag (playing/complete). Black's response is drawn from a weighted-probability array and applied automatically by the reducer — the board component just renders whatever state it receives. Because the reducer is a plain function from `(state, action) → state`, it was straightforward to unit-test every transition in isolation before wiring it to the UI.
+
+**Progressive hint system.** The spec called for four thresholds without being patronising: no hint at first, then a source-square highlight at attempt three, source and destination at attempt four, and an automatic move at attempt five that advances the session rather than stalling it. The hint levels are a `0 | 1 | 2 | 3` union type; threshold mapping is a single lookup object. The auto-move at level three fires inside the reducer, so the UI stays unaware of it.
+
+**Chess legality the hard way.** Generating eight-move lines is easy until it isn't. Two moves failed during tree generation: a pawn that was pinned against the castled king (Black's Bc5 covers the f2-g1 diagonal), and castling that would land the king on an attacked square for the same reason. chess.js's `attackers()` API surfaced both in seconds; fixing them required redesigning White's plan in two lines rather than just swapping one move.
+
+**Lighthouse.** The board library and chess engine are browser-only and heavy, so both are kept out of the server bundle via `dynamic(() => import(...), { ssr: false })`. A skeleton with matching dimensions (same `aspect-ratio: 1/1` block) prevents layout shift while the chunk hydrates. The status banner and move history carry `aria-live` regions for screen readers; a typed-move input provides keyboard access without requiring all 64 squares to be focusable.

@@ -6,6 +6,7 @@
 
 import type { MDXComponents } from "mdx/types";
 import { StackList } from "@/components/ui/StackList";
+import { ViennaTrainer } from "@/components/projects/vienna-trainer";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -46,6 +47,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     // Custom project components — register each here as they ship.
     StackList,
+    ViennaTrainer,
     ...components,
   };
 }

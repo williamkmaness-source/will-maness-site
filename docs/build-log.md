@@ -4,6 +4,16 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-05-06 — Issue #6: Vienna Trainer — Theory Tree JSON
+
+**Script.** Wrote `scripts/build-theory-tree.mjs` (Lichess Masters API approach, documented) and `scripts/curate-theory-tree.mjs` (executed). The Lichess Masters API now requires OAuth, so the tree was built from hard-coded theory lines validated by chess.js 1.x. Five complete lines cover the three named mainlines (Vienna Gambit ×2, Symmetrical Vienna ×2, Vienna with ...Bc5 ×1), each traced to White's 8th move.
+
+**Theory tree.** Wrote `content/projects/vienna-trainer/theory.json` — a nested JSON artifact with white nodes (one canonical `{san, from, to}` move each) and black nodes (weighted response arrays). Two non-obvious chess bugs caught during generation: (1) after king-side castling, Black's Bc5 pins the f2 pawn against the g1 king, preventing f4; (2) Bc5 also controls g1 directly, making O-O illegal until the bishop is challenged with Be3. Both fixed in the final theory lines.
+
+**Packages.** Installed `chess.js 1.4.0`, `react-chessboard 5.10.0`, `vitest 4.1.5`, and `@vitest/coverage-v8` in preparation for Issues #7–#11.
+
+---
+
 ## 2026-05-03 — Phase 0: Deploy
 
 **GitHub and Vercel.** Created public repo at `github.com/williamkmaness-source/will-maness-site` and deployed to Vercel. Live at `https://website-nine-lemon-70.vercel.app`. Vercel CLI deployed successfully but the GitHub auto-deploy integration (push-to-deploy) needs the GitHub Login Connection configured in the Vercel dashboard — until then, redeploy manually with `vercel --prod` from the project directory.
