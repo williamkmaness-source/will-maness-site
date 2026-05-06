@@ -1,7 +1,8 @@
 // route.ts — Equity Tracker API route.
 // Fetches the most recent 30 days of closed 311 cases from Analyze Boston (CKAN datastore).
-// Note: Analyze Boston migrated from Socrata to CKAN/OpenGov; data is split by year.
-// Year-to-resource mapping handles windows that span a year boundary.
+// Note: Analyze Boston migrated from Socrata to CKAN/OpenGov; data is split per-year by
+// case-open year. The window filter is on closed_dt, so we must query every year resource
+// whose cases could plausibly close in the window (a case opened in 2024 may close in 2026).
 // Response is CDN-cached for 24 hours.
 
 import type { RequestTypeMetrics, TrackerData } from "@/components/311/types";
@@ -10,12 +11,12 @@ const CKAN_SQL_URL =
   "https://data.boston.gov/api/3/action/datastore_search_sql";
 const PAGE_SIZE = 50000;
 
-// Per-year resource IDs from Analyze Boston.
-const YEAR_RESOURCES = new Map<number, string>([
+// Per-year resource IDs from Analyze Boston. Indexed by case-open year.
+const YEAR_RESOURCES: ReadonlyArray<readonly [number, string]> = [
   [2024, "dff4d804-5031-443a-8409-8344efd0e5c8"],
   [2025, "9d7c2214-4709-478a-a2e8-fb2020a5bb94"],
   [2026, "1a0b420d-99f1-4887-9851-990b2a5a6e17"],
-]);
+];
 
 type RawRow = {
   neighborhood?: string | null;
@@ -44,6 +45,9 @@ function median(values: number[]): number | null {
     : sorted[mid];
 }
 
+// startDate/endDate must be ISO YYYY-MM-DD strings — we derive them from Date.toISOString
+// in the caller, which guarantees no characters that would break the SQL string. Do not pass
+// untrusted input here without a stricter validator (CKAN does not parameterize this endpoint).
 async function fetchFromResource(
   resourceId: string,
   startDate: string,
@@ -57,8 +61,8 @@ async function fetchFromResource(
       `SELECT neighborhood,reason,open_dt,closed_dt,on_time`,
       `FROM "${resourceId}"`,
       `WHERE case_status='Closed'`,
-      `AND open_dt >= '${startDate}'`,
-      `AND open_dt <= '${endDate}'`,
+      `AND closed_dt >= '${startDate}'`,
+      `AND closed_dt <= '${endDate}'`,
       `AND neighborhood IS NOT NULL`,
       `AND neighborhood != ''`,
       `LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
@@ -85,25 +89,14 @@ async function fetchFromResource(
 }
 
 async function fetchWindow(start: Date, end: Date): Promise<RawRow[]> {
-  const startYear = start.getFullYear();
-  const endYear = end.getFullYear();
+  const startDate = toDateStr(start);
+  const endDate = toDateStr(end);
   const allRows: RawRow[] = [];
 
-  for (let year = startYear; year <= endYear; year++) {
-    const resourceId = YEAR_RESOURCES.get(year);
-    if (!resourceId) continue;
-
-    // Clamp dates to what this year's resource actually covers.
-    const yearBoundStart = new Date(`${year}-01-01`);
-    const yearBoundEnd = new Date(`${year}-12-31T23:59:59`);
-    const clampedStart = new Date(Math.max(start.getTime(), yearBoundStart.getTime()));
-    const clampedEnd = new Date(Math.min(end.getTime(), yearBoundEnd.getTime()));
-
-    const rows = await fetchFromResource(
-      resourceId,
-      toDateStr(clampedStart),
-      toDateStr(clampedEnd)
-    );
+  // Query every year resource — a case in any year's bucket may have closed inside our window.
+  // The closed_dt SQL filter scopes each resource to the window; non-matching years return empty.
+  for (const [, resourceId] of YEAR_RESOURCES) {
+    const rows = await fetchFromResource(resourceId, startDate, endDate);
     allRows.push(...rows);
   }
 

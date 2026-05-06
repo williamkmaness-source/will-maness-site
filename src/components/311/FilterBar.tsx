@@ -3,7 +3,7 @@
 // FilterBar.tsx — request type dropdown and median-days / on-time-rate metric toggle.
 // Reads and writes filter state from TrackerContext; no local state.
 
-import { useTracker } from "./DataProvider";
+import { useTracker, MIN_NEIGHBORHOODS } from "./DataProvider";
 import type { Metric } from "./DataProvider";
 
 const METRIC_LABELS: Record<Metric, string> = {
@@ -24,7 +24,9 @@ export function FilterBar() {
   if (loading || !data) return null;
 
   // Only show types with enough neighborhood data to rank.
-  const options = data.requestTypes.filter((rt) => rt.neighborhoods.length >= 3);
+  const options = data.requestTypes.filter(
+    (rt) => rt.neighborhoods.length >= MIN_NEIGHBORHOODS
+  );
 
   return (
     <div className="flex flex-wrap gap-x-[32px] gap-y-[16px] items-end py-[24px] border-t border-line mb-[8px]">

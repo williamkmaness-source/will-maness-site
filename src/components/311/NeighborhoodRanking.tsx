@@ -1,8 +1,8 @@
 "use client";
 
 // NeighborhoodRanking.tsx — horizontal bar chart ranking all neighborhoods by the selected metric.
-// Color gradient runs from clay (worst) at top to accent (best) at bottom.
-// Reference line marks the city-wide average for the selected metric.
+// Color gradient runs from accent (best) to clay (worst).
+// Reference line marks the city-wide value for the selected metric.
 
 import { useMemo } from "react";
 import {
@@ -15,13 +15,28 @@ import {
   Cell,
   ResponsiveContainer,
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import { useTracker } from "./DataProvider";
+import type { Metric } from "./DataProvider";
+import { colors, fontFamilies } from "@/lib/tokens";
 
-// Linear interpolation between accent (#2D4A3E, t=0) and clay (#B85C38, t=1).
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.startsWith("#") ? hex.slice(1) : hex;
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+const ACCENT_RGB = hexToRgb(colors.accent);
+const CLAY_RGB = hexToRgb(colors.clay);
+
+// Linear interpolation between accent (t=0, best) and clay (t=1, worst).
 function lerpColor(t: number): string {
-  const r = Math.round(0x2d + t * (0xb8 - 0x2d));
-  const g = Math.round(0x4a + t * (0x5c - 0x4a));
-  const b = Math.round(0x3e + t * (0x38 - 0x3e));
+  const r = Math.round(ACCENT_RGB[0] + t * (CLAY_RGB[0] - ACCENT_RGB[0]));
+  const g = Math.round(ACCENT_RGB[1] + t * (CLAY_RGB[1] - ACCENT_RGB[1]));
+  const b = Math.round(ACCENT_RGB[2] + t * (CLAY_RGB[2] - ACCENT_RGB[2]));
   return `rgb(${r},${g},${b})`;
 }
 
@@ -33,38 +48,35 @@ function barColor(index: number, total: number): string {
 
 type Entry = { neighborhood: string; value: number };
 
-type TooltipProps = {
-  active?: boolean;
-  payload?: Array<{ value: number }>;
-  label?: string;
-  metric: "medianDays" | "onTimeRate";
+type ChartTooltipProps = TooltipContentProps<number, string> & {
+  metric: Metric;
 };
 
-function CustomTooltip({ active, payload, label, metric }: TooltipProps) {
+function ChartTooltip({ active, payload, label, metric }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
-  const val = payload[0].value;
+  const raw = payload[0].value;
+  if (typeof raw !== "number") return null;
   const formatted =
     metric === "medianDays"
-      ? val === 1
+      ? raw === 1
         ? "1 day"
-        : `${val.toFixed(1)} days`
-      : `${(val * 100).toFixed(0)}%`;
+        : `${raw.toFixed(1)} days`
+      : `${(raw * 100).toFixed(0)}%`;
   return (
     <div
       style={{
-        background: "var(--bg)",
-        border: "0.5px solid var(--line-strong)",
+        background: colors.bg,
+        border: `0.5px solid ${colors.lineStrong}`,
         borderRadius: 4,
         padding: "8px 12px",
       }}
     >
       <p
         style={{
-          fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+          fontFamily: fontFamilies.sans,
           fontSize: 13,
           fontWeight: 500,
-          color: "var(--ink)",
+          color: colors.ink,
           margin: 0,
         }}
       >
@@ -72,9 +84,9 @@ function CustomTooltip({ active, payload, label, metric }: TooltipProps) {
       </p>
       <p
         style={{
-          fontFamily: "'SF Mono', Menlo, Consolas, monospace",
+          fontFamily: fontFamilies.mono,
           fontSize: 11,
-          color: "var(--muted)",
+          color: colors.muted,
           margin: "3px 0 0",
         }}
       >
@@ -104,8 +116,7 @@ export function NeighborhoodRanking() {
     );
     return sorted.map((n) => ({
       neighborhood: n.neighborhood,
-      value:
-        selectedMetric === "medianDays" ? n.medianDays : n.onTimeRate,
+      value: selectedMetric === "medianDays" ? n.medianDays : n.onTimeRate,
     }));
   }, [activeType, selectedMetric]);
 
@@ -124,12 +135,18 @@ export function NeighborhoodRanking() {
     return totalCount > 0 ? totalWeighted / totalCount : null;
   }, [activeType, selectedMetric]);
 
+  const referenceLabel =
+    selectedMetric === "medianDays" ? "City median" : "City avg";
+
   const tickFormatter =
     selectedMetric === "medianDays"
       ? (v: number) => `${v}d`
       : (v: number) => `${(v * 100).toFixed(0)}%`;
 
-  const chartHeight = Math.max(400, (activeType?.neighborhoods.length ?? 12) * 34);
+  const chartHeight = Math.max(
+    400,
+    (activeType?.neighborhoods.length ?? 12) * 34
+  );
 
   if (loading) {
     return (
@@ -165,8 +182,8 @@ export function NeighborhoodRanking() {
             tickFormatter={tickFormatter}
             tick={{
               fontSize: 11,
-              fontFamily: "'SF Mono', Menlo, Consolas, monospace",
-              fill: "#8A8478",
+              fontFamily: fontFamilies.mono,
+              fill: colors.hint,
             }}
             axisLine={false}
             tickLine={false}
@@ -177,20 +194,17 @@ export function NeighborhoodRanking() {
             width={148}
             tick={{
               fontSize: 12,
-              fontFamily:
-                "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
-              fill: "#6B665B",
+              fontFamily: fontFamilies.sans,
+              fill: colors.muted,
             }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
-            cursor={{ fill: "#E5DFD3", opacity: 0.6 }}
-            content={({ active, payload, label }) => (
-              <CustomTooltip
-                active={active}
-                payload={payload as unknown as Array<{ value: number }> | undefined}
-                label={typeof label === "string" ? label : undefined}
+            cursor={{ fill: colors.line, opacity: 0.6 }}
+            content={(props) => (
+              <ChartTooltip
+                {...(props as TooltipContentProps<number, string>)}
                 metric={selectedMetric}
               />
             )}
@@ -198,20 +212,23 @@ export function NeighborhoodRanking() {
           {referenceValue !== null && (
             <ReferenceLine
               x={referenceValue}
-              stroke="#8A8478"
+              stroke={colors.hint}
               strokeDasharray="4 3"
               label={{
-                value: "City avg",
+                value: referenceLabel,
                 fontSize: 10,
-                fontFamily: "'SF Mono', Menlo, Consolas, monospace",
-                fill: "#8A8478",
+                fontFamily: fontFamilies.mono,
+                fill: colors.hint,
                 position: "insideTopRight",
               }}
             />
           )}
           <Bar dataKey="value" radius={[0, 2, 2, 0]} maxBarSize={22}>
-            {chartData.map((_, i) => (
-              <Cell key={i} fill={barColor(i, chartData.length)} />
+            {chartData.map((entry, i) => (
+              <Cell
+                key={entry.neighborhood}
+                fill={barColor(i, chartData.length)}
+              />
             ))}
           </Bar>
         </BarChart>

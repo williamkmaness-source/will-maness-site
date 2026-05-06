@@ -4,9 +4,13 @@
 // All 311 components read from this context — no prop drilling, no re-fetches on filter change.
 
 import { createContext, useContext, useEffect, useState } from "react";
-import type { TrackerData } from "./types";
+import type { RequestTypeMetrics, TrackerData } from "./types";
 
 export type Metric = "medianDays" | "onTimeRate";
+
+// Minimum neighborhood count for a request type to be rankable. Shared across the
+// initial-selection logic here and the FilterBar dropdown so they can't drift.
+export const MIN_NEIGHBORHOODS = 3;
 
 type ContextValue = {
   data: TrackerData | null;
@@ -18,18 +22,26 @@ type ContextValue = {
   setSelectedMetric: (metric: Metric) => void;
 };
 
-const TrackerContext = createContext<ContextValue>({
-  data: null,
-  loading: true,
-  error: null,
-  selectedRequestType: null,
-  setSelectedRequestType: () => {},
-  selectedMetric: "medianDays",
-  setSelectedMetric: () => {},
-});
+const TrackerContext = createContext<ContextValue | null>(null);
 
-export function useTracker() {
-  return useContext(TrackerContext);
+export function useTracker(): ContextValue {
+  const ctx = useContext(TrackerContext);
+  if (!ctx) {
+    throw new Error("useTracker must be used inside <DataProvider>");
+  }
+  return ctx;
+}
+
+function pickInitialType(data: TrackerData): RequestTypeMetrics | null {
+  // Prefer the featured (most common) type, but only if it has enough neighborhoods
+  // to populate the dropdown. Otherwise fall back to the first qualifying type.
+  if (data.featured && data.featured.neighborhoods.length >= MIN_NEIGHBORHOODS) {
+    return data.featured;
+  }
+  return (
+    data.requestTypes.find((rt) => rt.neighborhoods.length >= MIN_NEIGHBORHOODS) ??
+    null
+  );
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -40,20 +52,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [selectedMetric, setSelectedMetric] = useState<Metric>("medianDays");
 
   useEffect(() => {
-    fetch("/api/311-data")
+    const controller = new AbortController();
+
+    fetch("/api/311-data", { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json();
       })
       .then((json: TrackerData) => {
         setData(json);
-        // Initialize to featured type only on first load.
-        setSelectedRequestType((prev) => prev ?? json.featured?.requestType ?? null);
+        setSelectedRequestType(pickInitialType(json)?.requestType ?? null);
+        setLoading(false);
       })
       .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load data");
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
+
+    return () => controller.abort();
   }, []);
 
   return (
