@@ -1,30 +1,80 @@
-// app/page.tsx — homepage. Phase 0 placeholder: renders a styled "coming soon" message
-// that proves the token system, fonts, and layout primitives are wired correctly.
-// This file will be replaced with the full homepage design in Phase 1.
+// app/page.tsx — homepage. Replicates site-mockup.html exactly.
+// All copy pulled from content/site.mdx (via getSiteContent) and the
+// projects/writing collections (via getFeaturedProjects, getRecentPosts).
+// No human-readable text is hardcoded here.
 
+import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import { ClayDot } from "@/components/ui/ClayDot";
+import { SectionLabel } from "@/components/ui/SectionLabel";
+import { WorkCard } from "@/components/ui/WorkCard";
+import { WritingTeaser } from "@/components/ui/WritingTeaser";
+import { getSiteContent } from "@/lib/content";
+import { getFeaturedProjects } from "@/lib/content";
+import { getRecentPosts } from "@/lib/content";
 
-export default function Home() {
+export default function HomePage() {
+  const site = getSiteContent();
+  const featuredProjects = getFeaturedProjects();
+  const recentPosts = getRecentPosts(3);
+
   return (
     <Container>
-      <div className="flex flex-col gap-[24px] py-[96px]">
-        <p className="font-mono text-[12px] tracking-[0.06em] uppercase text-muted">
-          Phase 0 · Foundation
-        </p>
-        <h1 className="font-serif text-[52px] font-medium leading-[1.15] tracking-[-0.015em] text-ink max-w-[720px]">
-          Something worth reading{" "}
-          <em className="text-accent italic">is on its way.</em>
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <section className="max-w-[720px] mb-[140px]">
+        <h1 className="font-serif text-[52px] font-medium leading-[1.15] tracking-[-0.015em] text-ink mb-[28px]">
+          {site.heroHeadline}{" "}
+          <em className="text-accent italic">{site.heroHeadlineEm}</em>
         </h1>
         <p className="font-sans text-[17px] leading-[1.55] text-muted max-w-[540px]">
-          Will Maness · Strategy and operating background, spending serious time
-          in the trenches with the AI-and-data stack.
+          {site.heroSub}
         </p>
-        <div className="flex items-center gap-[10px] font-mono text-[12px] tracking-[0.02em] text-muted mt-[4px]">
+        <div className="inline-flex items-center gap-[10px] mt-[28px] font-mono text-[12px] text-muted tracking-[0.02em]">
           <ClayDot />
-          currently in Boston · building in the open
+          {site.currentlyLine}
         </div>
-      </div>
+      </section>
+
+      {/* ── Selected work ─────────────────────────────────────────────── */}
+      <section className="mb-[96px]">
+        <div className="flex items-baseline justify-between pb-[16px] mb-[36px] border-b border-line">
+          <SectionLabel>Selected work</SectionLabel>
+          <Link
+            href="/work"
+            className="font-sans text-[13px] text-ink no-underline hover:text-accent transition-colors duration-[120ms]"
+          >
+            All projects →
+          </Link>
+        </div>
+        <div
+          className="grid gap-y-[56px] gap-x-[64px]"
+          style={{ gridTemplateColumns: "1fr 1fr" }}
+        >
+          {featuredProjects.map((project) => (
+            <WorkCard key={project.slug} slug={project.slug} project={project} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Recent writing ────────────────────────────────────────────── */}
+      {recentPosts.length > 0 && (
+        <section className="mb-[96px]">
+          <div className="flex items-baseline justify-between pb-[16px] mb-[36px] border-b border-line">
+            <SectionLabel>Recent writing</SectionLabel>
+            <Link
+              href="/writing"
+              className="font-sans text-[13px] text-ink no-underline hover:text-accent transition-colors duration-[120ms]"
+            >
+              All essays →
+            </Link>
+          </div>
+          <div className="flex flex-col gap-[40px] max-w-[720px]">
+            {recentPosts.map((post) => (
+              <WritingTeaser key={post.slug} slug={post.slug} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
     </Container>
   );
 }

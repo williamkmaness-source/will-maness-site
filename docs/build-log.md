@@ -20,7 +20,25 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
-## 2026-05-03 — Phase 0: Foundation
+## 2026-05-06 — Phase 1: MVP scaffold
+
+**Content system.** Added `siteSchema` to `content-schemas.ts` and `getSiteContent()` / `getAdjacentProjects()` / `getAdjacentPosts()` helpers to `content.ts`. Created `content/site.mdx` — the single file Will edits to update hero copy, the homepage "currently" line, the about page bio, the "Currently" list, and the say-hi block. Installed `remark-frontmatter` (specified as a string in `next.config.ts` — Turbopack requires serializable plugin references, not function imports).
+
+**Homepage.** Replaced Phase 0 placeholder with full homepage replicating `site-mockup.html` exactly. Hero pulls from `content/site.mdx` frontmatter; Selected Work pulls `featured: true` projects; Recent Writing pulls the 3 most recent posts. All copy is content-file-driven — zero hardcoded strings.
+
+**New UI components.** `WorkCard` (project card in the work grid), `WritingTeaser` (post teaser in the writing list), `StackList` (tools-with-status-dots block for project pages, registered in `mdx-components.tsx`). Updated `mdx-components.tsx` with design-system-styled `h2`, `p`, `blockquote`, `a`, `code`, `pre` overrides so MDX prose matches the mockup exactly.
+
+**All pages.** Built `/work` (work index), `/work/[slug]` (project page template with header + MDX body + prev/next nav), `/about` (full about page matching `site-about-page.html`, bio prose via `content/site.mdx` MDX body), `/writing` (writing index), `/writing/[slug]` (writing post template). Dynamic routes use `generateStaticParams` + dynamic import (`await import(\`content/...\${slug}.mdx\`)`) for MDX content — remark-frontmatter strips the YAML block before rendering.
+
+**Infrastructure.** Programmatic OG images via `ImageResponse` (next/og) for home, `/work/[slug]`, and `/writing/[slug]`. Edge runtime only on the static root OG image; dynamic OG images use Node runtime (required by `generateStaticParams` + fs APIs). RSS feed at `/feed.xml`, sitemap at `/sitemap.xml`, `robots.txt`. `metadataBase` added to root layout.
+
+**Content.** Updated `boston-civic-data.mdx` status to `in-progress`, set `featured: true`. Created placeholder writing post (`where-the-data-moat-lives.mdx`) — required so Turbopack can resolve the dynamic import context for `/writing/[slug]`. Will replaces this with the real essay.
+
+**Build status.** Clean build — 23 static/SSG routes. No TypeScript errors.
+
+---
+
+## 2026-05-05 — Issue #1: 311 Equity Tracker tracer bullet
 
 **Toolchain.** Installed Node.js v25.9.0 and pnpm v10.33.2 via Homebrew. Initialized a Next.js 16 project with TypeScript, App Router, Tailwind v4, and ESLint using `pnpm create next-app`. Moved planning spec documents to `_spec/` to keep them alongside the codebase without polluting the project root.
 

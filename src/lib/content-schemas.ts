@@ -27,3 +27,24 @@ export const writingSchema = z.object({
 
 export type ProjectFrontmatter = z.infer<typeof projectSchema>;
 export type WritingFrontmatter = z.infer<typeof writingSchema>;
+
+// ── Site (content/site.mdx) ─────────────────────────────────────────────────
+// Global copy for the homepage and about page. All human-readable text that
+// appears on more than one route lives here. Edit this file to update copy.
+
+export const siteSchema = z.object({
+  // Homepage hero — split so the <em> portion can be styled separately.
+  heroHeadline: z.string(),
+  heroHeadlineEm: z.string(),
+  heroSub: z.string(),
+  currentlyLine: z.string(), // the single-line "currently in X · doing Y" on the homepage
+
+  // About page structured content.
+  aboutIntro: z.string(),
+  currentlyList: z.array(z.object({ label: z.string(), value: z.string() })),
+  sayHiHeadline: z.string(),
+  sayHiBody: z.string(),
+  calUrl: z.string(),
+});
+
+export type SiteFrontmatter = z.infer<typeof siteSchema>;

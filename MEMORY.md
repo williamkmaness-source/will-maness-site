@@ -1,17 +1,17 @@
 # project_website Memory
 
-_Last updated: 2026-05-04_
+_Last updated: 2026-05-06_
 
 ## Current Status
 
 | Phase | Description | Status |
 | ----- | ----------- | ------ |
 | 0 | Foundation — Next.js, Tailwind, tokens, primitives, Vercel deploy | ✅ Done |
-| 1 | MVP launch — all pages, 5 content pieces, OG images, Lighthouse pass | ⬜ Not started |
+| 1 | MVP launch — all pages, 5 content pieces, OG images, Lighthouse pass | 🟡 Ready to start |
 | 2 | Vienna Opening trainer embed | ⬜ Not started (depends on project_vienna) |
 | 3 | Boston civic-data project | ⬜ Not started (depends on project_311) |
 
-**Note:** Phase 0 quiz not yet passed. Will may need a walkthrough before Phase 1 begins.
+**Phase 0 quiz: passed 2026-05-06. Phase 1 build strategy grill-me: passed 2026-05-06.**
 
 ## Key Decisions
 
@@ -21,10 +21,17 @@ _Last updated: 2026-05-04_
 - **Content authoring:** MDX files in `content/`. No CMS. Publish = create file + push = Vercel auto-deploy.
 - **Repo:** Public GitHub (codebase is part of the credibility pitch).
 - **No dark mode at MVP** — deliberate; would need a full design pass.
+- **In-progress project narratives:** 311 and Vienna project pages will be written as "here's what I'm building and why" — honest in-progress framing, not placeholders. Status field in frontmatter handles this.
+
+## MVP Content Pieces (Phase 1)
+
+1. Project writeup — Boston 311 web app (in-progress narrative)
+2. Project writeup — Vienna Opening trainer (in-progress narrative)
+3. Blog essay — one strong standalone piece
+4. Blog essay — the website build itself
+5. About page copy
 
 ## Open Questions
 
-- [ ] Domain registered? (`willmaness.com` recommended)
-- [ ] Phase 0 quiz complete
-- [ ] 5 MVP content pieces authored by Will
+- [ ] `willmaness.com` not yet registered — available as of 2026-05-06, register before Phase 1 ships
 - [ ] Headshot / custom illustration slot on About page

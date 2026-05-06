@@ -6,7 +6,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { projectSchema, writingSchema, type ProjectFrontmatter, type WritingFrontmatter } from "./content-schemas";
+import { projectSchema, writingSchema, siteSchema, type ProjectFrontmatter, type WritingFrontmatter, type SiteFrontmatter } from "./content-schemas";
 
 const contentRoot = path.join(process.cwd(), "content");
 
@@ -57,4 +57,32 @@ export function getAllPosts(): (WritingFrontmatter & { slug: string })[] {
 
 export function getRecentPosts(count = 3) {
   return getAllPosts().slice(0, count);
+}
+
+// ── Site ────────────────────────────────────────────────────────────────────
+
+export function getSiteContent(): SiteFrontmatter {
+  const filePath = path.join(contentRoot, "site.mdx");
+  const { data } = readMdxFile(filePath);
+  return siteSchema.parse(data);
+}
+
+// Returns adjacent projects for prev/next navigation on project pages.
+export function getAdjacentProjects(slug: string) {
+  const all = getAllProjects();
+  const idx = all.findIndex((p) => p.slug === slug);
+  return {
+    prev: idx > 0 ? all[idx - 1] : null,
+    next: idx < all.length - 1 ? all[idx + 1] : null,
+  };
+}
+
+// Returns adjacent posts for prev/next navigation on writing pages.
+export function getAdjacentPosts(slug: string) {
+  const all = getAllPosts();
+  const idx = all.findIndex((p) => p.slug === slug);
+  return {
+    prev: idx > 0 ? all[idx - 1] : null,
+    next: idx < all.length - 1 ? all[idx + 1] : null,
+  };
 }

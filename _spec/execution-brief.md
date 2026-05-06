@@ -92,7 +92,7 @@ Before any real content renders:
 Once Phase 0 is solid:
 
 1. Homepage. Replicate `site-mockup.html` exactly. All copy pulled from `content/site.mdx` and the projects/writing collections.
-2. Project page template. Replicate `site-project-page.html`. Build the `StackList` component (the tools-with-status-dots block — it's a recurring custom component). Style code blocks with the colors in `design-tokens.md`. Build the pullquote, the meta-strip, the eyebrow, and the next/prev navigation. Ship one canonical project (`local-ai-stack`) using the placeholder content from the mockup.
+2. Project page template. Replicate `site-project-page.html`. Build the `StackList` component (the tools-with-status-dots block — it's a recurring custom component). Style code blocks with the colors in `design-tokens.md`. Build the pullquote, the meta-strip, the eyebrow, and the next/prev navigation. Ship using the Boston 311 project as the first canonical content (see step 10 — this is one of the five MVP pieces, written as an in-progress narrative).
 3. Writing post template. Reuse the project-page typography. Drop the eyebrow and the "self-initiated" pill. Same next/prev pattern.
 4. Work index. Richer version of the homepage's "Selected work" block. Same card pattern, all projects shown.
 5. Writing index. List of essay teasers, same visual pattern as the homepage's "Recent writing" pull.
@@ -100,7 +100,14 @@ Once Phase 0 is solid:
 7. Programmatic OG image generation via `@vercel/og`. Every project, post, and primary route gets a generated share image.
 8. RSS feed for `/writing`. Sitemap. `robots.txt`.
 9. Wire `mailto:` and the Cal.com link for the contact actions on the about page.
-10. Will writes the five MVP content pieces; Claude Code provides a copy-edit pass and visual polish.
+10. Will writes the five MVP content pieces; Claude Code provides a copy-edit pass and visual polish. The five pieces are:
+    - `content/projects/boston-311.mdx` — Boston 311 civic data web app (in-progress narrative; use `status: in progress` in frontmatter)
+    - `content/projects/vienna-trainer.mdx` — Vienna Opening trainer (in-progress narrative; use `status: in progress` in frontmatter)
+    - `content/writing/[slug].mdx` — one strong standalone essay
+    - `content/writing/building-this-site.mdx` — the website build itself as a writing piece
+    - About page copy in `content/site.mdx`
+    
+    Both project writeups are intentionally published before the apps ship. Frame them as "here's what I'm building and why" — honest in-progress work is more compelling to a hiring manager than a placeholder. The `status` field in frontmatter surfaces the correct indicator on the work index automatically.
 11. Final pass: accessibility audit, Lighthouse pass, manual QA on mobile.
 12. Phase 1 quiz.
 
@@ -183,7 +190,7 @@ Will should be able to publish without engineering help. The architecture suppor
 
 Before the first PR:
 
-- Domain registered and pointed at Vercel (or vercel.app placeholder if domain decision pending)
+- Domain registered and pointed at Vercel. `willmaness.com` confirmed available as of 2026-05-06 — must be registered before Phase 1 ships. Vercel.app URLs are acceptable during the Phase 1 build but not at launch.
 - GitHub repo created, public
 - Vercel project connected to the repo
 - Will has read all five source documents

@@ -22,6 +22,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://willmaness.com"),
   title: "Will Maness",
   description:
     "Strategy and operating background, spending time in the trenches with the AI-and-data stack.",
