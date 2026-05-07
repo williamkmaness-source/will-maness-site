@@ -4,10 +4,53 @@ eyebrow: "Engineering · Writing"
 year: "2026"
 status: "in-progress"
 tags: ["engineering", "writing"]
-summary: "A from-scratch personal site, documented as it's built. The codebase, the choices, and what I learned."
+summary: "A from-scratch personal site built to demonstrate technical fluency to a technical audience. The design choices, the content system, and what a strategy person learns building in a modern React stack."
 featured: true
 ---
 
-{/* Full writeup coming after Phase 1 launch. */}
+The strategic premise behind this site is a little recursive: building it from scratch is part of proving the point it's trying to make. A hiring manager at a data-infrastructure company doesn't need to see another Squarespace portfolio. They need evidence of real choices — pick a stack, wire up a content pipeline, ship something considered — and an honest account of why.
 
-Placeholder — full writeup coming soon.
+So: Next.js 16 with App Router and TypeScript, Tailwind v4, MDX content, Newsreader serif, deployed to Vercel. Nothing exotic. The goal was a codebase I can maintain alone, understand in full, and that reads as legible to the engineers I'm trying to work with.
+
+## The content system
+
+The most load-bearing design decision: all human-readable text lives in MDX files under `content/`, never in component code. Publishing a new post or project is creating one file and pushing. No CMS, no dashboard, no vendor to log into.
+
+Every content file's frontmatter is validated at build time against a Zod schema. A malformed date or a missing required key breaks the build loudly, before anything reaches production. The tradeoff is a little discipline upfront; the payoff is that content and code stay cleanly separated indefinitely.
+
+The `content/site.mdx` file deserves a specific mention: it's the single source of truth for all the copy a maintainer would actually edit — the hero statement, the "currently" list, the contact CTA. No string literals in components. If the site's voice needs updating, that's one file.
+
+## Tailwind v4
+
+The project uses Tailwind v4, which replaced `tailwind.config.ts` with a CSS-native `@theme {}` block. Design tokens live in `src/lib/tokens.ts` as TypeScript constants that feed both the `@theme` CSS config and in-component usage — so `text-accent` and `var(--accent)` both resolve to the same value from one source. The config format was unfamiliar for a day; the result is cleaner than the old approach.
+
+## Server components by default
+
+The App Router defaults to server components, which means no JavaScript ships to the client unless a component explicitly opts in with `"use client"`. The navigation is the only client component in the base scaffold — it needs `usePathname` for active link state. Everything else renders on the server and arrives as HTML. Lighthouse 95+ across the main routes isn't an optimization effort; it's the default behavior of the architecture.
+
+## Programmatic OG images
+
+Every project page, post, and the homepage gets a custom open graph image generated from the same frontmatter that drives the page — title, summary, type. No image files to manage, no forgetting to update the share card when a title changes. The implementation uses Next.js's `ImageResponse` API; the static root image runs on the edge runtime, dynamic project and post images run on Node (required by the static generation APIs).
+
+## Stack
+
+<StackList items={[
+  { name: "Next.js 16", role: "App Router, TypeScript, server components by default", frequency: "daily" },
+  { name: "Tailwind v4", role: "CSS-native theme config, wired to a TypeScript token system", frequency: "daily" },
+  { name: "MDX", role: "Content layer — all posts and project pages, with embedded React component support", frequency: "daily" },
+  { name: "Zod", role: "Build-time frontmatter validation — bad content fails before it ships", frequency: "occasional" },
+  { name: "Newsreader", role: "Serif typeface, self-hosted via next/font — zero Google requests at runtime", frequency: "daily" },
+  { name: "Vercel", role: "Deploy on push, branch previews, CDN edge caching for API routes", frequency: "daily" }
+]} />
+
+## What I learned
+
+The most useful conceptual shift was treating server components as the default and client components as the exception that needs justification. Coming from a background where "React" meant JavaScript in the browser, the inversion takes a few days to internalize. Once it clicks, the mental model is simpler: render on the server unless the component genuinely requires browser state or event handlers.
+
+The second thing: Zod for content validation is worth the setup cost. Frontmatter bugs fail silently in most setups — a wrong field name, a missing required key, a date in the wrong format. Validated schemas turn those into build-time errors, which means content debt doesn't accumulate. I'd use this pattern for any MDX-heavy project.
+
+The third thing is harder to articulate. Reading the Next.js docs and actually shipping with them are different activities. The framework makes good decisions that only feel obvious in retrospect — the file-system routing, the separation between layout and page, the static-by-default posture. A strategy background helps with the "why" of those decisions faster than it helps with the "how." Bridging that gap is what this project is for.
+
+## What's next
+
+The site is live at [willmaness.com](https://willmaness.com) and the codebase is public on GitHub. Phase 1 content — the five MVP pieces — is the current priority, of which this writeup is one. After that, Phase 2 ships the Vienna Opening trainer as a fully embedded interactive project page.
