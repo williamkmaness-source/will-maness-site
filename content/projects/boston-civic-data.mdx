@@ -4,10 +4,43 @@ eyebrow: "Data · Engineering"
 year: "2026"
 status: "in-progress"
 tags: ["data", "engineering"]
-summary: "An opinionated data project on Massachusetts and Boston municipal sources. In progress."
+summary: "Does Boston respond to 311 requests equally across neighborhoods? This tracker computes an equity gap index from public city data and makes the answer hard to ignore."
 featured: true
 ---
 
-{/* Full writeup coming in Phase 1 — Will is writing this. */}
+Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset goes back to 2011 and updates continuously. What it doesn't do is tell you whether the city treats those requests equally.
 
-Placeholder — full writeup coming soon.
+> Residents in some neighborhoods wait more than twice as long for the same service request to be closed as residents in others. The data is public. Nobody had made the gap visible.
+
+That's the project. The [Boston 311 Equity Tracker](/311) computes a single number — the Equity Gap Index — representing how much worse the slowest-served neighborhood is compared to the fastest. It ranks every neighborhood by median days to close, filters by request type, and shows whether conditions are improving or getting worse year-over-year.
+
+## How it works
+
+The city's data now lives on the Analyze Boston CKAN platform, split into per-year CSV resources. The tracker queries that API directly at request time using a SQL interface, pulls a rolling 30-day window of closed cases, and aggregates everything server-side.
+
+A few deliberate choices in the methodology:
+
+- **Median, not mean.** A single outlier case open for two years drags the mean badly. Median gives a better read on what a typical resident actually experiences.
+- **Closed cases only.** Open cases have no resolution time yet. Including them would undercount the gap for neighborhoods with chronic backlogs.
+- **`reason` field, not `type`.** The `reason` field is more stable across years and produces cleaner groupings for filtering.
+- **Equity Gap Index = max / min.** A ratio rather than a raw delta because neighborhoods handle different volumes of requests. It answers: how much worse is the worst-served neighborhood relative to the best-served, for the same kind of request?
+
+The API response is cached at the CDN edge for 24 hours, so the data is fresh daily without hitting the CKAN endpoint on every page load.
+
+## Stack
+
+<StackList items={[
+  { name: "Next.js", role: "App Router — tracker lives as a page within this site", frequency: "daily" },
+  { name: "Recharts", role: "Horizontal bar chart and trend line, both responsive", frequency: "occasional" },
+  { name: "CKAN API", role: "Analyze Boston data source — SQL queries over public CSVs", frequency: "occasional" },
+  { name: "Tailwind CSS", role: "Styling — uses this site's design tokens throughout", frequency: "daily" },
+  { name: "Vercel CDN", role: "24-hour edge cache on the route handler response", frequency: "daily" }
+]} />
+
+## What's next
+
+Issues #1 (equity gap headline) and #2 (neighborhood ranking chart with filters) are shipped and live. The year-over-year comparison view is next — it needs a second CKAN query fetching the same 30-day window one year prior, then a delta column per neighborhood showing whether conditions improved or worsened.
+
+The longer-term goal is accumulating daily snapshots in Vercel Postgres so the trend chart fills in over time. That data doesn't exist yet; it starts building the day the pipeline is wired.
+
+[Open the tracker →](/311)
