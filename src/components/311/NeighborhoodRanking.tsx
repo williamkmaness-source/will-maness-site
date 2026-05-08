@@ -213,15 +213,25 @@ export function NeighborhoodRanking() {
             <ReferenceLine
               x={referenceValue}
               stroke={colors.muted}
-              strokeWidth={1.5}
+              strokeWidth={2}
               strokeDasharray="4 3"
-              label={{
-                value: referenceLabel,
-                fontSize: 11,
-                fontFamily: fontFamilies.mono,
-                fontWeight: 500,
-                fill: colors.inkSoft,
-                position: "insideBottomRight",
+              label={(props) => {
+                const vb = (props as { viewBox?: { x?: number; y?: number; height?: number } }).viewBox ?? {};
+                const x = (vb.x ?? 0) + 6;
+                const y = (vb.y ?? 0) + (vb.height ?? 0) - 8;
+                return (
+                  <text
+                    x={x}
+                    y={y}
+                    fontSize={11}
+                    fontFamily={fontFamilies.mono}
+                    fontWeight={500}
+                    fill={colors.inkSoft}
+                    textAnchor="start"
+                  >
+                    {referenceLabel}
+                  </text>
+                );
               }}
             />
           )}
