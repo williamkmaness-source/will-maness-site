@@ -46,7 +46,13 @@ function barColor(index: number, total: number): string {
   return lerpColor(t);
 }
 
-type Entry = { neighborhood: string; value: number };
+// Neighborhoods with fewer than this fraction of the category's total tickets are excluded.
+// A hard floor prevents degenerate cases in very low-volume categories.
+const SAMPLE_FRACTION = 0.03;
+const MIN_COUNT_FLOOR = 5;
+const MIN_OPACITY = 0.4;
+
+type Entry = { neighborhood: string; value: number; count: number; opacity: number };
 
 type ChartTooltipProps = TooltipContentProps<number, string> & {
   metric: Metric;
@@ -56,6 +62,7 @@ function ChartTooltip({ active, payload, label, metric }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
   const raw = payload[0].value;
   if (typeof raw !== "number") return null;
+  const count = (payload[0].payload as Entry).count;
   const formatted =
     metric === "medianDays"
       ? raw === 1
@@ -92,6 +99,16 @@ function ChartTooltip({ active, payload, label, metric }: ChartTooltipProps) {
       >
         {formatted}
       </p>
+      <p
+        style={{
+          fontFamily: fontFamilies.mono,
+          fontSize: 11,
+          color: colors.hint,
+          margin: "2px 0 0",
+        }}
+      >
+        n = {count.toLocaleString()}
+      </p>
     </div>
   );
 }
@@ -106,18 +123,26 @@ export function NeighborhoodRanking() {
     [data, selectedRequestType]
   );
 
-  // Sort worst-first so worst neighborhoods appear at the top of the chart.
-  const chartData = useMemo<Entry[]>(() => {
-    if (!activeType) return [];
-    const sorted = [...activeType.neighborhoods].sort((a, b) =>
+  // Sort worst-first, filter low-volume neighborhoods, and compute per-bar opacity.
+  const { chartData, minCount, excludedCount } = useMemo(() => {
+    if (!activeType) return { chartData: [] as Entry[], minCount: 0, excludedCount: 0 };
+    const minCount = Math.max(MIN_COUNT_FLOOR, Math.round(SAMPLE_FRACTION * activeType.totalCases));
+    const all = activeType.neighborhoods;
+    const filtered = all.filter((n) => n.count >= minCount);
+    const excludedCount = all.length - filtered.length;
+    const maxCount = filtered.reduce((m, n) => Math.max(m, n.count), 0);
+    const sorted = [...filtered].sort((a, b) =>
       selectedMetric === "medianDays"
         ? b.medianDays - a.medianDays
         : a.onTimeRate - b.onTimeRate
     );
-    return sorted.map((n) => ({
+    const chartData = sorted.map((n) => ({
       neighborhood: n.neighborhood,
       value: selectedMetric === "medianDays" ? n.medianDays : n.onTimeRate,
+      count: n.count,
+      opacity: maxCount > 0 ? MIN_OPACITY + (1 - MIN_OPACITY) * Math.sqrt(n.count / maxCount) : 1,
     }));
+    return { chartData, minCount, excludedCount };
   }, [activeType, selectedMetric]);
 
   // City-level reference value for the selected metric.
@@ -143,10 +168,7 @@ export function NeighborhoodRanking() {
       ? (v: number) => `${v}d`
       : (v: number) => `${(v * 100).toFixed(0)}%`;
 
-  const chartHeight = Math.max(
-    400,
-    (activeType?.neighborhoods.length ?? 12) * 34
-  );
+  const chartHeight = Math.max(400, chartData.length * 34);
 
   if (loading) {
     return (
@@ -170,6 +192,7 @@ export function NeighborhoodRanking() {
     <div className="pb-[56px]">
       <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-hint mb-[20px]">
         Neighborhood ranking · {chartData.length} neighborhoods
+        {excludedCount > 0 ? ` of ${chartData.length + excludedCount}` : ""}
       </p>
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart
@@ -240,11 +263,18 @@ export function NeighborhoodRanking() {
               <Cell
                 key={entry.neighborhood}
                 fill={barColor(i, chartData.length)}
+                fillOpacity={entry.opacity}
               />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <p className="font-mono text-[11px] text-hint mt-[12px]">
+        Bar opacity reflects ticket volume
+        {excludedCount > 0
+          ? ` · ${excludedCount} neighborhood${excludedCount !== 1 ? "s" : ""} with fewer than ${minCount} tickets excluded`
+          : ""}
+      </p>
     </div>
   );
 }
