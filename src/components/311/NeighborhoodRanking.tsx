@@ -12,6 +12,7 @@ import {
   YAxis,
   Tooltip,
   ReferenceLine,
+  LabelList,
   Cell,
   ResponsiveContainer,
 } from "recharts";
@@ -52,7 +53,32 @@ const SAMPLE_FRACTION = 0.03;
 const MIN_COUNT_FLOOR = 5;
 const MIN_OPACITY = 0.4;
 
-type Entry = { neighborhood: string; value: number; count: number; opacity: number };
+type Entry = {
+  neighborhood: string;
+  value: number;
+  count: number;
+  opacity: number;
+  yoyDeltaDays: number | null;
+  yoyDeltaOnTime: number | null;
+};
+
+const YOY_FLAT_THRESHOLD = 0.05;
+
+function yoyIndicator(
+  entry: Entry,
+  metric: Metric
+): { symbol: string; color: string } | null {
+  const delta =
+    metric === "medianDays" ? entry.yoyDeltaDays : entry.yoyDeltaOnTime;
+  if (delta === null) return null;
+  const prior = entry.value - delta;
+  const relative = prior !== 0 ? Math.abs(delta / prior) : 0;
+  if (relative < YOY_FLAT_THRESHOLD) return { symbol: "→", color: colors.hint };
+  const improved = metric === "medianDays" ? delta < 0 : delta > 0;
+  return improved
+    ? { symbol: "↑", color: colors.accent }
+    : { symbol: "↓", color: colors.clay };
+}
 
 type ChartTooltipProps = TooltipContentProps<number, string> & {
   metric: Metric;
@@ -141,6 +167,8 @@ export function NeighborhoodRanking() {
       value: selectedMetric === "medianDays" ? n.medianDays : n.onTimeRate,
       count: n.count,
       opacity: maxCount > 0 ? MIN_OPACITY + (1 - MIN_OPACITY) * Math.sqrt(n.count / maxCount) : 1,
+      yoyDeltaDays: n.yoyDeltaDays,
+      yoyDeltaOnTime: n.yoyDeltaOnTime,
     }));
     return { chartData, minCount, excludedCount };
   }, [activeType, selectedMetric]);
@@ -266,6 +294,29 @@ export function NeighborhoodRanking() {
                 fillOpacity={entry.opacity}
               />
             ))}
+            <LabelList
+              dataKey="value"
+              content={(props) => {
+                const { x, y, width, height, index } = props as {
+                  x: number; y: number; width: number; height: number; index: number;
+                };
+                const entry = chartData[index];
+                if (!entry) return null;
+                const ind = yoyIndicator(entry, selectedMetric);
+                if (!ind) return null;
+                return (
+                  <text
+                    x={x + width + 6}
+                    y={y + height / 2 + 4}
+                    fontSize={11}
+                    fontFamily={fontFamilies.mono}
+                    fill={ind.color}
+                  >
+                    {ind.symbol}
+                  </text>
+                );
+              }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>

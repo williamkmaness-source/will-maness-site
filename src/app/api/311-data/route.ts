@@ -1,11 +1,11 @@
 // route.ts — Equity Tracker API route.
-// Fetches the most recent 30 days of closed 311 cases from Analyze Boston (CKAN datastore).
+// Fetches two 30-day windows in parallel (current + prior year) for YoY comparison.
 // Note: Analyze Boston migrated from Socrata to CKAN/OpenGov; data is split per-year by
 // case-open year. The window filter is on closed_dt, so we must query every year resource
 // whose cases could plausibly close in the window (a case opened in 2024 may close in 2026).
 // Response is CDN-cached for 24 hours.
 
-import type { RequestTypeMetrics, TrackerData } from "@/components/311/types";
+import type { NeighborhoodStat, RequestTypeMetrics, TrackerData } from "@/components/311/types";
 
 const CKAN_SQL_URL =
   "https://data.boston.gov/api/3/action/datastore_search_sql";
@@ -88,32 +88,48 @@ async function fetchFromResource(
   return rows;
 }
 
+// Fetches all year resources for a window in parallel.
 async function fetchWindow(start: Date, end: Date): Promise<RawRow[]> {
   const startDate = toDateStr(start);
   const endDate = toDateStr(end);
-  const allRows: RawRow[] = [];
-
-  // Query every year resource — a case in any year's bucket may have closed inside our window.
-  // The closed_dt SQL filter scopes each resource to the window; non-matching years return empty.
-  for (const [, resourceId] of YEAR_RESOURCES) {
-    const rows = await fetchFromResource(resourceId, startDate, endDate);
-    allRows.push(...rows);
-  }
-
-  return allRows;
+  const results = await Promise.all(
+    YEAR_RESOURCES.map(([, resourceId]) =>
+      fetchFromResource(resourceId, startDate, endDate)
+    )
+  );
+  return results.flat();
 }
 
-function computeMetrics(rows: RawRow[]): RequestTypeMetrics[] {
+// Per-neighborhood aggregated data for a single window.
+type NeighborhoodWindowData = {
+  medianDays: number | null;
+  onTimeRate: number;
+  count: number;
+};
+
+// Per-request-type aggregated data for a single window.
+type RequestTypeWindowData = {
+  neighborhoods: Map<string, NeighborhoodWindowData>;
+  cityMedian: number | null;
+  equityGap: number | null;
+  worstNeighborhood: string | null;
+  worstMedianDays: number | null;
+  bestNeighborhood: string | null;
+  bestMedianDays: number | null;
+  totalCases: number;
+};
+
+// Aggregates raw rows into per-type per-neighborhood metrics for a single window.
+function computeWindow(rows: RawRow[]): Map<string, RequestTypeWindowData> {
   const byType = new Map<string, RawRow[]>();
   for (const row of rows) {
-    // Skip whitespace-only neighborhoods that slipped through the SQL filter.
     if (!row.neighborhood?.trim()) continue;
     const type = row.reason ?? "Unknown";
     if (!byType.has(type)) byType.set(type, []);
     byType.get(type)!.push(row);
   }
 
-  const results: RequestTypeMetrics[] = [];
+  const result = new Map<string, RequestTypeWindowData>();
 
   for (const [requestType, typeRows] of byType) {
     const daysByNeighborhood = new Map<string, number[]>();
@@ -126,9 +142,8 @@ function computeMetrics(rows: RawRow[]): RequestTypeMetrics[] {
     for (const row of typeRows) {
       const n = row.neighborhood!.trim();
 
-      if (!ontimeByNeighborhood.has(n)) {
+      if (!ontimeByNeighborhood.has(n))
         ontimeByNeighborhood.set(n, { ontime: 0, total: 0 });
-      }
       const ot = ontimeByNeighborhood.get(n)!;
       ot.total++;
       if (row.on_time === "ONTIME") ot.ontime++;
@@ -145,35 +160,85 @@ function computeMetrics(rows: RawRow[]): RequestTypeMetrics[] {
       allDays.push(days);
     }
 
-    const neighborhoods = Array.from(daysByNeighborhood.entries())
-      .map(([name, days]) => {
-        const ot = ontimeByNeighborhood.get(name);
+    const neighborhoods = new Map<string, NeighborhoodWindowData>();
+    for (const [name, days] of daysByNeighborhood) {
+      const ot = ontimeByNeighborhood.get(name);
+      neighborhoods.set(name, {
+        medianDays: median(days),
+        onTimeRate: ot ? ot.ontime / ot.total : 0,
+        count: ot?.total ?? days.length,
+      });
+    }
+
+    const sorted = Array.from(neighborhoods.entries())
+      .filter(([, v]) => v.medianDays !== null)
+      .sort(([, a], [, b]) => (b.medianDays ?? 0) - (a.medianDays ?? 0));
+
+    const worst = sorted[0];
+    const best = sorted[sorted.length - 1];
+    const equityGap =
+      worst && best && (best[1].medianDays ?? 0) > 0
+        ? (worst[1].medianDays ?? 0) / (best[1].medianDays ?? 0)
+        : null;
+
+    result.set(requestType, {
+      neighborhoods,
+      cityMedian: median(allDays),
+      equityGap,
+      worstNeighborhood: worst?.[0] ?? null,
+      worstMedianDays: worst?.[1].medianDays ?? null,
+      bestNeighborhood: best?.[0] ?? null,
+      bestMedianDays: best?.[1].medianDays ?? null,
+      totalCases: typeRows.length,
+    });
+  }
+
+  return result;
+}
+
+// Joins current and prior windows to produce final RequestTypeMetrics[].
+function mergeWindows(
+  current: Map<string, RequestTypeWindowData>,
+  prior: Map<string, RequestTypeWindowData>
+): RequestTypeMetrics[] {
+  const results: RequestTypeMetrics[] = [];
+
+  for (const [requestType, curr] of current) {
+    const priorType = prior.get(requestType);
+
+    const neighborhoods: NeighborhoodStat[] = Array.from(
+      curr.neighborhoods.entries()
+    )
+      .map(([name, data]) => {
+        const priorN = priorType?.neighborhoods.get(name) ?? null;
+        const yoyDeltaDays =
+          data.medianDays != null && priorN?.medianDays != null
+            ? data.medianDays - priorN.medianDays
+            : null;
+        const yoyDeltaOnTime =
+          priorN != null ? data.onTimeRate - priorN.onTimeRate : null;
         return {
           neighborhood: name,
-          medianDays: median(days)!,
-          onTimeRate: ot ? ot.ontime / ot.total : 0,
-          count: ot?.total ?? days.length,
+          medianDays: data.medianDays ?? 0,
+          onTimeRate: data.onTimeRate,
+          count: data.count,
+          yoyDeltaDays,
+          yoyDeltaOnTime,
         };
       })
       .sort((a, b) => b.medianDays - a.medianDays);
 
-    const worst = neighborhoods[0] ?? null;
-    const best = neighborhoods[neighborhoods.length - 1] ?? null;
-    const equityGap =
-      worst && best && best.medianDays > 0
-        ? worst.medianDays / best.medianDays
-        : null;
-
     results.push({
       requestType,
-      equityGap,
-      worstNeighborhood: worst?.neighborhood ?? null,
-      worstMedianDays: worst?.medianDays ?? null,
-      bestNeighborhood: best?.neighborhood ?? null,
-      bestMedianDays: best?.medianDays ?? null,
-      cityMedian: median(allDays),
-      totalCases: typeRows.length,
+      equityGap: curr.equityGap,
+      worstNeighborhood: curr.worstNeighborhood,
+      worstMedianDays: curr.worstMedianDays,
+      bestNeighborhood: curr.bestNeighborhood,
+      bestMedianDays: curr.bestMedianDays,
+      cityMedian: curr.cityMedian,
+      totalCases: curr.totalCases,
       neighborhoods,
+      yoyEquityGap: priorType?.equityGap ?? null,
     });
   }
 
@@ -186,10 +251,20 @@ export async function GET() {
   const windowStart = new Date(
     windowEnd.getTime() - 30 * 24 * 60 * 60 * 1000
   );
+  const priorEnd = new Date(windowEnd.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const priorStart = new Date(
+    windowStart.getTime() - 365 * 24 * 60 * 60 * 1000
+  );
 
   try {
-    const rows = await fetchWindow(windowStart, windowEnd);
-    const requestTypes = computeMetrics(rows);
+    const [currentRows, priorRows] = await Promise.all([
+      fetchWindow(windowStart, windowEnd),
+      fetchWindow(priorStart, priorEnd),
+    ]);
+
+    const currentWindow = computeWindow(currentRows);
+    const priorWindow = computeWindow(priorRows);
+    const requestTypes = mergeWindows(currentWindow, priorWindow);
 
     const payload: TrackerData = {
       lastUpdated: new Date().toISOString(),

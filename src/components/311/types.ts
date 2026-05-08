@@ -6,6 +6,8 @@ export type NeighborhoodStat = {
   medianDays: number;
   onTimeRate: number;
   count: number;
+  yoyDeltaDays: number | null;
+  yoyDeltaOnTime: number | null;
 };
 
 export type RequestTypeMetrics = {
@@ -18,6 +20,7 @@ export type RequestTypeMetrics = {
   cityMedian: number | null;
   totalCases: number;
   neighborhoods: NeighborhoodStat[];
+  yoyEquityGap: number | null;
 };
 
 export type TrackerData = {

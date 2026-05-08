@@ -164,6 +164,18 @@ export function HeadlineCard() {
         </p>
       )}
 
+      {selectedMetric === "medianDays" &&
+        activeType.equityGap !== null &&
+        activeType.yoyEquityGap !== null && (
+          <p className="font-serif text-[17px] leading-[1.5] text-muted mt-[16px] max-w-[680px]">
+            {activeType.equityGap > activeType.yoyEquityGap * 1.05
+              ? `The equity gap has widened year over year — from ${activeType.yoyEquityGap.toFixed(1)}× to ${activeType.equityGap.toFixed(1)}×.`
+              : activeType.equityGap < activeType.yoyEquityGap * 0.95
+              ? `The equity gap has narrowed year over year — from ${activeType.yoyEquityGap.toFixed(1)}× to ${activeType.equityGap.toFixed(1)}×.`
+              : `The equity gap is largely unchanged year over year (${activeType.yoyEquityGap.toFixed(1)}× → ${activeType.equityGap.toFixed(1)}×).`}
+          </p>
+        )}
+
       <div className="mt-[28px] flex flex-wrap gap-x-[32px] gap-y-[8px] font-mono text-[12px] tracking-[0.04em] text-muted">
         {headline &&
           (selectedMetric === "medianDays" ? (
