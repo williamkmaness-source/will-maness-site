@@ -212,14 +212,16 @@ export function NeighborhoodRanking() {
           {referenceValue !== null && (
             <ReferenceLine
               x={referenceValue}
-              stroke={colors.hint}
+              stroke={colors.muted}
+              strokeWidth={1.5}
               strokeDasharray="4 3"
               label={{
                 value: referenceLabel,
-                fontSize: 10,
+                fontSize: 11,
                 fontFamily: fontFamilies.mono,
-                fill: colors.hint,
-                position: "insideTopRight",
+                fontWeight: 500,
+                fill: colors.inkSoft,
+                position: "insideBottomRight",
               }}
             />
           )}
