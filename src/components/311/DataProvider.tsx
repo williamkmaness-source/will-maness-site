@@ -4,7 +4,7 @@
 // All 311 components read from this context — no prop drilling, no re-fetches on filter change.
 
 import { createContext, useContext, useEffect, useState } from "react";
-import type { RequestTypeMetrics, TrackerData } from "./types";
+import { ALL_CATEGORIES, type RequestTypeMetrics, type TrackerData } from "./types";
 
 export type Metric = "medianDays" | "onTimeRate";
 
@@ -33,8 +33,10 @@ export function useTracker(): ContextValue {
 }
 
 function pickInitialType(data: TrackerData): RequestTypeMetrics | null {
-  // Prefer the featured (most common) type, but only if it has enough neighborhoods
-  // to populate the dropdown. Otherwise fall back to the first qualifying type.
+  // Default to the pooled "All categories" view when available — that's the entry
+  // both charts share and the one a first-time visitor sees.
+  const all = data.requestTypes.find((rt) => rt.requestType === ALL_CATEGORIES);
+  if (all && all.neighborhoods.length >= MIN_NEIGHBORHOODS) return all;
   if (data.featured && data.featured.neighborhoods.length >= MIN_NEIGHBORHOODS) {
     return data.featured;
   }

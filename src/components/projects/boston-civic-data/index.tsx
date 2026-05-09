@@ -7,6 +7,7 @@ import { DataProvider } from "@/components/311/DataProvider";
 import { HeadlineCard } from "@/components/311/HeadlineCard";
 import { FilterBar } from "@/components/311/FilterBar";
 import { NeighborhoodRanking } from "@/components/311/NeighborhoodRanking";
+import { BacklogFlowChart } from "@/components/311/BacklogFlowChart";
 
 export function BostonCivicTracker() {
   return (
@@ -21,6 +22,7 @@ export function BostonCivicTracker() {
           <HeadlineCard />
           <FilterBar />
           <NeighborhoodRanking />
+          <BacklogFlowChart />
           <footer className="py-[24px] border-t border-line font-mono text-[11px] tracking-[0.04em] text-hint">
             <p>
               Data:{" "}

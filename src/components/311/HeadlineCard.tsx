@@ -7,7 +7,7 @@
 import { useMemo } from "react";
 import { useTracker } from "./DataProvider";
 import type { Metric } from "./DataProvider";
-import type { NeighborhoodStat, RequestTypeMetrics } from "./types";
+import { ALL_CATEGORIES, type NeighborhoodStat, type RequestTypeMetrics } from "./types";
 
 function formatMultiplier(n: number): string {
   return `${n.toFixed(1)}×`;
@@ -109,7 +109,8 @@ export function HeadlineCard() {
     );
   }
 
-  const requestLabel = activeType.requestType.toLowerCase();
+  const isAll = activeType.requestType === ALL_CATEGORIES;
+  const requestLabel = isAll ? "any 311 request" : activeType.requestType.toLowerCase();
   const cityLabel =
     selectedMetric === "medianDays" ? "City median" : "City on-time rate";
 
@@ -130,8 +131,11 @@ export function HeadlineCard() {
             </span>{" "}
             longer than residents in{" "}
             <span className="text-accent">{headline.best.neighborhood}</span>{" "}
-            for the same <span className="italic">{requestLabel}</span> request
-            to be resolved.
+            {isAll ? (
+              <>for <span className="italic">{requestLabel}</span> to be resolved.</>
+            ) : (
+              <>for the same <span className="italic">{requestLabel}</span> request to be resolved.</>
+            )}
           </p>
         ) : selectedMetric === "onTimeRate" ? (
           <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">

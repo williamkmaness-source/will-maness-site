@@ -1,11 +1,17 @@
 // route.ts — Equity Tracker API route.
 // Fetches two 30-day windows in parallel (current + prior year) for YoY comparison.
 // Note: Analyze Boston migrated from Socrata to CKAN/OpenGov; data is split per-year by
-// case-open year. The window filter is on closed_dt, so we must query every year resource
-// whose cases could plausibly close in the window (a case opened in 2024 may close in 2026).
+// case-open year. We pull every case where open_dt OR closed_dt falls in the window,
+// which feeds both the closed-case equity metrics and the BacklogFlowChart's opened/closed
+// counts. Closed-status filtering happens in the aggregator, not the SQL.
 // Response is CDN-cached for 24 hours.
 
-import type { NeighborhoodStat, RequestTypeMetrics, TrackerData } from "@/components/311/types";
+import {
+  ALL_CATEGORIES,
+  type NeighborhoodStat,
+  type RequestTypeMetrics,
+  type TrackerData,
+} from "@/components/311/types";
 
 const CKAN_SQL_URL =
   "https://data.boston.gov/api/3/action/datastore_search_sql";
@@ -21,6 +27,7 @@ const YEAR_RESOURCES: ReadonlyArray<readonly [number, string]> = [
 type RawRow = {
   neighborhood?: string | null;
   reason?: string | null;
+  case_status?: string | null;
   open_dt?: string | null;
   closed_dt?: string | null;
   on_time?: string | null;
@@ -58,11 +65,10 @@ async function fetchFromResource(
 
   while (true) {
     const sql = [
-      `SELECT neighborhood,reason,open_dt,closed_dt,on_time`,
+      `SELECT neighborhood,reason,case_status,open_dt,closed_dt,on_time`,
       `FROM "${resourceId}"`,
-      `WHERE case_status='Closed'`,
-      `AND closed_dt >= '${startDate}'`,
-      `AND closed_dt <= '${endDate}'`,
+      `WHERE ((open_dt >= '${startDate}' AND open_dt <= '${endDate}')`,
+      `OR (closed_dt >= '${startDate}' AND closed_dt <= '${endDate}'))`,
       `AND neighborhood IS NOT NULL`,
       `AND neighborhood != ''`,
       `LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
@@ -105,6 +111,8 @@ type NeighborhoodWindowData = {
   medianDays: number | null;
   onTimeRate: number;
   count: number;
+  openedCount: number;
+  closedCount: number;
 };
 
 // Per-request-type aggregated data for a single window.
@@ -119,8 +127,114 @@ type RequestTypeWindowData = {
   totalCases: number;
 };
 
-// Aggregates raw rows into per-type per-neighborhood metrics for a single window.
-function computeWindow(rows: RawRow[]): Map<string, RequestTypeWindowData> {
+function inWindow(iso: string | null | undefined, start: number, end: number): boolean {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) && t >= start && t <= end;
+}
+
+// Aggregates a flat row list for one logical group (a single request type, or the pooled
+// "all categories" set). The closed-case metrics filter to case_status='Closed' AND
+// closed_dt-in-window; opened/closed counts use the full row set.
+function aggregateGroup(
+  rows: RawRow[],
+  windowStart: number,
+  windowEnd: number
+): RequestTypeWindowData {
+  const daysByNeighborhood = new Map<string, number[]>();
+  const ontimeByNeighborhood = new Map<
+    string,
+    { ontime: number; total: number }
+  >();
+  const openedByNeighborhood = new Map<string, number>();
+  const closedByNeighborhood = new Map<string, number>();
+  const allDays: number[] = [];
+  let closedTotal = 0;
+
+  for (const row of rows) {
+    const n = row.neighborhood?.trim();
+    if (!n) continue;
+
+    const openedHere = inWindow(row.open_dt, windowStart, windowEnd);
+    const closedHere = inWindow(row.closed_dt, windowStart, windowEnd);
+    if (openedHere) openedByNeighborhood.set(n, (openedByNeighborhood.get(n) ?? 0) + 1);
+    if (closedHere) closedByNeighborhood.set(n, (closedByNeighborhood.get(n) ?? 0) + 1);
+
+    // Closed-case metrics: same shape as the pre-issue-22 query
+    // (case_status='Closed' AND closed_dt in window).
+    const isClosedInWindow = row.case_status === "Closed" && closedHere;
+    if (!isClosedInWindow) continue;
+    closedTotal++;
+
+    if (!ontimeByNeighborhood.has(n))
+      ontimeByNeighborhood.set(n, { ontime: 0, total: 0 });
+    const ot = ontimeByNeighborhood.get(n)!;
+    ot.total++;
+    if (row.on_time === "ONTIME") ot.ontime++;
+
+    if (!row.closed_dt || !row.open_dt) continue;
+    const days =
+      (new Date(row.closed_dt).getTime() - new Date(row.open_dt).getTime()) /
+      86400000;
+    if (days < 0) continue;
+
+    if (!daysByNeighborhood.has(n)) daysByNeighborhood.set(n, []);
+    daysByNeighborhood.get(n)!.push(days);
+    allDays.push(days);
+  }
+
+  // Build the union of all neighborhoods that touched this group, even those with
+  // only opens-in-window (no closed cases) — the BacklogFlowChart needs them.
+  const allNames = new Set<string>([
+    ...daysByNeighborhood.keys(),
+    ...ontimeByNeighborhood.keys(),
+    ...openedByNeighborhood.keys(),
+    ...closedByNeighborhood.keys(),
+  ]);
+
+  const neighborhoods = new Map<string, NeighborhoodWindowData>();
+  for (const name of allNames) {
+    const days = daysByNeighborhood.get(name) ?? [];
+    const ot = ontimeByNeighborhood.get(name);
+    neighborhoods.set(name, {
+      medianDays: days.length ? median(days) : null,
+      onTimeRate: ot && ot.total > 0 ? ot.ontime / ot.total : 0,
+      count: ot?.total ?? 0,
+      openedCount: openedByNeighborhood.get(name) ?? 0,
+      closedCount: closedByNeighborhood.get(name) ?? 0,
+    });
+  }
+
+  const sorted = Array.from(neighborhoods.entries())
+    .filter(([, v]) => v.medianDays !== null)
+    .sort(([, a], [, b]) => (b.medianDays ?? 0) - (a.medianDays ?? 0));
+
+  const worst = sorted[0];
+  const best = sorted[sorted.length - 1];
+  const equityGap =
+    worst && best && (best[1].medianDays ?? 0) > 0
+      ? (worst[1].medianDays ?? 0) / (best[1].medianDays ?? 0)
+      : null;
+
+  return {
+    neighborhoods,
+    cityMedian: median(allDays),
+    equityGap,
+    worstNeighborhood: worst?.[0] ?? null,
+    worstMedianDays: worst?.[1].medianDays ?? null,
+    bestNeighborhood: best?.[0] ?? null,
+    bestMedianDays: best?.[1].medianDays ?? null,
+    totalCases: closedTotal,
+  };
+}
+
+// Aggregates raw rows into per-type per-neighborhood metrics, plus a pooled
+// "all categories" entry keyed under ALL_CATEGORIES.
+function computeWindow(
+  rows: RawRow[],
+  windowStart: number,
+  windowEnd: number
+): Map<string, RequestTypeWindowData> {
   const byType = new Map<string, RawRow[]>();
   for (const row of rows) {
     if (!row.neighborhood?.trim()) continue;
@@ -130,69 +244,10 @@ function computeWindow(rows: RawRow[]): Map<string, RequestTypeWindowData> {
   }
 
   const result = new Map<string, RequestTypeWindowData>();
-
   for (const [requestType, typeRows] of byType) {
-    const daysByNeighborhood = new Map<string, number[]>();
-    const ontimeByNeighborhood = new Map<
-      string,
-      { ontime: number; total: number }
-    >();
-    const allDays: number[] = [];
-
-    for (const row of typeRows) {
-      const n = row.neighborhood!.trim();
-
-      if (!ontimeByNeighborhood.has(n))
-        ontimeByNeighborhood.set(n, { ontime: 0, total: 0 });
-      const ot = ontimeByNeighborhood.get(n)!;
-      ot.total++;
-      if (row.on_time === "ONTIME") ot.ontime++;
-
-      if (!row.closed_dt || !row.open_dt) continue;
-      const days =
-        (new Date(row.closed_dt).getTime() -
-          new Date(row.open_dt).getTime()) /
-        86400000;
-      if (days < 0) continue;
-
-      if (!daysByNeighborhood.has(n)) daysByNeighborhood.set(n, []);
-      daysByNeighborhood.get(n)!.push(days);
-      allDays.push(days);
-    }
-
-    const neighborhoods = new Map<string, NeighborhoodWindowData>();
-    for (const [name, days] of daysByNeighborhood) {
-      const ot = ontimeByNeighborhood.get(name);
-      neighborhoods.set(name, {
-        medianDays: median(days),
-        onTimeRate: ot ? ot.ontime / ot.total : 0,
-        count: ot?.total ?? days.length,
-      });
-    }
-
-    const sorted = Array.from(neighborhoods.entries())
-      .filter(([, v]) => v.medianDays !== null)
-      .sort(([, a], [, b]) => (b.medianDays ?? 0) - (a.medianDays ?? 0));
-
-    const worst = sorted[0];
-    const best = sorted[sorted.length - 1];
-    const equityGap =
-      worst && best && (best[1].medianDays ?? 0) > 0
-        ? (worst[1].medianDays ?? 0) / (best[1].medianDays ?? 0)
-        : null;
-
-    result.set(requestType, {
-      neighborhoods,
-      cityMedian: median(allDays),
-      equityGap,
-      worstNeighborhood: worst?.[0] ?? null,
-      worstMedianDays: worst?.[1].medianDays ?? null,
-      bestNeighborhood: best?.[0] ?? null,
-      bestMedianDays: best?.[1].medianDays ?? null,
-      totalCases: typeRows.length,
-    });
+    result.set(requestType, aggregateGroup(typeRows, windowStart, windowEnd));
   }
-
+  result.set(ALL_CATEGORIES, aggregateGroup(rows, windowStart, windowEnd));
   return result;
 }
 
@@ -222,6 +277,8 @@ function mergeWindows(
           medianDays: data.medianDays ?? 0,
           onTimeRate: data.onTimeRate,
           count: data.count,
+          openedCount: data.openedCount,
+          closedCount: data.closedCount,
           yoyDeltaDays,
           yoyDeltaOnTime,
         };
@@ -242,8 +299,11 @@ function mergeWindows(
     });
   }
 
+  // Pull the pooled "All categories" entry to the front; sort the rest by volume.
+  const allIdx = results.findIndex((r) => r.requestType === ALL_CATEGORIES);
+  const all = allIdx >= 0 ? results.splice(allIdx, 1)[0] : null;
   results.sort((a, b) => b.totalCases - a.totalCases);
-  return results;
+  return all ? [all, ...results] : results;
 }
 
 export async function GET() {
@@ -262,15 +322,28 @@ export async function GET() {
       fetchWindow(priorStart, priorEnd),
     ]);
 
-    const currentWindow = computeWindow(currentRows);
-    const priorWindow = computeWindow(priorRows);
+    const currentWindow = computeWindow(
+      currentRows,
+      windowStart.getTime(),
+      windowEnd.getTime()
+    );
+    const priorWindow = computeWindow(
+      priorRows,
+      priorStart.getTime(),
+      priorEnd.getTime()
+    );
     const requestTypes = mergeWindows(currentWindow, priorWindow);
+
+    // The "featured" type is the most common single category — the one the editorial
+    // lede should fall back to if "All categories" isn't suitable. Skip the pooled entry.
+    const featured =
+      requestTypes.find((r) => r.requestType !== ALL_CATEGORIES) ?? null;
 
     const payload: TrackerData = {
       lastUpdated: new Date().toISOString(),
       windowStart: windowStart.toISOString(),
       windowEnd: windowEnd.toISOString(),
-      featured: requestTypes[0] ?? null,
+      featured,
       requestTypes,
     };
 

@@ -6,9 +6,15 @@ export type NeighborhoodStat = {
   medianDays: number;
   onTimeRate: number;
   count: number;
+  openedCount: number;
+  closedCount: number;
   yoyDeltaDays: number | null;
   yoyDeltaOnTime: number | null;
 };
+
+// Sentinel requestType value for the pooled-across-categories entry.
+// Both the API response and the FilterBar treat this as the "All categories" option.
+export const ALL_CATEGORIES = "All categories" as const;
 
 export type RequestTypeMetrics = {
   requestType: string;
