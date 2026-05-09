@@ -110,7 +110,8 @@ export function BacklogFlowChart() {
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 4, right: 56, bottom: 4, left: 0 }}
+          margin={{ top: 4, right: 56, bottom: 4, left: 56 }}
+          stackOffset="sign"
           barCategoryGap="22%"
         >
           <XAxis
@@ -138,24 +139,48 @@ export function BacklogFlowChart() {
             tickLine={false}
           />
           <ReferenceLine x={0} stroke={colors.lineStrong} strokeWidth={1} />
-          <Bar dataKey="openedNeg" fill={colors.clay} maxBarSize={18}>
+          <Bar dataKey="openedNeg" fill={colors.clay} stackId="flow" maxBarSize={18}>
             <LabelList
               dataKey="openedCount"
-              position="left"
-              offset={6}
-              fontSize={11}
-              fontFamily={fontFamilies.mono}
-              fill={colors.clay}
+              content={(props) => {
+                const { x, y, height, value } = props as {
+                  x: number; y: number; height: number; value: number;
+                };
+                return (
+                  <text
+                    x={x - 6}
+                    y={y + height / 2 + 4}
+                    fontSize={11}
+                    fontFamily={fontFamilies.mono}
+                    fill={colors.clay}
+                    textAnchor="end"
+                  >
+                    {value}
+                  </text>
+                );
+              }}
             />
           </Bar>
-          <Bar dataKey="closedCount" fill={colors.accent} maxBarSize={18}>
+          <Bar dataKey="closedCount" fill={colors.accent} stackId="flow" maxBarSize={18}>
             <LabelList
               dataKey="closedCount"
-              position="right"
-              offset={6}
-              fontSize={11}
-              fontFamily={fontFamilies.mono}
-              fill={colors.accent}
+              content={(props) => {
+                const { x, y, width, height, value } = props as {
+                  x: number; y: number; width: number; height: number; value: number;
+                };
+                return (
+                  <text
+                    x={x + width + 6}
+                    y={y + height / 2 + 4}
+                    fontSize={11}
+                    fontFamily={fontFamilies.mono}
+                    fill={colors.accent}
+                    textAnchor="start"
+                  >
+                    {value}
+                  </text>
+                );
+              }}
             />
           </Bar>
         </BarChart>
