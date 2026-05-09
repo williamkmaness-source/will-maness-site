@@ -32,7 +32,7 @@ export type TheoryNode = WhiteNode | BlackNode;
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
 
-export type Phase = 'playing' | 'complete';
+export type Phase = 'playing' | 'awaiting_black' | 'complete';
 
 export type HintLevel =
   | 0  // no hint
@@ -50,4 +50,5 @@ export interface TrainerState {
 
 export type TrainerAction =
   | { type: 'MOVE'; from: string; to: string }
+  | { type: 'APPLY_BLACK' }
   | { type: 'RESET'; rootNode: TheoryNode };

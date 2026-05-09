@@ -69,7 +69,6 @@ export function trainerReducer(
     const correct = node.move;
 
     if (from === correct.from && to === correct.to) {
-      // Correct move — advance and trigger Black's response
       const afterWhite: TrainerState = {
         ...state,
         currentNode: node,
@@ -78,12 +77,12 @@ export function trainerReducer(
         hintLevel: 0,
       };
 
-      // Transition to complete if this is move 8 (no Black node follows)
       if (!node.next) {
         return { ...afterWhite, phase: 'complete' };
       }
 
-      return applyBlackResponse(afterWhite, node);
+      // Pause here — the component will dispatch APPLY_BLACK after a delay.
+      return { ...afterWhite, phase: 'awaiting_black' };
     }
 
     // Wrong move — increment counter and update hint level
@@ -104,10 +103,15 @@ export function trainerReducer(
         return { ...afterAutoMove, phase: 'complete' };
       }
 
-      return applyBlackResponse(afterAutoMove, node);
+      return { ...afterAutoMove, phase: 'awaiting_black' };
     }
 
     return { ...state, wrongAttempts, hintLevel };
+  }
+
+  if (action.type === 'APPLY_BLACK') {
+    if (state.phase !== 'awaiting_black') return state;
+    return applyBlackResponse(state, state.currentNode as WhiteNode);
   }
 
   return state;

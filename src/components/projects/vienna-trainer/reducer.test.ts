@@ -90,6 +90,10 @@ function playCorrect(state: TrainerState) {
   return trainerReducer(state, { type: 'MOVE', from: node.move.from, to: node.move.to });
 }
 
+function playBlack(state: TrainerState) {
+  return trainerReducer(state, { type: 'APPLY_BLACK' });
+}
+
 function playWrong(state: TrainerState) {
   return trainerReducer(state, { type: 'MOVE', from: 'a1', to: 'a2' });
 }
@@ -99,8 +103,11 @@ function playWrong(state: TrainerState) {
 describe('trainerReducer', () => {
   it('correct white move advances past black response and resets counters', () => {
     const state = initialState(root);
-    const next = playCorrect(state);
-    // After e4, Black auto-plays e5, landing on the Nc3 node
+    const afterWhite = playCorrect(state);
+    expect(afterWhite.phase).toBe('awaiting_black');
+    expect(afterWhite.moveHistory).toEqual(['e4']);
+    const next = playBlack(afterWhite);
+    // After APPLY_BLACK, Black plays e5 and we land on the Nc3 node
     expect((next.currentNode as WhiteNode).move.san).toBe('Nc3');
     expect(next.moveHistory).toEqual(['e4', 'e5']);
     expect(next.wrongAttempts).toBe(0);
@@ -131,7 +138,11 @@ describe('trainerReducer', () => {
   it('wrong attempt 5 (counter=4) triggers auto-move and resets hints', () => {
     let state = initialState(root);
     for (let i = 0; i < 4; i++) state = playWrong(state);
-    // Auto-move fires: e4 is played, Black responds e5, land on Nc3 node
+    // Auto-move fires: e4 is played, now awaiting Black's response
+    expect(state.phase).toBe('awaiting_black');
+    expect(state.moveHistory).toEqual(['e4']);
+    state = playBlack(state);
+    // After APPLY_BLACK, Black plays e5, land on Nc3 node
     expect((state.currentNode as WhiteNode).move.san).toBe('Nc3');
     expect(state.wrongAttempts).toBe(0);
     expect(state.hintLevel).toBe(0);
@@ -152,8 +163,8 @@ describe('trainerReducer', () => {
     // Run 50 trials — every result must land on a valid WhiteNode
     for (let i = 0; i < 50; i++) {
       let state = initialState(rootWithBranch);
-      state = playCorrect(state); // e4, Black plays e5
-      state = playCorrect(state); // Nc3, Black plays Nf6 or Nc6
+      state = playBlack(playCorrect(state)); // e4, then Black plays e5
+      state = playBlack(playCorrect(state)); // Nc3, then Black plays Nf6 or Nc6
       // currentNode is the White node for move 3 — always valid
       expect(state.currentNode.turn).toBe('w');
       expect(state.currentNode.moveNumber).toBe(3);

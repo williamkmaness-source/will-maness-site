@@ -5,7 +5,7 @@
 
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { useReducer, useMemo, useState, useRef } from 'react';
+import { useReducer, useMemo, useState, useRef, useEffect } from 'react';
 import { trainerReducer, initialState } from './reducer';
 import { BlackNode, TheoryNode, WhiteNode } from './types';
 import theoryTree from '../../../../content/projects/vienna-trainer/theory.json';
@@ -15,6 +15,7 @@ type PieceDropHandlerArgs = { piece: unknown; sourceSquare: string; targetSquare
 type SquareHandlerArgs = { piece: { pieceType: string } | null; square: string };
 
 const ROOT = theoryTree as unknown as WhiteNode;
+const BLACK_RESPONSE_DELAY_MS = 500;
 
 export function ViennaTrainer() {
   const [state, dispatch] = useReducer(trainerReducer, initialState(ROOT));
@@ -51,6 +52,12 @@ export function ViennaTrainer() {
     }
     return variation;
   }, [state.moveHistory]);
+
+  useEffect(() => {
+    if (state.phase !== 'awaiting_black') return;
+    const id = setTimeout(() => dispatch({ type: 'APPLY_BLACK' }), BLACK_RESPONSE_DELAY_MS);
+    return () => clearTimeout(id);
+  }, [state.phase]);
 
   const isWhiteTurn = state.currentNode.turn === 'w' && state.phase === 'playing';
 
