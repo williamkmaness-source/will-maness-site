@@ -6,7 +6,7 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ## 2026-05-08 — Vercel Web Analytics + Speed Insights
 
-**Tracking.** Added `@vercel/analytics` and `@vercel/speed-insights` (both Next.js entries) and mounted `<Analytics />` and `<SpeedInsights />` in the root layout after `<Footer />`. Analytics captures pageviews; Speed Insights captures real-user Core Web Vitals (LCP, INP, CLS) — relevant given the Lighthouse 95+ goal in the spec. Both are privacy-friendly and cookieless. Data flow requires each product to be toggled on for the project in the Vercel dashboard (Settings → Analytics, Settings → Speed Insights) — packages alone do nothing until the toggles are flipped.
+**Tracking.** Added `@vercel/analytics` and `@vercel/speed-insights` (both Next.js entries) and mounted `<Analytics />` and `<SpeedInsights />` in the root layout after `<Footer />`. Analytics captures pageviews; Speed Insights captures real-user Core Web Vitals (LCP, INP, CLS) — relevant given the Lighthouse 95+ goal in the spec. Both are privacy-friendly and cookieless. Data flow requires each product to be toggled on for the project in the Vercel dashboard (Settings → Analytics, Settings → Speed Insights) — packages alone do nothing until the toggles are flipped. Both toggles enabled 2026-05-09; data ingestion now active.
 
 ---
 
