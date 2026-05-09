@@ -2,10 +2,14 @@
 // Loads Newsreader via next/font (self-hosted, zero Google requests at runtime).
 // Injects the font as a CSS variable so globals.css --font-serif fallback chain works.
 // Renders Nav and Footer around {children} so they appear on every route.
+// Vercel Web Analytics + Speed Insights are mounted here so pageviews and Core
+// Web Vitals fire on every route.
 // See docs/concepts.md#next-font and docs/concepts.md#server-components.
 
 import type { Metadata } from "next";
 import { Newsreader } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
@@ -39,6 +43,8 @@ export default function RootLayout({
         <Nav />
         <main className="flex-1">{children}</main>
         <Footer />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

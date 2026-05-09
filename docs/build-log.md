@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-05-08 — Vercel Web Analytics + Speed Insights
+
+**Tracking.** Added `@vercel/analytics` and `@vercel/speed-insights` (both Next.js entries) and mounted `<Analytics />` and `<SpeedInsights />` in the root layout after `<Footer />`. Analytics captures pageviews; Speed Insights captures real-user Core Web Vitals (LCP, INP, CLS) — relevant given the Lighthouse 95+ goal in the spec. Both are privacy-friendly and cookieless. Data flow requires each product to be toggled on for the project in the Vercel dashboard (Settings → Analytics, Settings → Speed Insights) — packages alone do nothing until the toggles are flipped.
+
+---
+
 ## 2026-05-06 — Issue #6: Vienna Trainer — Theory Tree JSON
 
 **Script.** Wrote `scripts/build-theory-tree.mjs` (Lichess Masters API approach, documented) and `scripts/curate-theory-tree.mjs` (executed). The Lichess Masters API now requires OAuth, so the tree was built from hard-coded theory lines validated by chess.js 1.x. Five complete lines cover the three named mainlines (Vienna Gambit ×2, Symmetrical Vienna ×2, Vienna with ...Bc5 ×1), each traced to White's 8th move.
