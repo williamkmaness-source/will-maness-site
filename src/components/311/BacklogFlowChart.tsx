@@ -61,10 +61,13 @@ export function BacklogFlowChart() {
         netDelta: n.openedCount - n.closedCount,
       }))
       .sort((a, b) => b.netDelta - a.netDelta);
-    const max = visible.reduce(
+    const rawMax = visible.reduce(
       (m, r) => Math.max(m, r.openedCount, r.closedCount),
       0
     );
+    // Pad the domain so end-of-bar labels have room to render outside the bar
+    // even when the bar reaches the visual extreme.
+    const max = rawMax * 1.12;
     const growingCount = visible.filter((r) => r.netDelta > 0).length;
     return { chartData: visible, max, visibleCount: visible.length, growingCount };
   }, [activeType]);
