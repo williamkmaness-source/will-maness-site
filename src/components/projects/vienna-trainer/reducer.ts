@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  BlackNode,
   BlackResponse,
   HintLevel,
   TheoryNode,

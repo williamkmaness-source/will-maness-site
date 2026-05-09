@@ -51,7 +51,7 @@ export default function Image() {
             <span style={{ color: "#2D4A3E" }}> in the AI-and-data stack.</span>
           </div>
           <div style={{ fontSize: 20, color: "#6B665B", lineHeight: 1.5 }}>
-            Work, writing, and things I'm thinking about.
+            Work, writing, and things I&apos;m thinking about.
           </div>
         </div>
 

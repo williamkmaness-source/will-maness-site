@@ -261,7 +261,7 @@ export function NeighborhoodRanking() {
             />
           )}
           <Bar dataKey="value" radius={[0, 2, 2, 0]} maxBarSize={22}>
-            {chartData.map((entry, i) => (
+            {chartData.map((entry) => (
               <Cell
                 key={entry.neighborhood}
                 fill={colors.accent}

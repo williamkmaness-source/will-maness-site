@@ -137,7 +137,7 @@ export default function ComponentGallery() {
             room. Inline <code>code</code> has a warm background and mono font.
           </p>
           <blockquote>
-            The most useful upgrade wasn't a new model. It was getting the inner loop down to
+            The most useful upgrade wasn&apos;t a new model. It was getting the inner loop down to
             under five seconds.
           </blockquote>
           <p>Text after a blockquote.</p>
