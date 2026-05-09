@@ -1,7 +1,7 @@
 "use client";
 
 // NeighborhoodRanking.tsx — horizontal bar chart ranking all neighborhoods by the selected metric.
-// Color gradient runs from accent (best) to clay (worst).
+// All bars use accent green; opacity encodes ticket volume (best = full, low-volume = faded).
 // Reference line marks the city-wide value for the selected metric.
 
 import { useMemo } from "react";
@@ -20,32 +20,6 @@ import type { TooltipContentProps } from "recharts";
 import { useTracker } from "./DataProvider";
 import type { Metric } from "./DataProvider";
 import { colors, fontFamilies } from "@/lib/tokens";
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.startsWith("#") ? hex.slice(1) : hex;
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ];
-}
-
-const ACCENT_RGB = hexToRgb(colors.accent);
-const CLAY_RGB = hexToRgb(colors.clay);
-
-// Linear interpolation between accent (t=0, best) and clay (t=1, worst).
-function lerpColor(t: number): string {
-  const r = Math.round(ACCENT_RGB[0] + t * (CLAY_RGB[0] - ACCENT_RGB[0]));
-  const g = Math.round(ACCENT_RGB[1] + t * (CLAY_RGB[1] - ACCENT_RGB[1]));
-  const b = Math.round(ACCENT_RGB[2] + t * (CLAY_RGB[2] - ACCENT_RGB[2]));
-  return `rgb(${r},${g},${b})`;
-}
-
-// index 0 = worst (clay, t=1), last index = best (accent, t=0)
-function barColor(index: number, total: number): string {
-  const t = total <= 1 ? 0.5 : (total - 1 - index) / (total - 1);
-  return lerpColor(t);
-}
 
 // Neighborhoods with fewer than this fraction of the category's total tickets are excluded.
 // A hard floor prevents degenerate cases in very low-volume categories.
@@ -290,7 +264,7 @@ export function NeighborhoodRanking() {
             {chartData.map((entry, i) => (
               <Cell
                 key={entry.neighborhood}
-                fill={barColor(i, chartData.length)}
+                fill={colors.accent}
                 fillOpacity={entry.opacity}
               />
             ))}
