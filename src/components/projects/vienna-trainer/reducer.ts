@@ -42,7 +42,7 @@ function applyBlackResponse(
     return { ...state, currentNode: blackNode, moveHistory, phase: 'complete' };
   }
 
-  return { ...state, currentNode: picked.next, moveHistory };
+  return { ...state, currentNode: picked.next, moveHistory, phase: 'playing' };
 }
 
 export function trainerReducer(
