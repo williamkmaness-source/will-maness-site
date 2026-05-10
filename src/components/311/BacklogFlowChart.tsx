@@ -174,7 +174,7 @@ export function BacklogFlowChart() {
                 };
                 return (
                   <text
-                    x={x - width - 6}
+                    x={x + width - 6}
                     y={y + height / 2 + 4}
                     fontSize={labelFontSize}
                     fontFamily={fontFamilies.mono}
