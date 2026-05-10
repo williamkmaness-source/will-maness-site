@@ -120,10 +120,6 @@ type RequestTypeWindowData = {
   neighborhoods: Map<string, NeighborhoodWindowData>;
   cityMedian: number | null;
   equityGap: number | null;
-  worstNeighborhood: string | null;
-  worstMedianDays: number | null;
-  bestNeighborhood: string | null;
-  bestMedianDays: number | null;
   totalCases: number;
 };
 
@@ -205,25 +201,19 @@ function aggregateGroup(
     });
   }
 
-  const sorted = Array.from(neighborhoods.entries())
-    .filter(([, v]) => v.medianDays !== null)
-    .sort(([, a], [, b]) => (b.medianDays ?? 0) - (a.medianDays ?? 0));
-
-  const worst = sorted[0];
-  const best = sorted[sorted.length - 1];
+  const withDays = Array.from(neighborhoods.values())
+    .map((v) => v.medianDays)
+    .filter((d): d is number => d !== null);
+  withDays.sort((a, b) => b - a);
+  const worst = withDays[0] ?? null;
+  const best = withDays[withDays.length - 1] ?? null;
   const equityGap =
-    worst && best && (best[1].medianDays ?? 0) > 0
-      ? (worst[1].medianDays ?? 0) / (best[1].medianDays ?? 0)
-      : null;
+    worst !== null && best !== null && best > 0 ? worst / best : null;
 
   return {
     neighborhoods,
     cityMedian: median(allDays),
     equityGap,
-    worstNeighborhood: worst?.[0] ?? null,
-    worstMedianDays: worst?.[1].medianDays ?? null,
-    bestNeighborhood: best?.[0] ?? null,
-    bestMedianDays: best?.[1].medianDays ?? null,
     totalCases: closedTotal,
   };
 }
@@ -264,34 +254,19 @@ function mergeWindows(
     const neighborhoods: NeighborhoodStat[] = Array.from(
       curr.neighborhoods.entries()
     )
-      .map(([name, data]) => {
-        const priorN = priorType?.neighborhoods.get(name) ?? null;
-        const yoyDeltaDays =
-          data.medianDays != null && priorN?.medianDays != null
-            ? data.medianDays - priorN.medianDays
-            : null;
-        const yoyDeltaOnTime =
-          priorN != null ? data.onTimeRate - priorN.onTimeRate : null;
-        return {
-          neighborhood: name,
-          medianDays: data.medianDays ?? 0,
-          onTimeRate: data.onTimeRate,
-          count: data.count,
-          openedCount: data.openedCount,
-          closedCount: data.closedCount,
-          yoyDeltaDays,
-          yoyDeltaOnTime,
-        };
-      })
+      .map(([name, data]) => ({
+        neighborhood: name,
+        medianDays: data.medianDays ?? 0,
+        onTimeRate: data.onTimeRate,
+        count: data.count,
+        openedCount: data.openedCount,
+        closedCount: data.closedCount,
+      }))
       .sort((a, b) => b.medianDays - a.medianDays);
 
     results.push({
       requestType,
       equityGap: curr.equityGap,
-      worstNeighborhood: curr.worstNeighborhood,
-      worstMedianDays: curr.worstMedianDays,
-      bestNeighborhood: curr.bestNeighborhood,
-      bestMedianDays: curr.bestMedianDays,
       cityMedian: curr.cityMedian,
       totalCases: curr.totalCases,
       neighborhoods,
@@ -340,7 +315,6 @@ export async function GET() {
       requestTypes.find((r) => r.requestType !== ALL_CATEGORIES) ?? null;
 
     const payload: TrackerData = {
-      lastUpdated: new Date().toISOString(),
       windowStart: windowStart.toISOString(),
       windowEnd: windowEnd.toISOString(),
       featured,

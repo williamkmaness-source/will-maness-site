@@ -20,19 +20,11 @@ import { useTracker } from "./DataProvider";
 import { ALL_CATEGORIES } from "./types";
 import { colors, fontFamilies } from "@/lib/tokens";
 
-// Compound neighborhood names that wrap awkwardly at narrow widths.
-// Keys must match the canonical `neighborhood` field exactly.
+// Short aliases for compound neighborhood names that wrap awkwardly at narrow widths.
 const SHORT_LABELS: Record<string, string> = {
   "South Boston / South Boston Waterfront": "S. Boston / Waterfront",
   "Fenway / Kenmore / Audubon Circle / Longwood": "Fenway / Longwood",
   "Downtown / Financial District": "Downtown / Financial",
-  "Mission Hill": "Mission Hill",
-  "Allston / Brighton": "Allston / Brighton",
-  "Jamaica Plain": "Jamaica Plain",
-  "East Boston": "East Boston",
-  "Hyde Park": "Hyde Park",
-  "Roslindale": "Roslindale",
-  "West Roxbury": "West Roxbury",
 };
 
 const MOBILE_BREAKPOINT = 480;

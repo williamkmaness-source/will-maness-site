@@ -8,8 +8,6 @@ export type NeighborhoodStat = {
   count: number;
   openedCount: number;
   closedCount: number;
-  yoyDeltaDays: number | null;
-  yoyDeltaOnTime: number | null;
 };
 
 // Sentinel requestType value for the pooled-across-categories entry.
@@ -19,10 +17,6 @@ export const ALL_CATEGORIES = "All categories" as const;
 export type RequestTypeMetrics = {
   requestType: string;
   equityGap: number | null;
-  worstNeighborhood: string | null;
-  worstMedianDays: number | null;
-  bestNeighborhood: string | null;
-  bestMedianDays: number | null;
   cityMedian: number | null;
   totalCases: number;
   neighborhoods: NeighborhoodStat[];
@@ -30,7 +24,6 @@ export type RequestTypeMetrics = {
 };
 
 export type TrackerData = {
-  lastUpdated: string;
   windowStart: string;
   windowEnd: string;
   featured: RequestTypeMetrics | null;
