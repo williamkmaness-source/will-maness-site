@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { ALL_CATEGORIES, type RequestTypeMetrics, type TrackerData } from "./types";
 
 export type Metric = "medianDays" | "onTimeRate";
+export type BacklogView = "absolute" | "net";
 
 // Minimum neighborhood count for a request type to be rankable. Shared across the
 // initial-selection logic here and the FilterBar dropdown so they can't drift.
@@ -20,6 +21,8 @@ type ContextValue = {
   setSelectedRequestType: (type: string) => void;
   selectedMetric: Metric;
   setSelectedMetric: (metric: Metric) => void;
+  backlogView: BacklogView;
+  setBacklogView: (view: BacklogView) => void;
 };
 
 const TrackerContext = createContext<ContextValue | null>(null);
@@ -52,6 +55,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedRequestType, setSelectedRequestType] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<Metric>("medianDays");
+  const [backlogView, setBacklogView] = useState<BacklogView>("absolute");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -85,6 +89,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setSelectedRequestType,
         selectedMetric,
         setSelectedMetric,
+        backlogView,
+        setBacklogView,
       }}
     >
       {children}

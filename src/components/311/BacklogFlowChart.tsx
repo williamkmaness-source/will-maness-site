@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   ReferenceLine,
@@ -52,7 +53,7 @@ type Row = {
 };
 
 export function BacklogFlowChart() {
-  const { data, loading, selectedRequestType } = useTracker();
+  const { data, loading, selectedRequestType, backlogView } = useTracker();
   const isMobile = useIsMobile();
 
   const activeType = useMemo(
@@ -70,9 +71,9 @@ export function BacklogFlowChart() {
     return all?.neighborhoods.length ?? 0;
   }, [data]);
 
-  const { chartData, max, visibleCount } = useMemo(() => {
+  const { chartData, absMax, netMax, visibleCount } = useMemo(() => {
     if (!activeType) {
-      return { chartData: [] as Row[], max: 0, visibleCount: 0 };
+      return { chartData: [] as Row[], absMax: 0, netMax: 0, visibleCount: 0 };
     }
     const visible = activeType.neighborhoods
       .filter((n) => n.openedCount > 0 || n.closedCount > 0)
@@ -87,15 +88,18 @@ export function BacklogFlowChart() {
         netDelta: n.openedCount - n.closedCount,
       }))
       .sort((a, b) => b.netDelta - a.netDelta);
-    const rawMax = visible.reduce(
+    const rawAbsMax = visible.reduce(
       (m, r) => Math.max(m, r.openedCount, r.closedCount),
       0
     );
-    // Pad the domain so end-of-bar labels have room outside the bar.
-    // Mobile gets extra room so labels never collide with YAxis text on the left
-    // or get clipped by the container on the right.
-    const max = Math.ceil(rawMax * (isMobile ? 1.22 : 1.18));
-    return { chartData: visible, max, visibleCount: visible.length };
+    const rawNetMax = visible.reduce(
+      (m, r) => Math.max(m, Math.abs(r.netDelta)),
+      0
+    );
+    // Pad domains so end-of-bar labels have room outside the bar.
+    const absMax = Math.ceil(rawAbsMax * (isMobile ? 1.22 : 1.18));
+    const netMax = Math.ceil(rawNetMax * (isMobile ? 1.3 : 1.22));
+    return { chartData: visible, absMax, netMax, visibleCount: visible.length };
   }, [activeType, isMobile]);
 
   const chartHeight = Math.max(360, chartData.length * 30);
@@ -132,106 +136,172 @@ export function BacklogFlowChart() {
       <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-hint mb-[20px]">
         Backlog change by neighborhood, last 30 days
       </p>
-      <ResponsiveContainer width="100%" height={chartHeight}>
-        <BarChart
-          layout="vertical"
-          data={chartData}
-          margin={{ top: 4, right: rightMargin, bottom: 4, left: leftMargin }}
-          stackOffset="sign"
-          barCategoryGap="22%"
-        >
-          <XAxis
-            type="number"
-            domain={[-max, max]}
-            tickFormatter={(v: number) => Math.abs(v).toString()}
-            tick={{
-              fontSize: 11,
-              fontFamily: fontFamilies.mono,
-              fill: colors.hint,
-            }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            type="category"
-            dataKey="displayLabel"
-            width={yAxisWidth}
-            tick={{
-              fontSize: yAxisFontSize,
-              fontFamily: fontFamilies.sans,
-              fill: colors.muted,
-            }}
-            axisLine={false}
-            tickLine={false}
-            interval={0}
-          />
-          <ReferenceLine x={0} stroke={colors.lineStrong} strokeWidth={1} />
-          <Bar dataKey="openedNeg" fill={colors.clay} stackId="flow" maxBarSize={18}>
-            <LabelList
-              dataKey="openedCount"
-              content={(props) => {
-                const { x, y, width, height, value } = props as {
-                  x: number; y: number; width: number; height: number; value: number;
-                };
-                return (
-                  <text
-                    x={x + width - 10}
-                    y={y + height / 2 + 4}
-                    fontSize={labelFontSize}
-                    fontFamily={fontFamilies.mono}
-                    fill={colors.clay}
-                    textAnchor="end"
-                  >
-                    {value}
-                  </text>
-                );
-              }}
-            />
-          </Bar>
-          <Bar dataKey="closedCount" fill={colors.accent} stackId="flow" maxBarSize={18}>
-            <LabelList
-              dataKey="closedCount"
-              content={(props) => {
-                const { x, y, width, height, value } = props as {
-                  x: number; y: number; width: number; height: number; value: number;
-                };
-                return (
-                  <text
-                    x={x + width + 6}
-                    y={y + height / 2 + 4}
-                    fontSize={labelFontSize}
-                    fontFamily={fontFamilies.mono}
-                    fill={colors.accent}
-                    textAnchor="start"
-                  >
-                    {value}
-                  </text>
-                );
-              }}
-            />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-      <div className="flex flex-wrap gap-x-[24px] gap-y-[6px] mt-[12px] font-mono text-[11px] text-hint">
-        <span className="inline-flex items-center gap-[6px]">
-          <span
-            className="inline-block w-[10px] h-[10px] rounded-[2px]"
-            style={{ background: colors.clay }}
-          />
-          Opened
-        </span>
-        <span className="inline-flex items-center gap-[6px]">
-          <span
-            className="inline-block w-[10px] h-[10px] rounded-[2px]"
-            style={{ background: colors.accent }}
-          />
-          Closed
-        </span>
-        <span>
-          Showing {visibleCount} of {totalBostonNeighborhoods || visibleCount}{" "}
-          neighborhoods with activity in this category
-        </span>
-      </div>
+      {backlogView === "absolute" ? (
+        <>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart
+              layout="vertical"
+              data={chartData}
+              margin={{ top: 4, right: rightMargin, bottom: 4, left: leftMargin }}
+              stackOffset="sign"
+              barCategoryGap="22%"
+            >
+              <XAxis
+                type="number"
+                domain={[-absMax, absMax]}
+                tickFormatter={(v: number) => Math.abs(v).toString()}
+                tick={{ fontSize: 11, fontFamily: fontFamilies.mono, fill: colors.hint }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="displayLabel"
+                width={yAxisWidth}
+                tick={{ fontSize: yAxisFontSize, fontFamily: fontFamilies.sans, fill: colors.muted }}
+                axisLine={false}
+                tickLine={false}
+                interval={0}
+              />
+              <ReferenceLine x={0} stroke={colors.lineStrong} strokeWidth={1} />
+              <Bar dataKey="openedNeg" fill={colors.clay} stackId="flow" maxBarSize={18}>
+                <LabelList
+                  dataKey="openedCount"
+                  content={(props) => {
+                    const { x, y, width, height, value } = props as {
+                      x: number; y: number; width: number; height: number; value: number;
+                    };
+                    return (
+                      <text
+                        x={x + width - 10}
+                        y={y + height / 2 + 4}
+                        fontSize={labelFontSize}
+                        fontFamily={fontFamilies.mono}
+                        fill={colors.clay}
+                        textAnchor="end"
+                      >
+                        {value}
+                      </text>
+                    );
+                  }}
+                />
+              </Bar>
+              <Bar dataKey="closedCount" fill={colors.accent} stackId="flow" maxBarSize={18}>
+                <LabelList
+                  dataKey="closedCount"
+                  content={(props) => {
+                    const { x, y, width, height, value } = props as {
+                      x: number; y: number; width: number; height: number; value: number;
+                    };
+                    return (
+                      <text
+                        x={x + width + 6}
+                        y={y + height / 2 + 4}
+                        fontSize={labelFontSize}
+                        fontFamily={fontFamilies.mono}
+                        fill={colors.accent}
+                        textAnchor="start"
+                      >
+                        {value}
+                      </text>
+                    );
+                  }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex flex-wrap gap-x-[24px] gap-y-[6px] mt-[12px] font-mono text-[11px] text-hint">
+            <span className="inline-flex items-center gap-[6px]">
+              <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: colors.clay }} />
+              Opened
+            </span>
+            <span className="inline-flex items-center gap-[6px]">
+              <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: colors.accent }} />
+              Closed
+            </span>
+            <span>
+              Showing {visibleCount} of {totalBostonNeighborhoods || visibleCount}{" "}
+              neighborhoods with activity in this category
+            </span>
+          </div>
+        </>
+      ) : (
+        <>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart
+              layout="vertical"
+              data={chartData}
+              margin={{ top: 4, right: rightMargin, bottom: 4, left: leftMargin }}
+              barCategoryGap="22%"
+            >
+              <XAxis
+                type="number"
+                domain={[-netMax, netMax]}
+                tickFormatter={(v: number) => {
+                  const abs = Math.abs(v);
+                  return v === 0 ? "0" : (v > 0 ? `+${abs}` : `-${abs}`);
+                }}
+                tick={{ fontSize: 11, fontFamily: fontFamilies.mono, fill: colors.hint }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="displayLabel"
+                width={yAxisWidth}
+                tick={{ fontSize: yAxisFontSize, fontFamily: fontFamilies.sans, fill: colors.muted }}
+                axisLine={false}
+                tickLine={false}
+                interval={0}
+              />
+              <ReferenceLine x={0} stroke={colors.lineStrong} strokeWidth={1} />
+              <Bar dataKey="netDelta" maxBarSize={18}>
+                {chartData.map((row) => (
+                  <Cell
+                    key={row.neighborhood}
+                    fill={row.netDelta >= 0 ? colors.clay : colors.accent}
+                  />
+                ))}
+                <LabelList
+                  dataKey="netDelta"
+                  content={(props) => {
+                    const { x, y, width, height, value } = props as {
+                      x: number; y: number; width: number; height: number; value: number;
+                    };
+                    const positive = value >= 0;
+                    return (
+                      <text
+                        x={positive ? x + width + 6 : x + width - 10}
+                        y={y + height / 2 + 4}
+                        fontSize={labelFontSize}
+                        fontFamily={fontFamilies.mono}
+                        fill={positive ? colors.clay : colors.accent}
+                        textAnchor={positive ? "start" : "end"}
+                      >
+                        {positive ? `+${value}` : value}
+                      </text>
+                    );
+                  }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex flex-wrap gap-x-[24px] gap-y-[6px] mt-[12px] font-mono text-[11px] text-hint">
+            <span className="inline-flex items-center gap-[6px]">
+              <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: colors.clay }} />
+              Backlog grew
+            </span>
+            <span className="inline-flex items-center gap-[6px]">
+              <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: colors.accent }} />
+              Backlog shrank
+            </span>
+            <span>
+              Showing {visibleCount} of {totalBostonNeighborhoods || visibleCount}{" "}
+              neighborhoods with activity in this category
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -52,7 +52,7 @@ export function BostonCivicTracker({ children }: { children?: ReactNode }) {
       <DataProvider>
         <TrackerContainer>
           <BacklogHeadlineCard />
-          <FilterBar />
+          <FilterBar variant="backlog" />
           <BacklogFlowChart />
           <DataFooter />
         </TrackerContainer>
