@@ -169,12 +169,12 @@ export function BacklogFlowChart() {
             <LabelList
               dataKey="openedCount"
               content={(props) => {
-                const { x, y, height, value } = props as {
-                  x: number; y: number; height: number; value: number;
+                const { x, y, width, height, value } = props as {
+                  x: number; y: number; width: number; height: number; value: number;
                 };
                 return (
                   <text
-                    x={x - 6}
+                    x={x - width - 6}
                     y={y + height / 2 + 4}
                     fontSize={labelFontSize}
                     fontFamily={fontFamilies.mono}
