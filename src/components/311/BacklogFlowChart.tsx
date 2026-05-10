@@ -94,7 +94,7 @@ export function BacklogFlowChart() {
     // Pad the domain so end-of-bar labels have room outside the bar.
     // Mobile gets extra room so labels never collide with YAxis text on the left
     // or get clipped by the container on the right.
-    const max = rawMax * (isMobile ? 1.22 : 1.12);
+    const max = Math.ceil(rawMax * (isMobile ? 1.22 : 1.18));
     return { chartData: visible, max, visibleCount: visible.length };
   }, [activeType, isMobile]);
 
@@ -124,7 +124,8 @@ export function BacklogFlowChart() {
   const yAxisWidth = isMobile ? 104 : 148;
   const yAxisFontSize = isMobile ? 11 : 12;
   const labelFontSize = isMobile ? 10 : 11;
-  const horizontalMargin = isMobile ? 32 : 56;
+  const leftMargin = isMobile ? 40 : 72;
+  const rightMargin = isMobile ? 32 : 56;
 
   return (
     <div className="pb-[56px]">
@@ -135,7 +136,7 @@ export function BacklogFlowChart() {
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 4, right: horizontalMargin, bottom: 4, left: horizontalMargin }}
+          margin={{ top: 4, right: rightMargin, bottom: 4, left: leftMargin }}
           stackOffset="sign"
           barCategoryGap="22%"
         >
@@ -174,7 +175,7 @@ export function BacklogFlowChart() {
                 };
                 return (
                   <text
-                    x={x + width - 6}
+                    x={x + width - 10}
                     y={y + height / 2 + 4}
                     fontSize={labelFontSize}
                     fontFamily={fontFamilies.mono}
