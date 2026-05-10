@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { useTracker } from "./DataProvider";
 import type { Metric } from "./DataProvider";
 import { ALL_CATEGORIES, type NeighborhoodStat, type RequestTypeMetrics } from "./types";
+import { filterNeighborhoods } from "./sampleFilter";
 
 function formatMultiplier(n: number): string {
   return `${n.toFixed(1)}×`;
@@ -41,12 +42,11 @@ function buildHeadline(
   type: RequestTypeMetrics,
   metric: Metric
 ): Headline | null {
-  if (type.neighborhoods.length < 2) return null;
+  const eligible = filterNeighborhoods(type.neighborhoods, type.totalCases);
+  if (eligible.length < 2) return null;
 
   if (metric === "medianDays") {
-    const sorted = [...type.neighborhoods].sort(
-      (a, b) => b.medianDays - a.medianDays
-    );
+    const sorted = [...eligible].sort((a, b) => b.medianDays - a.medianDays);
     const worst = sorted[0];
     const best = sorted[sorted.length - 1];
     const ratio = best.medianDays > 0 ? worst.medianDays / best.medianDays : null;
@@ -54,16 +54,13 @@ function buildHeadline(
   }
 
   // onTimeRate: lower rate is worse.
-  const sorted = [...type.neighborhoods].sort(
-    (a, b) => a.onTimeRate - b.onTimeRate
-  );
+  const sorted = [...eligible].sort((a, b) => a.onTimeRate - b.onTimeRate);
   const worst = sorted[0];
   const best = sorted[sorted.length - 1];
-  const totalCount = type.neighborhoods.reduce((s, n) => s + n.count, 0);
+  const totalCount = eligible.reduce((s, n) => s + n.count, 0);
   const cityValue =
     totalCount > 0
-      ? type.neighborhoods.reduce((s, n) => s + n.onTimeRate * n.count, 0) /
-        totalCount
+      ? eligible.reduce((s, n) => s + n.onTimeRate * n.count, 0) / totalCount
       : null;
   return { worst, best, ratio: null, cityValue };
 }

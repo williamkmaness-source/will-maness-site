@@ -19,12 +19,9 @@ import {
 import type { TooltipContentProps } from "recharts";
 import { useTracker } from "./DataProvider";
 import type { Metric } from "./DataProvider";
+import { filterNeighborhoods, minCount } from "./sampleFilter";
 import { colors, fontFamilies } from "@/lib/tokens";
 
-// Neighborhoods with fewer than this fraction of the category's total tickets are excluded.
-// A hard floor prevents degenerate cases in very low-volume categories.
-const SAMPLE_FRACTION = 0.03;
-const MIN_COUNT_FLOOR = 5;
 const MIN_OPACITY = 0.4;
 
 type Entry = {
@@ -110,12 +107,11 @@ export function NeighborhoodRanking() {
   );
 
   // Sort worst-first, filter low-volume neighborhoods, and compute per-bar opacity.
-  const { chartData, minCount, excludedCount } = useMemo(() => {
-    if (!activeType) return { chartData: [] as Entry[], minCount: 0, excludedCount: 0 };
-    const minCount = Math.max(MIN_COUNT_FLOOR, Math.round(SAMPLE_FRACTION * activeType.totalCases));
-    const all = activeType.neighborhoods;
-    const filtered = all.filter((n) => n.count >= minCount);
-    const excludedCount = all.length - filtered.length;
+  const { chartData, threshold, excludedCount } = useMemo(() => {
+    if (!activeType) return { chartData: [] as Entry[], threshold: 0, excludedCount: 0 };
+    const threshold = minCount(activeType.totalCases);
+    const filtered = filterNeighborhoods(activeType.neighborhoods, activeType.totalCases);
+    const excludedCount = activeType.neighborhoods.length - filtered.length;
     const maxCount = filtered.reduce((m, n) => Math.max(m, n.count), 0);
     const sorted = [...filtered].sort((a, b) =>
       selectedMetric === "medianDays"
@@ -128,7 +124,7 @@ export function NeighborhoodRanking() {
       count: n.count,
       opacity: maxCount > 0 ? MIN_OPACITY + (1 - MIN_OPACITY) * Math.sqrt(n.count / maxCount) : 1,
     }));
-    return { chartData, minCount, excludedCount };
+    return { chartData, threshold, excludedCount };
   }, [activeType, selectedMetric]);
 
   // City-level reference value for the selected metric.
@@ -277,7 +273,7 @@ export function NeighborhoodRanking() {
       <p className="font-mono text-[11px] text-hint mt-[12px]">
         Bar opacity reflects ticket volume
         {excludedCount > 0
-          ? ` · ${excludedCount} neighborhood${excludedCount !== 1 ? "s" : ""} with fewer than ${minCount} tickets excluded`
+          ? ` · ${excludedCount} neighborhood${excludedCount !== 1 ? "s" : ""} with fewer than ${threshold} tickets excluded`
           : ""}
       </p>
     </div>
