@@ -6,7 +6,7 @@
 // honestly. Sorted by net delta (opened - closed) descending — most underwater at top.
 // Shares filter state with NeighborhoodRanking via DataProvider.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -20,8 +20,38 @@ import { useTracker } from "./DataProvider";
 import { ALL_CATEGORIES } from "./types";
 import { colors, fontFamilies } from "@/lib/tokens";
 
+// Compound neighborhood names that wrap awkwardly at narrow widths.
+// Keys must match the canonical `neighborhood` field exactly.
+const SHORT_LABELS: Record<string, string> = {
+  "South Boston / South Boston Waterfront": "S. Boston / Waterfront",
+  "Fenway / Kenmore / Audubon Circle / Longwood": "Fenway / Longwood",
+  "Downtown / Financial District": "Downtown / Financial",
+  "Mission Hill": "Mission Hill",
+  "Allston / Brighton": "Allston / Brighton",
+  "Jamaica Plain": "Jamaica Plain",
+  "East Boston": "East Boston",
+  "Hyde Park": "Hyde Park",
+  "Roslindale": "Roslindale",
+  "West Roxbury": "West Roxbury",
+};
+
+const MOBILE_BREAKPOINT = 480;
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
 type Row = {
   neighborhood: string;
+  displayLabel: string;
   openedCount: number;
   closedCount: number;
   // Negated opened count so the bar extends left of zero.
@@ -31,6 +61,7 @@ type Row = {
 
 export function BacklogFlowChart() {
   const { data, loading, selectedRequestType } = useTracker();
+  const isMobile = useIsMobile();
 
   const activeType = useMemo(
     () =>
@@ -47,14 +78,17 @@ export function BacklogFlowChart() {
     return all?.neighborhoods.length ?? 0;
   }, [data]);
 
-  const { chartData, max, visibleCount, growingCount } = useMemo(() => {
+  const { chartData, max, visibleCount } = useMemo(() => {
     if (!activeType) {
-      return { chartData: [] as Row[], max: 0, visibleCount: 0, growingCount: 0 };
+      return { chartData: [] as Row[], max: 0, visibleCount: 0 };
     }
     const visible = activeType.neighborhoods
       .filter((n) => n.openedCount > 0 || n.closedCount > 0)
       .map((n) => ({
         neighborhood: n.neighborhood,
+        displayLabel: isMobile
+          ? SHORT_LABELS[n.neighborhood] ?? n.neighborhood
+          : n.neighborhood,
         openedCount: n.openedCount,
         closedCount: n.closedCount,
         openedNeg: -n.openedCount,
@@ -65,17 +99,12 @@ export function BacklogFlowChart() {
       (m, r) => Math.max(m, r.openedCount, r.closedCount),
       0
     );
-    // Pad the domain so end-of-bar labels have room to render outside the bar
-    // even when the bar reaches the visual extreme.
-    const max = rawMax * 1.12;
-    const growingCount = visible.filter((r) => r.netDelta > 0).length;
-    return { chartData: visible, max, visibleCount: visible.length, growingCount };
-  }, [activeType]);
-
-  const isAll = activeType?.requestType === ALL_CATEGORIES;
-  const categoryPhrase = isAll
-    ? "across all 311 requests"
-    : `for ${activeType?.requestType.toLowerCase()}`;
+    // Pad the domain so end-of-bar labels have room outside the bar.
+    // Mobile gets extra room so labels never collide with YAxis text on the left
+    // or get clipped by the container on the right.
+    const max = rawMax * (isMobile ? 1.22 : 1.12);
+    return { chartData: visible, max, visibleCount: visible.length };
+  }, [activeType, isMobile]);
 
   const chartHeight = Math.max(360, chartData.length * 30);
 
@@ -100,20 +129,21 @@ export function BacklogFlowChart() {
     );
   }
 
+  const yAxisWidth = isMobile ? 104 : 148;
+  const yAxisFontSize = isMobile ? 11 : 12;
+  const labelFontSize = isMobile ? 10 : 11;
+  const horizontalMargin = isMobile ? 32 : 56;
+
   return (
     <div className="pb-[56px]">
-      <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-hint mb-[8px]">
+      <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-hint mb-[20px]">
         Backlog change by neighborhood, last 30 days
-      </p>
-      <p className="font-serif text-[15px] leading-[1.5] text-muted mb-[20px] max-w-[680px]">
-        Backlog grew in {growingCount} of {visibleCount}{" "}
-        {visibleCount === 1 ? "neighborhood" : "neighborhoods"} {categoryPhrase}.
       </p>
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 4, right: 56, bottom: 4, left: 56 }}
+          margin={{ top: 4, right: horizontalMargin, bottom: 4, left: horizontalMargin }}
           stackOffset="sign"
           barCategoryGap="22%"
         >
@@ -131,15 +161,16 @@ export function BacklogFlowChart() {
           />
           <YAxis
             type="category"
-            dataKey="neighborhood"
-            width={148}
+            dataKey="displayLabel"
+            width={yAxisWidth}
             tick={{
-              fontSize: 12,
+              fontSize: yAxisFontSize,
               fontFamily: fontFamilies.sans,
               fill: colors.muted,
             }}
             axisLine={false}
             tickLine={false}
+            interval={0}
           />
           <ReferenceLine x={0} stroke={colors.lineStrong} strokeWidth={1} />
           <Bar dataKey="openedNeg" fill={colors.clay} stackId="flow" maxBarSize={18}>
@@ -153,7 +184,7 @@ export function BacklogFlowChart() {
                   <text
                     x={x - 6}
                     y={y + height / 2 + 4}
-                    fontSize={11}
+                    fontSize={labelFontSize}
                     fontFamily={fontFamilies.mono}
                     fill={colors.clay}
                     textAnchor="end"
@@ -175,7 +206,7 @@ export function BacklogFlowChart() {
                   <text
                     x={x + width + 6}
                     y={y + height / 2 + 4}
-                    fontSize={11}
+                    fontSize={labelFontSize}
                     fontFamily={fontFamilies.mono}
                     fill={colors.accent}
                     textAnchor="start"

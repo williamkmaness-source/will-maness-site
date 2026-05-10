@@ -32,26 +32,12 @@ type Entry = {
   value: number;
   count: number;
   opacity: number;
-  yoyDeltaDays: number | null;
-  yoyDeltaOnTime: number | null;
 };
 
-const YOY_FLAT_THRESHOLD = 0.05;
-
-function yoyIndicator(
-  entry: Entry,
-  metric: Metric
-): { symbol: string; color: string } | null {
-  const delta =
-    metric === "medianDays" ? entry.yoyDeltaDays : entry.yoyDeltaOnTime;
-  if (delta === null) return null;
-  const prior = entry.value - delta;
-  const relative = prior !== 0 ? Math.abs(delta / prior) : 0;
-  if (relative < YOY_FLAT_THRESHOLD) return { symbol: "→", color: colors.hint };
-  const improved = metric === "medianDays" ? delta < 0 : delta > 0;
-  return improved
-    ? { symbol: "↑", color: colors.accent }
-    : { symbol: "↓", color: colors.clay };
+function formatBarValue(value: number, metric: Metric): string {
+  return metric === "medianDays"
+    ? value.toFixed(1)
+    : `${(value * 100).toFixed(0)}%`;
 }
 
 type ChartTooltipProps = TooltipContentProps<number, string> & {
@@ -141,8 +127,6 @@ export function NeighborhoodRanking() {
       value: selectedMetric === "medianDays" ? n.medianDays : n.onTimeRate,
       count: n.count,
       opacity: maxCount > 0 ? MIN_OPACITY + (1 - MIN_OPACITY) * Math.sqrt(n.count / maxCount) : 1,
-      yoyDeltaDays: n.yoyDeltaDays,
-      yoyDeltaOnTime: n.yoyDeltaOnTime,
     }));
     return { chartData, minCount, excludedCount };
   }, [activeType, selectedMetric]);
@@ -200,7 +184,7 @@ export function NeighborhoodRanking() {
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 4, right: 48, bottom: 4, left: 0 }}
+          margin={{ top: 4, right: 56, bottom: 4, left: 0 }}
         >
           <XAxis
             type="number"
@@ -271,22 +255,18 @@ export function NeighborhoodRanking() {
             <LabelList
               dataKey="value"
               content={(props) => {
-                const { x, y, width, height, index } = props as {
-                  x: number; y: number; width: number; height: number; index: number;
+                const { x, y, width, height, value } = props as {
+                  x: number; y: number; width: number; height: number; value: number;
                 };
-                const entry = chartData[index];
-                if (!entry) return null;
-                const ind = yoyIndicator(entry, selectedMetric);
-                if (!ind) return null;
                 return (
                   <text
                     x={x + width + 6}
                     y={y + height / 2 + 4}
                     fontSize={11}
                     fontFamily={fontFamilies.mono}
-                    fill={ind.color}
+                    fill={colors.hint}
                   >
-                    {ind.symbol}
+                    {formatBarValue(value, selectedMetric)}
                   </text>
                 );
               }}
