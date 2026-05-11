@@ -9,17 +9,33 @@ export interface PlayerStanding {
   losses: number;
 }
 
+export interface UpcomingTournament {
+  name: string;
+  startsAt: number; // Unix ms timestamp
+}
+
 export interface TournamentState {
   phase: TournamentPhase;
+  isLive: boolean;
   tournamentName: string | null;
   tournamentId: string | null;
   roundName: string | null;
   pollingInterval: number;
   standings: PlayerStanding[];
+  upcoming: UpcomingTournament | null;
 }
 
 export type TournamentAction =
-  | { type: 'FETCH_SUCCESS'; tournamentName: string; tournamentId: string; roundName: string | null; pollingInterval: number; standings: PlayerStanding[] }
+  | {
+      type: 'FETCH_SUCCESS';
+      isLive: boolean;
+      tournamentName: string;
+      tournamentId: string;
+      roundName: string | null;
+      pollingInterval: number;
+      standings: PlayerStanding[];
+      upcoming: UpcomingTournament | null;
+    }
   | { type: 'FETCH_EMPTY' }
   | { type: 'FETCH_ERROR' }
   | { type: 'RETRY' };
@@ -45,9 +61,11 @@ export interface LichessBroadcast {
 }
 
 export interface TopBroadcastResult {
+  isLive: boolean;
   tournamentName: string;
   tournamentId: string;
   roundName: string | null;
   pollingInterval: number;
   allRounds: LichessBroadcastRound[];
+  upcoming: UpcomingTournament | null;
 }

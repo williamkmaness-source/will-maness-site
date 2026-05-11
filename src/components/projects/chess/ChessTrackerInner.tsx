@@ -3,13 +3,22 @@
 import { useTournament } from './useTournament';
 import { TournamentStandings } from './TournamentStandings';
 
+function formatDate(ms: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(ms));
+}
+
 export function ChessTrackerInner() {
   const { state, retry } = useTournament();
 
   if (state.phase === 'loading') {
     return (
       <div className="mt-[40px] mb-[48px]" aria-busy="true">
-        <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[8px]">
+        <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase">
           Loading tournament…
         </p>
       </div>
@@ -41,10 +50,12 @@ export function ChessTrackerInner() {
   }
 
   // phase === 'ready'
+  const label = state.isLive ? 'Live tournament' : 'Previous tournament';
+
   return (
     <div className="mt-[40px] mb-[48px]">
       <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[8px]">
-        Live tournament
+        {label}
       </p>
       <p className="font-serif text-[24px] font-medium leading-[1.3] text-ink">
         {state.tournamentName}
@@ -52,7 +63,20 @@ export function ChessTrackerInner() {
           <span className="text-muted font-normal"> — {state.roundName}</span>
         )}
       </p>
-      <TournamentStandings standings={state.standings} />
+
+      <TournamentStandings standings={state.standings} isLive={state.isLive} />
+
+      {!state.isLive && state.upcoming && (
+        <div className="mt-[32px] pt-[24px] border-t border-line">
+          <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[6px]">
+            Next tournament
+          </p>
+          <p className="font-sans text-[15px] text-ink font-medium">{state.upcoming.name}</p>
+          <p className="font-sans text-[13px] text-muted mt-[2px]">
+            Starts {formatDate(state.upcoming.startsAt)}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

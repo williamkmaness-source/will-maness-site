@@ -12,20 +12,24 @@ const mockStandings: PlayerStanding[] = [
 
 const readyState: TournamentState = {
   phase: 'ready',
+  isLive: true,
   tournamentName: 'Norway Chess 2026',
   tournamentId: 'tour1',
   roundName: 'Round 4',
   pollingInterval: DEFAULT_INTERVAL,
   standings: mockStandings,
+  upcoming: null,
 };
 
 const successAction = {
   type: 'FETCH_SUCCESS' as const,
+  isLive: true,
   tournamentName: 'Norway Chess 2026',
   tournamentId: 'tour1',
   roundName: 'Round 4',
   pollingInterval: DEFAULT_INTERVAL,
   standings: mockStandings,
+  upcoming: null,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -35,18 +39,35 @@ describe('tournamentReducer', () => {
     expect(initialState.phase).toBe('loading');
     expect(initialState.tournamentName).toBeNull();
     expect(initialState.standings).toHaveLength(0);
+    expect(initialState.isLive).toBe(false);
+    expect(initialState.upcoming).toBeNull();
   });
 
-  it('FETCH_SUCCESS transitions to ready and sets all tournament data including standings', () => {
+  it('FETCH_SUCCESS transitions to ready and sets all fields', () => {
     const next = tournamentReducer(initialState, successAction);
 
     expect(next.phase).toBe('ready');
+    expect(next.isLive).toBe(true);
     expect(next.tournamentName).toBe('Norway Chess 2026');
     expect(next.tournamentId).toBe('tour1');
     expect(next.roundName).toBe('Round 4');
     expect(next.pollingInterval).toBe(DEFAULT_INTERVAL);
     expect(next.standings).toHaveLength(2);
     expect(next.standings[0].name).toBe('Magnus Carlsen');
+    expect(next.upcoming).toBeNull();
+  });
+
+  it('FETCH_SUCCESS stores upcoming tournament when not live', () => {
+    const action = {
+      ...successAction,
+      isLive: false,
+      upcoming: { name: 'GCT Romania 2026', startsAt: 9_000_000 },
+    };
+    const next = tournamentReducer(initialState, action);
+
+    expect(next.isLive).toBe(false);
+    expect(next.upcoming).not.toBeNull();
+    expect(next.upcoming!.name).toBe('GCT Romania 2026');
   });
 
   it('FETCH_SUCCESS stores updated standings on each poll', () => {

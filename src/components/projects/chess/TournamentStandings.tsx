@@ -2,13 +2,14 @@ import type { PlayerStanding } from './types';
 
 interface Props {
   standings: PlayerStanding[];
+  isLive?: boolean;
 }
 
-export function TournamentStandings({ standings }: Props) {
+export function TournamentStandings({ standings, isLive }: Props) {
   if (!standings.length) {
     return (
       <p className="font-sans text-[14px] text-muted mt-[8px]">
-        Standings will appear once games begin.
+        {isLive ? 'Standings will appear once games begin.' : 'No standings available.'}
       </p>
     );
   }

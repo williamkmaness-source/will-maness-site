@@ -84,17 +84,43 @@ beforeEach(() => {
 
 // ── fetchTopBroadcast ─────────────────────────────────────────────────────────
 
+const upcomingBroadcast: LichessBroadcast = {
+  tour: { id: 'tour2', name: 'GCT Romania 2026', slug: 'gct-romania-2026' },
+  rounds: [
+    makeRound({ id: 'u1', name: 'Round 1', startsAt: 9000 }),
+    makeRound({ id: 'u2', name: 'Round 2', startsAt: 10000 }),
+  ],
+};
+
 describe('fetchTopBroadcast', () => {
-  it('returns the top broadcast with the ongoing round selected', async () => {
-    global.fetch = mockBroadcastFetch([makeBroadcast()]);
+  it('returns the live broadcast when one has an ongoing round', async () => {
+    global.fetch = mockBroadcastFetch([upcomingBroadcast, makeBroadcast()]);
 
     const result = await fetchTopBroadcast();
 
     expect(result).not.toBeNull();
     expect(result!.tournamentName).toBe('Norway Chess 2026');
-    expect(result!.tournamentId).toBe('tour1');
+    expect(result!.isLive).toBe(true);
     expect(result!.roundName).toBe('Round 2');
-    expect(result!.pollingInterval).toBe(DEFAULT_INTERVAL);
+    expect(result!.upcoming).toBeNull(); // no upcoming shown while live
+  });
+
+  it('returns the most recently played broadcast when none is live, with upcoming', async () => {
+    const completedBroadcast = makeBroadcast({
+      rounds: [
+        makeRound({ id: 'r1', name: 'Round 1', startsAt: 1000, finished: true }),
+        makeRound({ id: 'r2', name: 'Round 2', startsAt: 2000, finished: true }),
+      ],
+    });
+    global.fetch = mockBroadcastFetch([upcomingBroadcast, completedBroadcast]);
+
+    const result = await fetchTopBroadcast();
+
+    expect(result!.tournamentName).toBe('Norway Chess 2026');
+    expect(result!.isLive).toBe(false);
+    expect(result!.upcoming).not.toBeNull();
+    expect(result!.upcoming!.name).toBe('GCT Romania 2026');
+    expect(result!.upcoming!.startsAt).toBe(9000);
   });
 
   it('includes allRounds in the result', async () => {
@@ -120,18 +146,12 @@ describe('fetchTopBroadcast', () => {
     expect(result!.roundName).toBe('Round 2');
   });
 
-  it('falls back to the last round when none is finished or ongoing', async () => {
-    const broadcast = makeBroadcast({
-      rounds: [
-        makeRound({ id: 'r1', name: 'Round 1', startsAt: 1000 }),
-        makeRound({ id: 'r2', name: 'Round 2', startsAt: 2000 }),
-      ],
-    });
-    global.fetch = mockBroadcastFetch([broadcast]);
+  it('returns null when no broadcasts have played rounds', async () => {
+    global.fetch = mockBroadcastFetch([upcomingBroadcast]);
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.roundName).toBe('Round 2');
+    expect(result).toBeNull();
   });
 
   it('returns null when the broadcast list is empty', async () => {
@@ -140,6 +160,21 @@ describe('fetchTopBroadcast', () => {
     const result = await fetchTopBroadcast();
 
     expect(result).toBeNull();
+  });
+
+  it('picks the upcoming broadcast with the earliest startsAt', async () => {
+    const soonerUpcoming: LichessBroadcast = {
+      tour: { id: 'tour3', name: 'Sooner Event', slug: 'sooner' },
+      rounds: [makeRound({ id: 's1', startsAt: 500 })],
+    };
+    const completedBroadcast = makeBroadcast({
+      rounds: [makeRound({ id: 'r1', startsAt: 1000, finished: true })],
+    });
+    global.fetch = mockBroadcastFetch([upcomingBroadcast, soonerUpcoming, completedBroadcast]);
+
+    const result = await fetchTopBroadcast();
+
+    expect(result!.upcoming!.name).toBe('Sooner Event');
   });
 
   it('applies BACKOFF_INTERVAL when X-RateLimit-Remaining is below threshold', async () => {

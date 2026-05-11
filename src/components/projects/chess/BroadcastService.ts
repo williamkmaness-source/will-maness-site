@@ -1,9 +1,19 @@
-import type { LichessBroadcast, LichessBroadcastRound, PlayerStanding, TopBroadcastResult } from './types';
+import type {
+  LichessBroadcast,
+  LichessBroadcastRound,
+  PlayerStanding,
+  TopBroadcastResult,
+  UpcomingTournament,
+} from './types';
 
 const LICHESS_BASE = 'https://lichess.org/api';
 export const DEFAULT_INTERVAL = 60_000;
 export const BACKOFF_INTERVAL = 300_000;
 const RATE_LIMIT_THRESHOLD = 10;
+
+function hasPlayedRounds(broadcast: LichessBroadcast): boolean {
+  return broadcast.rounds.some((r) => r.finished || r.ongoing);
+}
 
 function selectActiveRound(broadcast: LichessBroadcast): LichessBroadcastRound | null {
   const { rounds } = broadcast;
@@ -20,10 +30,20 @@ function resolvePollingInterval(headers: Headers): number {
   return remaining < RATE_LIMIT_THRESHOLD ? BACKOFF_INTERVAL : DEFAULT_INTERVAL;
 }
 
+function findUpcoming(broadcasts: LichessBroadcast[]): UpcomingTournament | null {
+  const candidates = broadcasts
+    .filter((b) => !hasPlayedRounds(b) && b.rounds.length > 0)
+    .sort((a, b) => (a.rounds[0].startsAt ?? 0) - (b.rounds[0].startsAt ?? 0));
+
+  if (!candidates.length) return null;
+  const next = candidates[0];
+  return { name: next.tour.name, startsAt: next.rounds[0].startsAt };
+}
+
 export async function fetchTopBroadcast(
   signal?: AbortSignal,
 ): Promise<TopBroadcastResult | null> {
-  const res = await fetch(`${LICHESS_BASE}/broadcast?nb=10`, { signal });
+  const res = await fetch(`${LICHESS_BASE}/broadcast?nb=20`, { signal });
   const pollingInterval = resolvePollingInterval(res.headers);
 
   if (!res.ok) {
@@ -39,15 +59,30 @@ export async function fetchTopBroadcast(
 
   if (!broadcasts.length) return null;
 
-  const top = broadcasts[0];
-  const activeRound = selectActiveRound(top);
+  // Separate broadcasts into those with played rounds and those without.
+  const played = broadcasts.filter(hasPlayedRounds);
+
+  if (!played.length) return null;
+
+  // Prefer a broadcast with an ongoing round (live). Fall back to the first
+  // played broadcast (highest tier / most recently active).
+  const liveCandidate = played.find((b) => b.rounds.some((r) => r.ongoing));
+  const current = liveCandidate ?? played[0];
+  const isLive = !!liveCandidate;
+
+  const activeRound = selectActiveRound(current);
+
+  // Only surface upcoming when there's no live tournament.
+  const upcoming = isLive ? null : findUpcoming(broadcasts);
 
   return {
-    tournamentName: top.tour.name,
-    tournamentId: top.tour.id,
+    isLive,
+    tournamentName: current.tour.name,
+    tournamentId: current.tour.id,
     roundName: activeRound?.name ?? null,
     pollingInterval,
-    allRounds: top.rounds,
+    allRounds: current.rounds,
+    upcoming,
   };
 }
 

@@ -3,11 +3,13 @@ import type { TournamentAction, TournamentState } from './types';
 
 export const initialState: TournamentState = {
   phase: 'loading',
+  isLive: false,
   tournamentName: null,
   tournamentId: null,
   roundName: null,
   pollingInterval: DEFAULT_INTERVAL,
   standings: [],
+  upcoming: null,
 };
 
 export function tournamentReducer(
@@ -19,11 +21,13 @@ export function tournamentReducer(
       return {
         ...state,
         phase: 'ready',
+        isLive: action.isLive,
         tournamentName: action.tournamentName,
         tournamentId: action.tournamentId,
         roundName: action.roundName,
         pollingInterval: action.pollingInterval,
         standings: action.standings,
+        upcoming: action.upcoming,
       };
 
     case 'FETCH_EMPTY':
