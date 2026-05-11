@@ -1,13 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { fetchTopBroadcast, fetchStandings, DEFAULT_INTERVAL } from './BroadcastService';
+import { fetchTopBroadcast, fetchRoundData, DEFAULT_INTERVAL } from './BroadcastService';
 import { tournamentReducer, initialState } from './reducer';
-import type { TournamentState } from './types';
+import type { SelectedGame, TournamentState } from './types';
 
 export interface UseTournamentReturn {
   state: TournamentState;
   retry: () => void;
+  selectGame: (game: SelectedGame) => void;
+  closeGame: () => void;
 }
 
 export function useTournament(): UseTournamentReturn {
@@ -33,8 +35,8 @@ export function useTournament(): UseTournamentReturn {
         if (broadcast === null) {
           dispatch({ type: 'FETCH_EMPTY' });
         } else {
-          const standings = await fetchStandings(broadcast.allRounds, signal);
-          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings });
+          const { standings, pairings } = await fetchRoundData(broadcast.allRounds, broadcast.activeRoundId, signal);
+          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings, pairings });
         }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -61,5 +63,13 @@ export function useTournament(): UseTournamentReturn {
     setFetchSeq((n) => n + 1);
   }, []);
 
-  return { state, retry };
+  const selectGame = useCallback((game: SelectedGame) => {
+    dispatch({ type: 'SELECT_GAME', game });
+  }, []);
+
+  const closeGame = useCallback(() => {
+    dispatch({ type: 'CLOSE_GAME' });
+  }, []);
+
+  return { state, retry, selectGame, closeGame };
 }

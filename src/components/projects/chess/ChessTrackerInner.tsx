@@ -2,6 +2,7 @@
 
 import { useTournament } from './useTournament';
 import { TournamentStandings } from './TournamentStandings';
+import { PairingsTable } from './PairingsTable';
 
 function formatDate(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -13,7 +14,7 @@ function formatDate(ms: number): string {
 }
 
 export function ChessTrackerInner() {
-  const { state, retry } = useTournament();
+  const { state, retry, selectGame } = useTournament();
 
   if (state.phase === 'loading') {
     return (
@@ -65,6 +66,12 @@ export function ChessTrackerInner() {
       </p>
 
       <TournamentStandings standings={state.standings} isLive={state.isLive} />
+
+      <PairingsTable
+        pairings={state.pairings}
+        activeRoundId={state.activeRoundId}
+        onSelectGame={selectGame}
+      />
 
       {!state.isLive && state.upcoming && (
         <div className="mt-[32px] pt-[24px] border-t border-line">

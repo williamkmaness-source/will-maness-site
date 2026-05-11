@@ -7,8 +7,11 @@ export const initialState: TournamentState = {
   tournamentName: null,
   tournamentId: null,
   roundName: null,
+  activeRoundId: null,
   pollingInterval: DEFAULT_INTERVAL,
   standings: [],
+  pairings: [],
+  selectedGame: null,
   upcoming: null,
 };
 
@@ -25,20 +28,29 @@ export function tournamentReducer(
         tournamentName: action.tournamentName,
         tournamentId: action.tournamentId,
         roundName: action.roundName,
+        activeRoundId: action.activeRoundId,
         pollingInterval: action.pollingInterval,
         standings: action.standings,
+        pairings: action.pairings,
         upcoming: action.upcoming,
+        // Clear selected game when data refreshes so stale modal state doesn't linger.
+        selectedGame: null,
       };
 
     case 'FETCH_EMPTY':
       return { ...state, phase: 'empty' };
 
     case 'FETCH_ERROR':
-      // Keep any previously loaded data so the UI doesn't go blank on a failed refresh.
       return { ...state, phase: state.tournamentName ? 'ready' : 'error' };
 
     case 'RETRY':
       return { ...state, phase: 'loading' };
+
+    case 'SELECT_GAME':
+      return { ...state, selectedGame: action.game };
+
+    case 'CLOSE_GAME':
+      return { ...state, selectedGame: null };
 
     default:
       return state;

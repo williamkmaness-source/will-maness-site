@@ -1,4 +1,5 @@
 import type {
+  GamePairing,
   LichessBroadcast,
   LichessBroadcastRound,
   PlayerStanding,
@@ -59,20 +60,14 @@ export async function fetchTopBroadcast(
 
   if (!broadcasts.length) return null;
 
-  // Separate broadcasts into those with played rounds and those without.
   const played = broadcasts.filter(hasPlayedRounds);
-
   if (!played.length) return null;
 
-  // Prefer a broadcast with an ongoing round (live). Fall back to the first
-  // played broadcast (highest tier / most recently active).
   const liveCandidate = played.find((b) => b.rounds.some((r) => r.ongoing));
   const current = liveCandidate ?? played[0];
   const isLive = !!liveCandidate;
 
   const activeRound = selectActiveRound(current);
-
-  // Only surface upcoming when there's no live tournament.
   const upcoming = isLive ? null : findUpcoming(broadcasts);
 
   return {
@@ -80,27 +75,51 @@ export async function fetchTopBroadcast(
     tournamentName: current.tour.name,
     tournamentId: current.tour.id,
     roundName: activeRound?.name ?? null,
+    activeRoundId: activeRound?.id ?? null,
     pollingInterval,
     allRounds: current.rounds,
     upcoming,
   };
 }
 
-// ── Standings computation ─────────────────────────────────────────────────────
+// ── PGN parsing ───────────────────────────────────────────────────────────────
 
-interface GameResult {
-  white: string;
-  black: string;
-  result: string;
+function splitGames(pgn: string): string[] {
+  return pgn.split(/\n\n(?=\[)/).filter((b) => b.trimStart().startsWith('['));
 }
 
-function parseGameResults(pgn: string): GameResult[] {
-  const games = pgn.split(/\n\n(?=\[)/).filter((b) => b.trimStart().startsWith('['));
-  return games.flatMap((game) => {
-    const white = /\[White "([^"]+)"\]/.exec(game)?.[1];
-    const black = /\[Black "([^"]+)"\]/.exec(game)?.[1];
-    const result = /\[Result "([^"]+)"\]/.exec(game)?.[1];
-    return white && black && result ? [{ white, black, result }] : [];
+interface RawGameHeaders {
+  white?: string;
+  black?: string;
+  result?: string;
+  gameUrl?: string;
+}
+
+function extractHeaders(game: string): RawGameHeaders {
+  return {
+    white: /\[White "([^"]+)"\]/.exec(game)?.[1],
+    black: /\[Black "([^"]+)"\]/.exec(game)?.[1],
+    result: /\[Result "([^"]+)"\]/.exec(game)?.[1],
+    gameUrl:
+      /\[GameURL "([^"]+)"\]/.exec(game)?.[1] ??
+      /\[Site "([^"]+)"\]/.exec(game)?.[1],
+  };
+}
+
+export function parsePairings(pgn: string): GamePairing[] {
+  return splitGames(pgn).flatMap((game) => {
+    const { white, black, result, gameUrl } = extractHeaders(game);
+    const gameId = gameUrl?.split('/').at(-1);
+    if (!white || !black || !result || !gameId) return [];
+    return [
+      {
+        gameId,
+        white,
+        black,
+        result,
+        isCompleted: result === '1-0' || result === '0-1' || result === '1/2-1/2',
+      },
+    ];
   });
 }
 
@@ -113,7 +132,9 @@ export function computeStandings(pgnTexts: string[]): PlayerStanding[] {
   }
 
   for (const pgn of pgnTexts) {
-    for (const { white, black, result } of parseGameResults(pgn)) {
+    for (const game of splitGames(pgn)) {
+      const { white, black, result } = extractHeaders(game);
+      if (!white || !black || !result) continue;
       if (result === '1-0') {
         ensure(white).wins++;
         ensure(black).losses++;
@@ -124,7 +145,6 @@ export function computeStandings(pgnTexts: string[]): PlayerStanding[] {
         ensure(white).draws++;
         ensure(black).draws++;
       }
-      // '*' (game in progress) — omit from standings
     }
   }
 
@@ -141,12 +161,13 @@ export function computeStandings(pgnTexts: string[]): PlayerStanding[] {
     .map((p, i) => ({ ...p, rank: i + 1 }));
 }
 
-export async function fetchStandings(
+export async function fetchRoundData(
   rounds: LichessBroadcastRound[],
+  activeRoundId: string | null,
   signal?: AbortSignal,
-): Promise<PlayerStanding[]> {
+): Promise<{ standings: PlayerStanding[]; pairings: GamePairing[] }> {
   const playedRounds = rounds.filter((r) => r.finished || r.ongoing);
-  if (!playedRounds.length) return [];
+  if (!playedRounds.length) return { standings: [], pairings: [] };
 
   const pgnTexts = await Promise.all(
     playedRounds.map((r) =>
@@ -157,5 +178,10 @@ export async function fetchStandings(
     ),
   );
 
-  return computeStandings(pgnTexts);
+  const standings = computeStandings(pgnTexts);
+
+  const activeIndex = playedRounds.findIndex((r) => r.id === activeRoundId);
+  const pairings = activeIndex >= 0 ? parsePairings(pgnTexts[activeIndex]) : [];
+
+  return { standings, pairings };
 }

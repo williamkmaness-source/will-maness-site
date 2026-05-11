@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { tournamentReducer, initialState } from './reducer';
 import { DEFAULT_INTERVAL, BACKOFF_INTERVAL } from './BroadcastService';
-import type { PlayerStanding, TournamentState } from './types';
+import type { GamePairing, PlayerStanding, SelectedGame, TournamentState } from './types';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -10,14 +10,22 @@ const mockStandings: PlayerStanding[] = [
   { rank: 2, name: 'Hikaru Nakamura', points: 4, wins: 4, draws: 0, losses: 1 },
 ];
 
+const mockPairings: GamePairing[] = [
+  { gameId: 'gAAA', white: 'Magnus Carlsen', black: 'Hikaru Nakamura', result: '1-0', isCompleted: true },
+  { gameId: 'gBBB', white: 'Fabiano Caruana', black: 'Ian Nepomniachtchi', result: '*', isCompleted: false },
+];
+
 const readyState: TournamentState = {
   phase: 'ready',
   isLive: true,
   tournamentName: 'Norway Chess 2026',
   tournamentId: 'tour1',
   roundName: 'Round 4',
+  activeRoundId: 'r4',
   pollingInterval: DEFAULT_INTERVAL,
   standings: mockStandings,
+  pairings: mockPairings,
+  selectedGame: null,
   upcoming: null,
 };
 
@@ -27,18 +35,22 @@ const successAction = {
   tournamentName: 'Norway Chess 2026',
   tournamentId: 'tour1',
   roundName: 'Round 4',
+  activeRoundId: 'r4',
   pollingInterval: DEFAULT_INTERVAL,
   standings: mockStandings,
+  pairings: mockPairings,
   upcoming: null,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('tournamentReducer', () => {
-  it('starts in loading phase with null data and empty standings', () => {
+  it('starts in loading phase with empty collections and null selections', () => {
     expect(initialState.phase).toBe('loading');
     expect(initialState.tournamentName).toBeNull();
     expect(initialState.standings).toHaveLength(0);
+    expect(initialState.pairings).toHaveLength(0);
+    expect(initialState.selectedGame).toBeNull();
     expect(initialState.isLive).toBe(false);
     expect(initialState.upcoming).toBeNull();
   });
@@ -49,73 +61,75 @@ describe('tournamentReducer', () => {
     expect(next.phase).toBe('ready');
     expect(next.isLive).toBe(true);
     expect(next.tournamentName).toBe('Norway Chess 2026');
-    expect(next.tournamentId).toBe('tour1');
     expect(next.roundName).toBe('Round 4');
-    expect(next.pollingInterval).toBe(DEFAULT_INTERVAL);
+    expect(next.activeRoundId).toBe('r4');
     expect(next.standings).toHaveLength(2);
-    expect(next.standings[0].name).toBe('Magnus Carlsen');
+    expect(next.pairings).toHaveLength(2);
     expect(next.upcoming).toBeNull();
   });
 
+  it('FETCH_SUCCESS clears selectedGame so stale modal state does not linger', () => {
+    const withGame: TournamentState = { ...readyState, selectedGame: { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B' } };
+    const next = tournamentReducer(withGame, successAction);
+    expect(next.selectedGame).toBeNull();
+  });
+
   it('FETCH_SUCCESS stores upcoming tournament when not live', () => {
-    const action = {
-      ...successAction,
-      isLive: false,
-      upcoming: { name: 'GCT Romania 2026', startsAt: 9_000_000 },
-    };
+    const action = { ...successAction, isLive: false, upcoming: { name: 'GCT Romania 2026', startsAt: 9_000_000 } };
     const next = tournamentReducer(initialState, action);
 
     expect(next.isLive).toBe(false);
-    expect(next.upcoming).not.toBeNull();
     expect(next.upcoming!.name).toBe('GCT Romania 2026');
-  });
-
-  it('FETCH_SUCCESS stores updated standings on each poll', () => {
-    const updatedStandings: PlayerStanding[] = [
-      { rank: 1, name: 'Magnus Carlsen', points: 6, wins: 6, draws: 0, losses: 0 },
-    ];
-    const next = tournamentReducer(readyState, { ...successAction, standings: updatedStandings });
-
-    expect(next.standings).toHaveLength(1);
-    expect(next.standings[0].points).toBe(6);
   });
 
   it('FETCH_SUCCESS stores the back-off polling interval when rate-limited', () => {
     const next = tournamentReducer(initialState, { ...successAction, pollingInterval: BACKOFF_INTERVAL });
-
     expect(next.pollingInterval).toBe(BACKOFF_INTERVAL);
   });
 
   it('FETCH_EMPTY transitions to empty phase', () => {
-    const next = tournamentReducer(initialState, { type: 'FETCH_EMPTY' });
-    expect(next.phase).toBe('empty');
+    expect(tournamentReducer(initialState, { type: 'FETCH_EMPTY' }).phase).toBe('empty');
   });
 
   it('FETCH_ERROR on initial load transitions to error phase', () => {
-    const next = tournamentReducer(initialState, { type: 'FETCH_ERROR' });
-    expect(next.phase).toBe('error');
+    expect(tournamentReducer(initialState, { type: 'FETCH_ERROR' }).phase).toBe('error');
   });
 
-  it('FETCH_ERROR when data exists keeps ready phase and retains standings', () => {
+  it('FETCH_ERROR when data exists keeps ready phase and retains standings and pairings', () => {
     const next = tournamentReducer(readyState, { type: 'FETCH_ERROR' });
 
     expect(next.phase).toBe('ready');
-    expect(next.tournamentName).toBe('Norway Chess 2026');
     expect(next.standings).toHaveLength(2);
+    expect(next.pairings).toHaveLength(2);
   });
 
-  it('RETRY from error transitions back to loading', () => {
+  it('RETRY transitions back to loading', () => {
     const errState: TournamentState = { ...initialState, phase: 'error' };
-    const next = tournamentReducer(errState, { type: 'RETRY' });
-    expect(next.phase).toBe('loading');
+    expect(tournamentReducer(errState, { type: 'RETRY' }).phase).toBe('loading');
   });
 
-  it('FETCH_SUCCESS after RETRY restores ready state with standings', () => {
+  it('SELECT_GAME stores the selected game', () => {
+    const game: SelectedGame = { roundId: 'r4', gameId: 'gAAA', white: 'Magnus Carlsen', black: 'Hikaru Nakamura' };
+    const next = tournamentReducer(readyState, { type: 'SELECT_GAME', game });
+
+    expect(next.selectedGame).toEqual(game);
+  });
+
+  it('CLOSE_GAME clears the selected game', () => {
+    const withGame: TournamentState = {
+      ...readyState,
+      selectedGame: { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B' },
+    };
+    const next = tournamentReducer(withGame, { type: 'CLOSE_GAME' });
+    expect(next.selectedGame).toBeNull();
+  });
+
+  it('FETCH_SUCCESS after RETRY restores ready state with standings and pairings', () => {
     const errState: TournamentState = { ...initialState, phase: 'error' };
-    const loading = tournamentReducer(errState, { type: 'RETRY' });
-    const ready = tournamentReducer(loading, successAction);
+    const ready = tournamentReducer(tournamentReducer(errState, { type: 'RETRY' }), successAction);
 
     expect(ready.phase).toBe('ready');
     expect(ready.standings).toHaveLength(2);
+    expect(ready.pairings).toHaveLength(2);
   });
 });

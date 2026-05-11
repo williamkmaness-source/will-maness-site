@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   fetchTopBroadcast,
-  fetchStandings,
+  fetchRoundData,
+  parsePairings,
   computeStandings,
   DEFAULT_INTERVAL,
   BACKOFF_INTERVAL,
@@ -102,6 +103,7 @@ describe('fetchTopBroadcast', () => {
     expect(result!.tournamentName).toBe('Norway Chess 2026');
     expect(result!.isLive).toBe(true);
     expect(result!.roundName).toBe('Round 2');
+    expect(result!.activeRoundId).toBe('r2');
     expect(result!.upcoming).toBeNull(); // no upcoming shown while live
   });
 
@@ -287,34 +289,115 @@ describe('computeStandings', () => {
   });
 });
 
-// ── fetchStandings ────────────────────────────────────────────────────────────
+// ── parsePairings ─────────────────────────────────────────────────────────────
 
-describe('fetchStandings', () => {
-  it('fetches PGN for finished and ongoing rounds and returns standings', async () => {
+const PAIRINGS_PGN = `[White "Magnus Carlsen"]
+[Black "Hikaru Nakamura"]
+[Result "1-0"]
+[GameURL "https://lichess.org/broadcast/tour/round-1/abc123/gameAAA"]
+
+1. e4 e5 *
+
+[White "Fabiano Caruana"]
+[Black "Ian Nepomniachtchi"]
+[Result "*"]
+[GameURL "https://lichess.org/broadcast/tour/round-1/abc123/gameBBB"]
+
+1. d4 d5 *`;
+
+describe('parsePairings', () => {
+  it('extracts white, black, result, and gameId from each game block', () => {
+    const pairings = parsePairings(PAIRINGS_PGN);
+
+    expect(pairings).toHaveLength(2);
+    expect(pairings[0]).toMatchObject({
+      white: 'Magnus Carlsen',
+      black: 'Hikaru Nakamura',
+      result: '1-0',
+      gameId: 'gameAAA',
+      isCompleted: true,
+    });
+    expect(pairings[1]).toMatchObject({
+      result: '*',
+      gameId: 'gameBBB',
+      isCompleted: false,
+    });
+  });
+
+  it('marks 0-1 and 1/2-1/2 results as completed', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "0-1"]
+[GameURL "https://lichess.org/broadcast/t/r/round/game1"]
+
+1. e4 *
+
+[White "C"]
+[Black "D"]
+[Result "1/2-1/2"]
+[GameURL "https://lichess.org/broadcast/t/r/round/game2"]
+
+1. d4 *`;
+
+    const pairings = parsePairings(pgn);
+    expect(pairings[0].isCompleted).toBe(true);
+    expect(pairings[1].isCompleted).toBe(true);
+  });
+
+  it('falls back to Site header when GameURL is absent', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "1-0"]
+[Site "https://lichess.org/broadcast/t/r/round/siteGame"]
+
+1. e4 *`;
+
+    const pairings = parsePairings(pgn);
+    expect(pairings[0].gameId).toBe('siteGame');
+  });
+
+  it('returns empty array for empty PGN', () => {
+    expect(parsePairings('')).toHaveLength(0);
+  });
+});
+
+// ── fetchRoundData ────────────────────────────────────────────────────────────
+
+describe('fetchRoundData', () => {
+  it('returns standings and pairings for the active round', async () => {
     const rounds: LichessBroadcastRound[] = [
       makeRound({ id: 'r1', finished: true }),
       makeRound({ id: 'r2', ongoing: true }),
-      makeRound({ id: 'r3' }), // not started — should be skipped
+      makeRound({ id: 'r3' }),
     ];
-    global.fetch = mockPgnFetch({ r1: ROUND1_PGN, r2: ROUND2_PGN });
+    global.fetch = mockPgnFetch({ r1: ROUND1_PGN, r2: PAIRINGS_PGN });
 
-    const standings = await fetchStandings(rounds);
+    const { standings, pairings } = await fetchRoundData(rounds, 'r2');
 
     expect(standings.length).toBeGreaterThan(0);
+    expect(pairings).toHaveLength(2);
+    expect(pairings[0].white).toBe('Magnus Carlsen');
     // Only r1 and r2 fetched — r3 skipped
     expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
   });
 
-  it('returns empty standings when no rounds have been played', async () => {
-    const rounds: LichessBroadcastRound[] = [
-      makeRound({ id: 'r1' }),
-      makeRound({ id: 'r2' }),
-    ];
+  it('returns empty pairings when activeRoundId is not in played rounds', async () => {
+    const rounds: LichessBroadcastRound[] = [makeRound({ id: 'r1', finished: true })];
+    global.fetch = mockPgnFetch({ r1: ROUND1_PGN });
+
+    const { pairings } = await fetchRoundData(rounds, 'r_unknown');
+
+    expect(pairings).toHaveLength(0);
+  });
+
+  it('returns empty results when no rounds have been played', async () => {
+    const rounds: LichessBroadcastRound[] = [makeRound({ id: 'r1' })];
     global.fetch = mockPgnFetch({});
 
-    const standings = await fetchStandings(rounds);
+    const { standings, pairings } = await fetchRoundData(rounds, 'r1');
 
     expect(standings).toHaveLength(0);
+    expect(pairings).toHaveLength(0);
     expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
   });
 
@@ -322,6 +405,6 @@ describe('fetchStandings', () => {
     const rounds: LichessBroadcastRound[] = [makeRound({ id: 'r1', finished: true })];
     global.fetch = mockPgnFetch({}, 503);
 
-    await expect(fetchStandings(rounds)).rejects.toThrow('PGN fetch failed: 503');
+    await expect(fetchRoundData(rounds, 'r1')).rejects.toThrow('PGN fetch failed: 503');
   });
 });

@@ -1,0 +1,73 @@
+'use client';
+
+import type { GamePairing, SelectedGame } from './types';
+
+interface Props {
+  pairings: GamePairing[];
+  activeRoundId: string | null;
+  onSelectGame: (game: SelectedGame) => void;
+}
+
+export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) {
+  if (!pairings.length) return null;
+
+  return (
+    <div className="mt-[28px]">
+      <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[12px]">
+        Pairings
+      </p>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-line">
+            <th className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase text-left pb-[8px] pr-[12px]">
+              White
+            </th>
+            <th className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase text-center pb-[8px] px-[12px] w-[60px]">
+              Result
+            </th>
+            <th className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase text-right pb-[8px] pl-[12px]">
+              Black
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {pairings.map((pairing) => {
+            const clickable = pairing.isCompleted && activeRoundId !== null;
+            return (
+              <tr
+                key={pairing.gameId}
+                onClick={
+                  clickable
+                    ? () =>
+                        onSelectGame({
+                          roundId: activeRoundId!,
+                          gameId: pairing.gameId,
+                          white: pairing.white,
+                          black: pairing.black,
+                        })
+                    : undefined
+                }
+                className={[
+                  'border-b border-line transition-colors duration-[100ms]',
+                  clickable
+                    ? 'cursor-pointer hover:bg-bg-soft'
+                    : 'cursor-default',
+                ].join(' ')}
+              >
+                <td className="font-sans text-[14px] text-ink py-[10px] pr-[12px]">
+                  {pairing.white}
+                </td>
+                <td className="font-mono text-[13px] text-muted text-center py-[10px] px-[12px]">
+                  {pairing.result === '*' ? '…' : pairing.result}
+                </td>
+                <td className="font-sans text-[14px] text-ink text-right py-[10px] pl-[12px]">
+                  {pairing.black}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
