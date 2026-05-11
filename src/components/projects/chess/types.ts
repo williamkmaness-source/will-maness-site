@@ -19,8 +19,10 @@ export interface LichessBroadcastRound {
   id: string;
   name: string;
   slug: string;
-  ongoing: boolean;
-  finished: boolean;
+  startsAt: number;
+  ongoing?: boolean;
+  finished?: boolean;
+  finishedAt?: number;
 }
 
 export interface LichessBroadcast {

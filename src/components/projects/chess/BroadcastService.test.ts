@@ -8,22 +8,24 @@ function makeBroadcast(overrides: Partial<LichessBroadcast> = {}): LichessBroadc
   return {
     tour: { id: 'tour1', name: 'Norway Chess 2026', slug: 'norway-chess-2026' },
     rounds: [
-      { id: 'r1', name: 'Round 1', slug: 'round-1', ongoing: false, finished: true },
-      { id: 'r2', name: 'Round 2', slug: 'round-2', ongoing: true, finished: false },
-      { id: 'r3', name: 'Round 3', slug: 'round-3', ongoing: false, finished: false },
+      { id: 'r1', name: 'Round 1', slug: 'round-1', startsAt: 1000, finished: true, finishedAt: 2000 },
+      { id: 'r2', name: 'Round 2', slug: 'round-2', startsAt: 2000, ongoing: true },
+      { id: 'r3', name: 'Round 3', slug: 'round-3', startsAt: 3000 },
     ],
     ...overrides,
   };
 }
 
-function mockFetch(body: unknown, status = 200, headers: Record<string, string> = {}) {
+// Lichess returns NDJSON — serialise the body as one JSON object per line.
+function mockFetch(body: LichessBroadcast[] | null, status = 200, headers: Record<string, string> = {}) {
+  const ndjson = body ? body.map((b) => JSON.stringify(b)).join('\n') : '';
   return vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
     headers: {
       get: (key: string) => headers[key] ?? null,
     },
-    json: () => Promise.resolve(body),
+    text: () => Promise.resolve(ndjson),
   });
 }
 
@@ -49,8 +51,8 @@ describe('fetchTopBroadcast', () => {
   it('falls back to the last finished round when none is ongoing', async () => {
     const broadcast = makeBroadcast({
       rounds: [
-        { id: 'r1', name: 'Round 1', slug: 'round-1', ongoing: false, finished: true },
-        { id: 'r2', name: 'Round 2', slug: 'round-2', ongoing: false, finished: true },
+        { id: 'r1', name: 'Round 1', slug: 'round-1', startsAt: 1000, finished: true, finishedAt: 2000 },
+        { id: 'r2', name: 'Round 2', slug: 'round-2', startsAt: 2000, finished: true, finishedAt: 3000 },
       ],
     });
     global.fetch = mockFetch([broadcast]);
@@ -63,8 +65,8 @@ describe('fetchTopBroadcast', () => {
   it('falls back to the last round when none is finished or ongoing', async () => {
     const broadcast = makeBroadcast({
       rounds: [
-        { id: 'r1', name: 'Round 1', slug: 'round-1', ongoing: false, finished: false },
-        { id: 'r2', name: 'Round 2', slug: 'round-2', ongoing: false, finished: false },
+        { id: 'r1', name: 'Round 1', slug: 'round-1', startsAt: 1000 },
+        { id: 'r2', name: 'Round 2', slug: 'round-2', startsAt: 2000 },
       ],
     });
     global.fetch = mockFetch([broadcast]);
@@ -107,7 +109,7 @@ describe('fetchTopBroadcast', () => {
   });
 
   it('throws on a non-2xx response', async () => {
-    global.fetch = mockFetch(null, 503);
+    global.fetch = mockFetch([], 503);
 
     await expect(fetchTopBroadcast()).rejects.toThrow('Lichess API 503');
   });

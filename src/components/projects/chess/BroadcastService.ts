@@ -30,7 +30,12 @@ export async function fetchTopBroadcast(
     throw new Error(`Lichess API ${res.status}`);
   }
 
-  const broadcasts: LichessBroadcast[] = await res.json();
+  // The endpoint returns NDJSON (one JSON object per line), not a JSON array.
+  const text = await res.text();
+  const broadcasts: LichessBroadcast[] = text
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
 
   if (!broadcasts.length) return null;
 
