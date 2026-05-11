@@ -11,7 +11,7 @@ import {
   type NeighborhoodStat,
   type RequestTypeMetrics,
   type TrackerData,
-} from "@/components/311/types";
+} from "@/components/projects/boston-civic-data/types";
 
 const CKAN_SQL_URL =
   "https://data.boston.gov/api/3/action/datastore_search_sql";

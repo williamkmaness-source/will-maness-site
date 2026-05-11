@@ -7,12 +7,12 @@
 // Registered as an MDX component.
 
 import type { ReactNode } from "react";
-import { DataProvider } from "@/components/311/DataProvider";
-import { HeadlineCard } from "@/components/311/HeadlineCard";
-import { BacklogHeadlineCard } from "@/components/311/BacklogHeadlineCard";
-import { FilterBar } from "@/components/311/FilterBar";
-import { NeighborhoodRanking } from "@/components/311/NeighborhoodRanking";
-import { BacklogFlowChart } from "@/components/311/BacklogFlowChart";
+import { DataProvider } from "./DataProvider";
+import { HeadlineCard } from "./HeadlineCard";
+import { BacklogHeadlineCard } from "./BacklogHeadlineCard";
+import { FilterBar } from "./FilterBar";
+import { NeighborhoodRanking } from "./NeighborhoodRanking";
+import { BacklogFlowChart } from "./BacklogFlowChart";
 
 function TrackerContainer({ children }: { children: ReactNode }) {
   return (
