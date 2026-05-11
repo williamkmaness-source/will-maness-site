@@ -7,6 +7,7 @@ export const initialState: TournamentState = {
   tournamentId: null,
   roundName: null,
   pollingInterval: DEFAULT_INTERVAL,
+  standings: [],
 };
 
 export function tournamentReducer(
@@ -22,6 +23,7 @@ export function tournamentReducer(
         tournamentId: action.tournamentId,
         roundName: action.roundName,
         pollingInterval: action.pollingInterval,
+        standings: action.standings,
       };
 
     case 'FETCH_EMPTY':

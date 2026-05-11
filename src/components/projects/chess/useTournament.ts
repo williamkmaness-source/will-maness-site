@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { fetchTopBroadcast, DEFAULT_INTERVAL } from './BroadcastService';
+import { fetchTopBroadcast, fetchStandings, DEFAULT_INTERVAL } from './BroadcastService';
 import { tournamentReducer, initialState } from './reducer';
 import type { TournamentState } from './types';
 
@@ -24,21 +24,24 @@ export function useTournament(): UseTournamentReturn {
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
+    const { signal } = controller;
 
     async function poll() {
       try {
-        const result = await fetchTopBroadcast(controller.signal);
-        if (result === null) {
+        const broadcast = await fetchTopBroadcast(signal);
+
+        if (broadcast === null) {
           dispatch({ type: 'FETCH_EMPTY' });
         } else {
-          dispatch({ type: 'FETCH_SUCCESS', ...result });
+          const standings = await fetchStandings(broadcast.allRounds, signal);
+          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings });
         }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         dispatch({ type: 'FETCH_ERROR' });
       }
 
-      if (!controller.signal.aborted) {
+      if (!signal.aborted) {
         timeoutId = setTimeout(poll, pollingIntervalRef.current);
       }
     }

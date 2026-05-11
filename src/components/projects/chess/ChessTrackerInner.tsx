@@ -1,6 +1,7 @@
 'use client';
 
 import { useTournament } from './useTournament';
+import { TournamentStandings } from './TournamentStandings';
 
 export function ChessTrackerInner() {
   const { state, retry } = useTournament();
@@ -51,6 +52,7 @@ export function ChessTrackerInner() {
           <span className="text-muted font-normal"> — {state.roundName}</span>
         )}
       </p>
+      <TournamentStandings standings={state.standings} />
     </div>
   );
 }

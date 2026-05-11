@@ -1,15 +1,25 @@
 export type TournamentPhase = 'loading' | 'ready' | 'error' | 'empty';
 
+export interface PlayerStanding {
+  rank: number;
+  name: string;
+  points: number;
+  wins: number;
+  draws: number;
+  losses: number;
+}
+
 export interface TournamentState {
   phase: TournamentPhase;
   tournamentName: string | null;
   tournamentId: string | null;
   roundName: string | null;
   pollingInterval: number;
+  standings: PlayerStanding[];
 }
 
 export type TournamentAction =
-  | { type: 'FETCH_SUCCESS'; tournamentName: string; tournamentId: string; roundName: string | null; pollingInterval: number }
+  | { type: 'FETCH_SUCCESS'; tournamentName: string; tournamentId: string; roundName: string | null; pollingInterval: number; standings: PlayerStanding[] }
   | { type: 'FETCH_EMPTY' }
   | { type: 'FETCH_ERROR' }
   | { type: 'RETRY' };
@@ -39,4 +49,5 @@ export interface TopBroadcastResult {
   tournamentId: string;
   roundName: string | null;
   pollingInterval: number;
+  allRounds: LichessBroadcastRound[];
 }
