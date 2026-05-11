@@ -1,0 +1,25 @@
+---
+title: "Chess Tournament Tracker"
+eyebrow: "Engineering · Chess"
+year: "2026"
+status: "in-progress"
+tags: ["engineering"]
+summary: "A live grandmaster tournament tracker embedded in this site — auto-discovers the current top Lichess Broadcast, shows standings and pairings, and lets you replay completed games move-by-move."
+featured: true
+---
+
+<ChessTracker />
+
+The tracker pulls data from the [Lichess Broadcasts API](https://lichess.org/api#tag/Broadcasts) — the same feed that powers coverage of events like the Candidates and Norway Chess. No API key required; it polls every 60 seconds and backs off automatically if the rate limit gets tight.
+
+## What's here
+
+The current phase shows the active tournament name and round. Standings, pairings, and game replay are coming in subsequent slices — tracked as open issues on GitHub.
+
+## How it's built
+
+**Pure data layer.** `BroadcastService` is a dependency-free async module: it fetches, parses rate-limit headers, and returns a structured result. The React layer never calls `fetch` directly. This keeps the polling logic fully unit-testable with a mocked fetch.
+
+**`useReducer` for state.** All state lives in a single `useReducer` at the top of the component tree — no external store. The reducer is a plain `(state, action) → state` function, the same pattern as the Vienna trainer, and equally straightforward to test in isolation.
+
+**Rate-limit back-off.** Every response carries an `X-RateLimit-Remaining` header. When it drops below 10, the polling interval switches from 60 seconds to 5 minutes automatically — no manual configuration needed.

@@ -1,13 +1,14 @@
 // mdx-components.tsx — required by Next.js App Router when using @next/mdx.
 // Registers styled React components for HTML elements inside .mdx files.
 // Prose elements (p, h2, blockquote, code, pre, a) match the design system exactly.
-// Custom components (StackList, ViennaTrainer) are registered here as they ship.
+// Custom components (StackList, ViennaTrainer, ChessTracker) are registered here as they ship.
 // See docs/concepts.md#mdx-components.
 
 import type { MDXComponents } from "mdx/types";
 import { StackList } from "@/components/ui/StackList";
 import { ViennaTrainer } from "@/components/projects/vienna-trainer";
 import { BostonCivicTracker } from "@/components/projects/boston-civic-data";
+import { ChessTracker } from "@/components/projects/chess";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -50,6 +51,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     StackList,
     ViennaTrainer,
     BostonCivicTracker,
+    ChessTracker,
     ...components,
   };
 }
