@@ -507,6 +507,18 @@ describe('extractGameMoves', () => {
     expect(extractGameMoves(pgn, 'siteGame')).toEqual(['e4']);
   });
 
+  it('normalizes 0-0/0-0-0 castling notation to O-O/O-O-O before parsing', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "1-0"]
+[GameURL "https://lichess.org/broadcast/t/r/round/castleGame"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. 0-0 Nf6 5. d3 0-0 1-0`;
+    const moves = extractGameMoves(pgn, 'castleGame');
+    expect(moves).not.toBeNull();
+    expect(moves).toContain('O-O');
+  });
+
   it('returns an empty array for a game with no moves', () => {
     const pgn = `[White "A"]
 [Black "B"]
