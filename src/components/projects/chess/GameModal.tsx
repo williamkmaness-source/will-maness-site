@@ -101,9 +101,19 @@ function MoveList({
   onSelect: (index: number) => void;
 }) {
   const activeRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const el = activeRef.current;
+    const container = containerRef.current;
+    if (!el || !container) return;
+    const { offsetTop, offsetHeight } = el;
+    const { scrollTop, clientHeight } = container;
+    if (offsetTop < scrollTop) {
+      container.scrollTop = offsetTop;
+    } else if (offsetTop + offsetHeight > scrollTop + clientHeight) {
+      container.scrollTop = offsetTop + offsetHeight - clientHeight;
+    }
   }, [moveIndex]);
 
   const pairs: Array<[number, GameMoveData, GameMoveData | null]> = [];
@@ -112,7 +122,7 @@ function MoveList({
   }
 
   return (
-    <div className="mt-[12px] overflow-y-auto max-h-[220px] border-t border-line pt-[8px]">
+    <div ref={containerRef} className="mt-[12px] overflow-y-auto max-h-[220px] border-t border-line pt-[8px]">
       <table className="w-full border-collapse">
         <tbody>
           {pairs.map(([i, white, black]) => {
