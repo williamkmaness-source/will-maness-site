@@ -293,9 +293,13 @@ export async function fetchRoundData(
   rounds: LichessBroadcastRound[],
   activeRoundId: string | null,
   signal?: AbortSignal,
-): Promise<{ standings: PlayerStanding[]; pairings: GamePairing[] }> {
+): Promise<{
+  standings: PlayerStanding[];
+  pairings: GamePairing[];
+  pairingsRoundId: string | null;
+}> {
   const playedRounds = rounds.filter((r) => r.finished || r.ongoing);
-  if (!playedRounds.length) return { standings: [], pairings: [] };
+  if (!playedRounds.length) return { standings: [], pairings: [], pairingsRoundId: null };
 
   const pgnTexts = await Promise.all(
     playedRounds.map((r) =>
@@ -308,8 +312,25 @@ export async function fetchRoundData(
 
   const standings = computeStandings(pgnTexts);
 
+  // Pick the round to show in the pairings table: prefer the active round, but
+  // if it has no completed games yet (so every row would render as "…"), fall
+  // back to the most recent earlier round that does have results.
   const activeIndex = playedRounds.findIndex((r) => r.id === activeRoundId);
-  const pairings = activeIndex >= 0 ? parsePairings(pgnTexts[activeIndex]) : [];
+  let pairingsIndex = activeIndex;
+  if (activeIndex >= 0) {
+    const activePairings = parsePairings(pgnTexts[activeIndex]);
+    if (!activePairings.some((p) => p.isCompleted)) {
+      for (let i = activeIndex - 1; i >= 0; i--) {
+        if (parsePairings(pgnTexts[i]).some((p) => p.isCompleted)) {
+          pairingsIndex = i;
+          break;
+        }
+      }
+    }
+  }
 
-  return { standings, pairings };
+  const pairings = pairingsIndex >= 0 ? parsePairings(pgnTexts[pairingsIndex]) : [];
+  const pairingsRoundId = pairingsIndex >= 0 ? playedRounds[pairingsIndex].id : null;
+
+  return { standings, pairings, pairingsRoundId };
 }

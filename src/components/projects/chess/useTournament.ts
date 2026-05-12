@@ -35,9 +35,9 @@ export function useTournament(): UseTournamentReturn {
         if (broadcast === null) {
           dispatch({ type: 'FETCH_EMPTY' });
         } else {
-          const { standings, pairings } = await fetchRoundData(broadcast.allRounds, broadcast.activeRoundId, signal);
+          const { standings, pairings, pairingsRoundId } = await fetchRoundData(broadcast.allRounds, broadcast.activeRoundId, signal);
           const unsupportedFormat = !detectRoundRobin(standings, pairings);
-          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings, pairings, unsupportedFormat });
+          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings, pairings, pairingsRoundId, unsupportedFormat });
         }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
