@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   fetchTopBroadcast,
   fetchRoundData,
+  fetchGamePgn,
   parsePairings,
   computeStandings,
   detectRoundRobin,
+  extractGameMoves,
   DEFAULT_INTERVAL,
   BACKOFF_INTERVAL,
 } from './BroadcastService';
@@ -461,5 +463,81 @@ describe('detectRoundRobin', () => {
   it('returns false when player count is odd', () => {
     const oddStandings = rrStandings.slice(0, 3);
     expect(detectRoundRobin(oddStandings, rrPairings)).toBe(false);
+  });
+});
+
+// ── extractGameMoves ──────────────────────────────────────────────────────────
+
+const MULTI_GAME_PGN = `[White "Magnus Carlsen"]
+[Black "Hikaru Nakamura"]
+[Result "1-0"]
+[GameURL "https://lichess.org/broadcast/t/r/round/gameAAA"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 *
+
+[White "Fabiano Caruana"]
+[Black "Ian Nepomniachtchi"]
+[Result "1/2-1/2"]
+[GameURL "https://lichess.org/broadcast/t/r/round/gameBBB"]
+
+1. d4 d5 2. c4 *`;
+
+describe('extractGameMoves', () => {
+  it('returns the move list for the matching gameId', () => {
+    const moves = extractGameMoves(MULTI_GAME_PGN, 'gameAAA');
+    expect(moves).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
+  });
+
+  it('returns moves for the second game when first is skipped', () => {
+    const moves = extractGameMoves(MULTI_GAME_PGN, 'gameBBB');
+    expect(moves).toEqual(['d4', 'd5', 'c4']);
+  });
+
+  it('returns null when the gameId is not in the PGN', () => {
+    expect(extractGameMoves(MULTI_GAME_PGN, 'gameXXX')).toBeNull();
+  });
+
+  it('falls back to Site header when GameURL is absent', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "1-0"]
+[Site "https://lichess.org/broadcast/t/r/round/siteGame"]
+
+1. e4 *`;
+    expect(extractGameMoves(pgn, 'siteGame')).toEqual(['e4']);
+  });
+
+  it('returns an empty array for a game with no moves', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "*"]
+[GameURL "https://lichess.org/broadcast/t/r/round/emptyGame"]
+
+*`;
+    const moves = extractGameMoves(pgn, 'emptyGame');
+    expect(moves).toEqual([]);
+  });
+});
+
+// ── fetchGamePgn ──────────────────────────────────────────────────────────────
+
+describe('fetchGamePgn', () => {
+  it('returns move list for the requested game', async () => {
+    global.fetch = mockPgnFetch({ r1: MULTI_GAME_PGN });
+
+    const moves = await fetchGamePgn('r1', 'gameAAA');
+    expect(moves).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
+  });
+
+  it('throws when the game is not found in the round PGN', async () => {
+    global.fetch = mockPgnFetch({ r1: MULTI_GAME_PGN });
+
+    await expect(fetchGamePgn('r1', 'gameXXX')).rejects.toThrow('not found in round');
+  });
+
+  it('throws on a non-2xx response', async () => {
+    global.fetch = mockPgnFetch({}, 503);
+
+    await expect(fetchGamePgn('r1', 'gameAAA')).rejects.toThrow('PGN fetch failed: 503');
   });
 });

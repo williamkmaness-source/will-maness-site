@@ -27,6 +27,7 @@ const readyState: TournamentState = {
   pairings: mockPairings,
   selectedGame: null,
   upcoming: null,
+  unsupportedFormat: false,
 };
 
 const successAction = {

@@ -3,6 +3,7 @@
 import { useTournament } from './useTournament';
 import { TournamentStandings } from './TournamentStandings';
 import { PairingsTable } from './PairingsTable';
+import { GameModal } from './GameModal';
 
 function formatDate(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -14,7 +15,7 @@ function formatDate(ms: number): string {
 }
 
 export function ChessTrackerInner() {
-  const { state, retry, selectGame } = useTournament();
+  const { state, retry, selectGame, closeGame } = useTournament();
 
   if (state.phase === 'loading') {
     return (
@@ -77,6 +78,10 @@ export function ChessTrackerInner() {
         activeRoundId={state.activeRoundId}
         onSelectGame={selectGame}
       />
+
+      {state.selectedGame && (
+        <GameModal game={state.selectedGame} onClose={closeGame} />
+      )}
 
       {!state.isLive && state.upcoming && (
         <div className="mt-[32px] pt-[24px] border-t border-line">

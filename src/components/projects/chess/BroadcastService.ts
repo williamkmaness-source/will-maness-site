@@ -1,3 +1,4 @@
+import { Chess } from 'chess.js';
 import type {
   GamePairing,
   LichessBroadcast,
@@ -168,6 +169,35 @@ export function detectRoundRobin(standings: PlayerStanding[], pairings: GamePair
   const knownPlayers = new Set(standings.map((p) => p.name));
   const pairingPlayers = pairings.flatMap((p) => [p.white, p.black]);
   return new Set(pairingPlayers).size === n && pairingPlayers.every((name) => knownPlayers.has(name));
+}
+
+export function extractGameMoves(roundPgn: string, gameId: string): string[] | null {
+  const games = splitGames(roundPgn);
+  const block = games.find((g) => {
+    const url = /\[GameURL "([^"]+)"\]/.exec(g)?.[1] ?? /\[Site "([^"]+)"\]/.exec(g)?.[1];
+    return url?.split('/').at(-1) === gameId;
+  });
+  if (!block) return null;
+  try {
+    const chess = new Chess();
+    chess.loadPgn(block);
+    return chess.history();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchGamePgn(
+  roundId: string,
+  gameId: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const res = await fetch(`${LICHESS_BASE}/study/${roundId}.pgn`, { signal });
+  if (!res.ok) throw new Error(`PGN fetch failed: ${res.status}`);
+  const text = await res.text();
+  const moves = extractGameMoves(text, gameId);
+  if (!moves) throw new Error(`Game ${gameId} not found in round ${roundId}`);
+  return moves;
 }
 
 export async function fetchRoundData(
