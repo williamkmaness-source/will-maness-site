@@ -75,7 +75,7 @@ export function ChessTrackerInner() {
 
       <PairingsTable
         pairings={state.pairings}
-        activeRoundId={state.pairingsRoundId}
+        activeRoundId={state.activeRoundId}
         onSelectGame={selectGame}
       />
 

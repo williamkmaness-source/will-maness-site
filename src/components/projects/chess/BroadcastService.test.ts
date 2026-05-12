@@ -410,46 +410,6 @@ describe('fetchRoundData', () => {
 
     await expect(fetchRoundData(rounds, 'r1')).rejects.toThrow('PGN fetch failed: 503');
   });
-
-  it('returns the active round id as pairingsRoundId when active round has completed games', async () => {
-    const rounds: LichessBroadcastRound[] = [
-      makeRound({ id: 'r1', finished: true }),
-      makeRound({ id: 'r2', ongoing: true }),
-    ];
-    global.fetch = mockPgnFetch({ r1: ROUND1_PGN, r2: PAIRINGS_PGN });
-
-    const { pairingsRoundId } = await fetchRoundData(rounds, 'r2');
-
-    expect(pairingsRoundId).toBe('r2');
-  });
-
-  it('falls back to the most recent prior round with completed games when the active round has none', async () => {
-    // r2 is ongoing but every game is still in progress — fall back to r1.
-    const ALL_IN_PROGRESS_PGN = `[White "Hikaru Nakamura"]
-[Black "Fabiano Caruana"]
-[Result "*"]
-[GameURL "https://lichess.org/broadcast/tour/round-2/xyz/gameCCC"]
-
-1. e4 c5 *
-
-[White "Ian Nepomniachtchi"]
-[Black "Magnus Carlsen"]
-[Result "*"]
-[GameURL "https://lichess.org/broadcast/tour/round-2/xyz/gameDDD"]
-
-1. d4 d5 *`;
-
-    const rounds: LichessBroadcastRound[] = [
-      makeRound({ id: 'r1', finished: true }),
-      makeRound({ id: 'r2', ongoing: true }),
-    ];
-    global.fetch = mockPgnFetch({ r1: PAIRINGS_PGN, r2: ALL_IN_PROGRESS_PGN });
-
-    const { pairings, pairingsRoundId } = await fetchRoundData(rounds, 'r2');
-
-    expect(pairingsRoundId).toBe('r1');
-    expect(pairings.some((p) => p.isCompleted)).toBe(true);
-  });
 });
 
 // ── detectRoundRobin ──────────────────────────────────────────────────────────

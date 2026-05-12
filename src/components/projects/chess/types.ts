@@ -44,7 +44,6 @@ export interface TournamentState {
   tournamentId: string | null;
   roundName: string | null;
   activeRoundId: string | null;
-  pairingsRoundId: string | null;
   pollingInterval: number;
   standings: PlayerStanding[];
   pairings: GamePairing[];
@@ -61,7 +60,6 @@ export type TournamentAction =
       tournamentId: string;
       roundName: string | null;
       activeRoundId: string | null;
-      pairingsRoundId: string | null;
       pollingInterval: number;
       standings: PlayerStanding[];
       pairings: GamePairing[];

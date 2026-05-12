@@ -32,7 +32,8 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
         </thead>
         <tbody>
           {pairings.map((pairing) => {
-            const clickable = pairing.isCompleted && activeRoundId !== null;
+            const inProgress = pairing.result === '*';
+            const clickable = activeRoundId !== null && (pairing.isCompleted || inProgress);
             return (
               <tr
                 key={pairing.gameId}
@@ -57,8 +58,15 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
                 <td className="font-sans text-[14px] text-ink py-[10px] pr-[12px] truncate max-w-0">
                   {pairing.white}
                 </td>
-                <td className="font-mono text-[13px] text-muted text-center py-[10px] px-[12px] w-[60px]">
-                  {pairing.result === '*' ? '…' : pairing.result}
+                <td className="text-center py-[10px] px-[12px] w-[60px]">
+                  {inProgress ? (
+                    <span className="inline-flex items-center gap-[5px] font-mono text-[10px] tracking-[0.06em] uppercase text-ink">
+                      <span className="w-[6px] h-[6px] rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[13px] text-muted">{pairing.result}</span>
+                  )}
                 </td>
                 <td className="font-sans text-[14px] text-ink text-right py-[10px] pl-[12px] truncate max-w-0">
                   {pairing.black}
