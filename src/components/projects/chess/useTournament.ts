@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { fetchTopBroadcast, fetchRoundData, DEFAULT_INTERVAL } from './BroadcastService';
+import { fetchTopBroadcast, fetchRoundData, detectRoundRobin, DEFAULT_INTERVAL } from './BroadcastService';
 import { tournamentReducer, initialState } from './reducer';
 import type { SelectedGame, TournamentState } from './types';
 
@@ -36,7 +36,8 @@ export function useTournament(): UseTournamentReturn {
           dispatch({ type: 'FETCH_EMPTY' });
         } else {
           const { standings, pairings } = await fetchRoundData(broadcast.allRounds, broadcast.activeRoundId, signal);
-          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings, pairings });
+          const unsupportedFormat = !detectRoundRobin(standings, pairings);
+          dispatch({ type: 'FETCH_SUCCESS', ...broadcast, standings, pairings, unsupportedFormat });
         }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;

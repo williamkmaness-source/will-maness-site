@@ -13,6 +13,7 @@ export const initialState: TournamentState = {
   pairings: [],
   selectedGame: null,
   upcoming: null,
+  unsupportedFormat: false,
 };
 
 export function tournamentReducer(
@@ -33,6 +34,7 @@ export function tournamentReducer(
         standings: action.standings,
         pairings: action.pairings,
         upcoming: action.upcoming,
+        unsupportedFormat: action.unsupportedFormat,
         // Clear selected game when data refreshes so stale modal state doesn't linger.
         selectedGame: null,
       };

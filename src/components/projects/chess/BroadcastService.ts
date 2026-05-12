@@ -161,6 +161,15 @@ export function computeStandings(pgnTexts: string[]): PlayerStanding[] {
     .map((p, i) => ({ ...p, rank: i + 1 }));
 }
 
+export function detectRoundRobin(standings: PlayerStanding[], pairings: GamePairing[]): boolean {
+  const n = standings.length;
+  if (n < 2 || pairings.length === 0) return true;
+  if (n % 2 !== 0 || pairings.length !== n / 2) return false;
+  const knownPlayers = new Set(standings.map((p) => p.name));
+  const pairingPlayers = pairings.flatMap((p) => [p.white, p.black]);
+  return new Set(pairingPlayers).size === n && pairingPlayers.every((name) => knownPlayers.has(name));
+}
+
 export async function fetchRoundData(
   rounds: LichessBroadcastRound[],
   activeRoundId: string | null,

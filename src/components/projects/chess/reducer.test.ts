@@ -40,6 +40,7 @@ const successAction = {
   standings: mockStandings,
   pairings: mockPairings,
   upcoming: null,
+  unsupportedFormat: false,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -131,5 +132,15 @@ describe('tournamentReducer', () => {
     expect(ready.phase).toBe('ready');
     expect(ready.standings).toHaveLength(2);
     expect(ready.pairings).toHaveLength(2);
+  });
+
+  it('FETCH_SUCCESS sets unsupportedFormat false for a round-robin broadcast', () => {
+    const next = tournamentReducer(initialState, successAction);
+    expect(next.unsupportedFormat).toBe(false);
+  });
+
+  it('FETCH_SUCCESS sets unsupportedFormat true for a non-round-robin broadcast', () => {
+    const next = tournamentReducer(initialState, { ...successAction, unsupportedFormat: true });
+    expect(next.unsupportedFormat).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import {
   fetchRoundData,
   parsePairings,
   computeStandings,
+  detectRoundRobin,
   DEFAULT_INTERVAL,
   BACKOFF_INTERVAL,
 } from './BroadcastService';
@@ -406,5 +407,59 @@ describe('fetchRoundData', () => {
     global.fetch = mockPgnFetch({}, 503);
 
     await expect(fetchRoundData(rounds, 'r1')).rejects.toThrow('PGN fetch failed: 503');
+  });
+});
+
+// ── detectRoundRobin ──────────────────────────────────────────────────────────
+
+const rrStandings = [
+  { rank: 1, name: 'Alice', points: 1, wins: 1, draws: 0, losses: 0 },
+  { rank: 2, name: 'Bob', points: 0, wins: 0, draws: 0, losses: 1 },
+  { rank: 3, name: 'Carol', points: 0.5, wins: 0, draws: 1, losses: 0 },
+  { rank: 4, name: 'Dave', points: 0.5, wins: 0, draws: 1, losses: 0 },
+];
+
+const rrPairings = [
+  { gameId: 'g1', white: 'Alice', black: 'Bob', result: '1-0', isCompleted: true },
+  { gameId: 'g2', white: 'Carol', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+];
+
+describe('detectRoundRobin', () => {
+  it('returns true for a well-formed round-robin round', () => {
+    expect(detectRoundRobin(rrStandings, rrPairings)).toBe(true);
+  });
+
+  it('returns true when there are no pairings yet (insufficient data)', () => {
+    expect(detectRoundRobin(rrStandings, [])).toBe(true);
+  });
+
+  it('returns true when standings are empty (insufficient data)', () => {
+    expect(detectRoundRobin([], rrPairings)).toBe(true);
+  });
+
+  it('returns false when pairings count does not equal n/2', () => {
+    const extraPairing = [...rrPairings, { gameId: 'g3', white: 'Alice', black: 'Carol', result: '*', isCompleted: false }];
+    expect(detectRoundRobin(rrStandings, extraPairing)).toBe(false);
+  });
+
+  it('returns false when a pairing player is not in standings', () => {
+    const unknownPairing = [
+      { gameId: 'g1', white: 'Alice', black: 'Unknown', result: '1-0', isCompleted: true },
+      { gameId: 'g2', white: 'Carol', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+    ];
+    expect(detectRoundRobin(rrStandings, unknownPairing)).toBe(false);
+  });
+
+  it('returns false when the same player appears twice in pairings', () => {
+    const duplicatePairing = [
+      { gameId: 'g1', white: 'Alice', black: 'Bob', result: '1-0', isCompleted: true },
+      { gameId: 'g2', white: 'Alice', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+    ];
+    expect(detectRoundRobin(rrStandings, duplicatePairing)).toBe(false);
+  });
+
+  it('returns false when player count is odd', () => {
+    const oddStandings = rrStandings.slice(0, 3);
+    expect(detectRoundRobin(oddStandings, rrPairings)).toBe(false);
   });
 });

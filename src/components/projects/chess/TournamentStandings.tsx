@@ -2,10 +2,22 @@ import type { PlayerStanding } from './types';
 
 interface Props {
   standings: PlayerStanding[];
+  tournamentName?: string | null;
   isLive?: boolean;
+  unsupportedFormat?: boolean;
 }
 
-export function TournamentStandings({ standings, isLive }: Props) {
+export function TournamentStandings({ standings, tournamentName, isLive, unsupportedFormat }: Props) {
+  if (unsupportedFormat) {
+    return (
+      <p className="font-sans text-[14px] text-muted mt-[8px]">
+        {tournamentName
+          ? `${tournamentName} uses a tournament format that isn't supported yet.`
+          : 'Tournament format not yet supported.'}
+      </p>
+    );
+  }
+
   if (!standings.length) {
     return (
       <p className="font-sans text-[14px] text-muted mt-[8px]">

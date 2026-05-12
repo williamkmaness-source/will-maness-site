@@ -41,6 +41,7 @@ export interface TournamentState {
   pairings: GamePairing[];
   selectedGame: SelectedGame | null;
   upcoming: UpcomingTournament | null;
+  unsupportedFormat: boolean;
 }
 
 export type TournamentAction =
@@ -55,6 +56,7 @@ export type TournamentAction =
       standings: PlayerStanding[];
       pairings: GamePairing[];
       upcoming: UpcomingTournament | null;
+      unsupportedFormat: boolean;
     }
   | { type: 'FETCH_EMPTY' }
   | { type: 'FETCH_ERROR' }
