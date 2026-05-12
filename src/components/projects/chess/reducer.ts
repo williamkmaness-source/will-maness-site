@@ -35,8 +35,6 @@ export function tournamentReducer(
         pairings: action.pairings,
         upcoming: action.upcoming,
         unsupportedFormat: action.unsupportedFormat,
-        // Clear selected game when data refreshes so stale modal state doesn't linger.
-        selectedGame: null,
       };
 
     case 'FETCH_EMPTY':

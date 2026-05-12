@@ -70,10 +70,11 @@ describe('tournamentReducer', () => {
     expect(next.upcoming).toBeNull();
   });
 
-  it('FETCH_SUCCESS clears selectedGame so stale modal state does not linger', () => {
-    const withGame: TournamentState = { ...readyState, selectedGame: { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B' } };
+  it('FETCH_SUCCESS preserves selectedGame so the open modal survives polling', () => {
+    const game = { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B' };
+    const withGame: TournamentState = { ...readyState, selectedGame: game };
     const next = tournamentReducer(withGame, successAction);
-    expect(next.selectedGame).toBeNull();
+    expect(next.selectedGame).toEqual(game);
   });
 
   it('FETCH_SUCCESS stores upcoming tournament when not live', () => {

@@ -27,25 +27,23 @@ function evalToPercent(e: number): number {
   return Math.round(50 + Math.min(Math.max(e, -5), 5) * 10);
 }
 
-// Compute captured pieces by comparing current FEN to the starting piece set.
-function computeCaptured(fen: string): { byWhite: string[]; byBlack: string[] } {
-  const start: Record<string, number> = { p: 8, n: 2, b: 2, r: 2, q: 1, P: 8, N: 2, B: 2, R: 2, Q: 1 };
-  const current: Record<string, number> = {};
-  for (const ch of fen.split(' ')[0]) {
-    if (/[pnbrqPNBRQ]/.test(ch)) current[ch] = (current[ch] ?? 0) + 1;
+// Walk the move history to collect captured pieces — correct under promotions
+// (FEN diffing would mis-classify a promoted pawn as captured).
+function computeCaptured(
+  moves: GameMoveData[],
+  moveIndex: number,
+): { byWhite: string[]; byBlack: string[] } {
+  const byWhite: string[] = []; // black pieces captured by white (lowercase)
+  const byBlack: string[] = []; // white pieces captured by black (uppercase)
+  for (let i = 0; i < moveIndex; i++) {
+    const captured = moves[i]?.captured;
+    if (!captured) continue;
+    if (i % 2 === 0) byWhite.push(captured.toLowerCase());
+    else byBlack.push(captured.toUpperCase());
   }
-  const byWhite: string[] = []; // black pieces captured by white
-  const byBlack: string[] = []; // white pieces captured by black
-  for (const p of PIECE_ORDER) {
-    const missing = (start[p] ?? 0) - (current[p] ?? 0);
-    for (let i = 0; i < missing; i++) byWhite.push(p);
-  }
-  for (const p of PIECE_ORDER) {
-    const P = p.toUpperCase();
-    const missing = (start[P] ?? 0) - (current[P] ?? 0);
-    for (let i = 0; i < missing; i++) byBlack.push(P);
-  }
-  return { byWhite, byBlack };
+  const sortFn = (a: string, b: string) =>
+    PIECE_ORDER.indexOf(a.toLowerCase()) - PIECE_ORDER.indexOf(b.toLowerCase());
+  return { byWhite: byWhite.sort(sortFn), byBlack: byBlack.sort(sortFn) };
 }
 
 // Material score delta: positive = white up, negative = black up.
@@ -221,7 +219,7 @@ export function GameModal({ game, onClose }: Props) {
     return { whiteClock: w, blackClock: b };
   }, [moves, moveIndex]);
 
-  const { byWhite, byBlack } = useMemo(() => computeCaptured(fen), [fen]);
+  const { byWhite, byBlack } = useMemo(() => computeCaptured(moves, moveIndex), [moves, moveIndex]);
   const delta = materialDelta(byWhite, byBlack);
 
   return (
