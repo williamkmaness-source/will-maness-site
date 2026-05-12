@@ -8,14 +8,16 @@ interface Props {
 
 export function ChessBoard({ fen }: Props) {
   return (
-    <Chessboard
-      options={{
-        position: fen,
-        boardOrientation: 'white',
-        allowDragging: false,
-        animationDurationInMs: 150,
-        boardStyle: { borderRadius: 4 },
-      }}
-    />
+    <div className="w-full aspect-square">
+      <Chessboard
+        options={{
+          position: fen,
+          boardOrientation: 'white',
+          allowDragging: false,
+          animationDurationInMs: 150,
+          boardStyle: { borderRadius: 4 },
+        }}
+      />
+    </div>
   );
 }
