@@ -72,7 +72,7 @@ export function GameModal({ game, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label={`${game.white} vs ${game.black}`}
-      className="fixed inset-0 z-50 flex items-center justify-center p-[16px]"
+      className="fixed inset-0 z-50 flex items-center justify-center sm:p-[16px]"
     >
       {/* Backdrop */}
       <div
@@ -82,7 +82,7 @@ export function GameModal({ game, onClose }: Props) {
       />
 
       {/* Panel */}
-      <div className="relative z-10 bg-bg rounded-[6px] border border-line shadow-xl w-full max-w-[480px] p-[24px]">
+      <div className="relative z-10 bg-bg sm:rounded-[6px] border-0 sm:border border-line sm:shadow-xl w-full sm:max-w-[480px] h-full sm:h-auto overflow-y-auto p-[20px] sm:p-[24px]">
         {/* Header */}
         <div className="flex items-start justify-between mb-[16px]">
           <div>

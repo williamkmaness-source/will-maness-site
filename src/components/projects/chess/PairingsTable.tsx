@@ -16,7 +16,7 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
       <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[12px]">
         Pairings
       </p>
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse table-fixed">
         <thead>
           <tr className="border-b border-line">
             <th className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase text-left pb-[8px] pr-[12px]">
@@ -54,13 +54,13 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
                     : 'cursor-default',
                 ].join(' ')}
               >
-                <td className="font-sans text-[14px] text-ink py-[10px] pr-[12px]">
+                <td className="font-sans text-[14px] text-ink py-[10px] pr-[12px] truncate max-w-0">
                   {pairing.white}
                 </td>
-                <td className="font-mono text-[13px] text-muted text-center py-[10px] px-[12px]">
+                <td className="font-mono text-[13px] text-muted text-center py-[10px] px-[12px] w-[60px]">
                   {pairing.result === '*' ? '…' : pairing.result}
                 </td>
-                <td className="font-sans text-[14px] text-ink text-right py-[10px] pl-[12px]">
+                <td className="font-sans text-[14px] text-ink text-right py-[10px] pl-[12px] truncate max-w-0">
                   {pairing.black}
                 </td>
               </tr>
