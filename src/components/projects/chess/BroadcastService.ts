@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import type {
+  GameMoveData,
   GamePairing,
   LichessBroadcast,
   LichessBroadcastRound,
@@ -182,7 +183,76 @@ function normalizePgn(pgn: string): string {
     .replace(/\s+/g, ' ');
 }
 
-export function extractGameMoves(roundPgn: string, gameId: string): string[] | null {
+// Extract per-move eval and clock annotations from a raw PGN block (before comment stripping).
+function parseAnnotations(pgn: string): Array<{ eval: number | null; clock: string | null }> {
+  // Split at the blank line that separates PGN headers from moves — avoids stripping
+  // [%eval ...] and [%clk ...] annotation tags inside comment blocks.
+  const blankLine = pgn.search(/\n\s*\n/);
+  const body = (blankLine >= 0 ? pgn.slice(blankLine) : pgn).trim();
+  const result: Array<{ eval: number | null; clock: string | null }> = [];
+  let current: { eval: number | null; clock: string | null } | null = null;
+
+  let i = 0;
+  while (i < body.length) {
+    const ch = body[i];
+    if (/\s/.test(ch)) { i++; continue; }
+
+    // Result markers start with 1, 0, or *
+    if (ch === '*' || /^(1-0|0-1|1\/2-1\/2)/.test(body.slice(i))) {
+      if (current) { result.push(current); current = null; }
+      break;
+    }
+
+    // Move number (digits + dots), skip
+    if (/\d/.test(ch)) {
+      while (i < body.length && /[\d.]/.test(body[i])) i++;
+      continue;
+    }
+
+    // Comment block — extract eval and clock for the current move
+    if (ch === '{') {
+      let j = i + 1;
+      while (j < body.length && body[j] !== '}') j++;
+      const comment = body.slice(i + 1, j);
+      if (current) {
+        const evalMatch = /\[%eval ([+-]?[\d.]+)/.exec(comment);
+        const clkMatch = /\[%clk (\d+:\d+:\d+)/.exec(comment);
+        if (evalMatch && current.eval === null) {
+          const v = parseFloat(evalMatch[1]);
+          if (!isNaN(v)) current.eval = v;
+        }
+        if (clkMatch && current.clock === null) current.clock = clkMatch[1];
+      }
+      i = j + 1;
+      continue;
+    }
+
+    // Skip variations
+    if (ch === '(') {
+      let depth = 1; i++;
+      while (i < body.length && depth > 0) {
+        if (body[i] === '(') depth++;
+        else if (body[i] === ')') depth--;
+        i++;
+      }
+      continue;
+    }
+
+    if (ch === ')') { i++; continue; }
+
+    // NAG ($1, $2…), skip
+    if (ch === '$') { while (i < body.length && !/\s/.test(body[i])) i++; continue; }
+
+    // SAN move token — push previous annotation, start a new one
+    if (current) result.push(current);
+    current = { eval: null, clock: null };
+    while (i < body.length && !/[\s{()$]/.test(body[i])) i++;
+  }
+
+  return result;
+}
+
+export function extractGameMoves(roundPgn: string, gameId: string): GameMoveData[] | null {
   const games = splitGames(roundPgn);
   const block = games.find((g) => {
     const url = /\[GameURL "([^"]+)"\]/.exec(g)?.[1] ?? /\[Site "([^"]+)"\]/.exec(g)?.[1];
@@ -192,7 +262,15 @@ export function extractGameMoves(roundPgn: string, gameId: string): string[] | n
   try {
     const chess = new Chess();
     chess.loadPgn(normalizePgn(block));
-    return chess.history();
+    const verboseMoves = chess.history({ verbose: true });
+    const annotations = parseAnnotations(block);
+    return verboseMoves.map((move, i) => ({
+      san: move.san,
+      fen: move.after,
+      eval: annotations[i]?.eval ?? null,
+      clock: annotations[i]?.clock ?? null,
+      captured: move.captured ?? null,
+    }));
   } catch {
     return null;
   }
@@ -202,7 +280,7 @@ export async function fetchGamePgn(
   roundId: string,
   gameId: string,
   signal?: AbortSignal,
-): Promise<string[]> {
+): Promise<GameMoveData[]> {
   const res = await fetch(`${LICHESS_BASE}/study/${roundId}.pgn`, { signal });
   if (!res.ok) throw new Error(`PGN fetch failed: ${res.status}`);
   const text = await res.text();

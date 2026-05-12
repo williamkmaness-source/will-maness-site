@@ -24,6 +24,14 @@ export interface SelectedGame {
   black: string;
 }
 
+export interface GameMoveData {
+  san: string;
+  fen: string;
+  eval: number | null;
+  clock: string | null; // remaining time for the player who made this move (H:MM:SS)
+  captured: string | null; // piece type captured on this move, e.g. 'p', 'n', 'B'
+}
+
 export interface UpcomingTournament {
   name: string;
   startsAt: number; // Unix ms timestamp

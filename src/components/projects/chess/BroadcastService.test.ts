@@ -483,14 +483,16 @@ const MULTI_GAME_PGN = `[White "Magnus Carlsen"]
 1. d4 d5 2. c4 *`;
 
 describe('extractGameMoves', () => {
-  it('returns the move list for the matching gameId', () => {
+  it('returns GameMoveData with san and fen for the matching gameId', () => {
     const moves = extractGameMoves(MULTI_GAME_PGN, 'gameAAA');
-    expect(moves).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
+    expect(moves).not.toBeNull();
+    expect(moves!.map((m) => m.san)).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
+    expect(moves![0].fen).toBeTruthy();
   });
 
   it('returns moves for the second game when first is skipped', () => {
     const moves = extractGameMoves(MULTI_GAME_PGN, 'gameBBB');
-    expect(moves).toEqual(['d4', 'd5', 'c4']);
+    expect(moves!.map((m) => m.san)).toEqual(['d4', 'd5', 'c4']);
   });
 
   it('returns null when the gameId is not in the PGN', () => {
@@ -504,7 +506,7 @@ describe('extractGameMoves', () => {
 [Site "https://lichess.org/broadcast/t/r/round/siteGame"]
 
 1. e4 *`;
-    expect(extractGameMoves(pgn, 'siteGame')).toEqual(['e4']);
+    expect(extractGameMoves(pgn, 'siteGame')!.map((m) => m.san)).toEqual(['e4']);
   });
 
   it('normalizes 0-0/0-0-0 castling notation to O-O/O-O-O before parsing', () => {
@@ -516,18 +518,34 @@ describe('extractGameMoves', () => {
 1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. 0-0 Nf6 5. d3 0-0 1-0`;
     const moves = extractGameMoves(pgn, 'castleGame');
     expect(moves).not.toBeNull();
-    expect(moves).toContain('O-O');
+    expect(moves!.some((m) => m.san === 'O-O')).toBe(true);
   });
 
-  it('strips multiple consecutive comment blocks per move (Lichess eval+text+clock format)', () => {
+  it('extracts eval and clock annotations from Lichess multi-comment format', () => {
     const pgn = `[White "A"]
 [Black "B"]
 [Result "1/2-1/2"]
 [GameURL "https://lichess.org/broadcast/t/r/round/commentGame"]
 
 1. e4 { [%eval 0.18] [%clk 1:30:57] } 1... e5 { [%eval 0.22] [%clk 1:30:53] } 2. Nf3?! { [%eval 0.44] } { Inaccuracy. d4 was best. } { [%clk 1:15:08] } 2... Nc6 1/2-1/2`;
-    const moves = extractGameMoves(pgn, 'commentGame');
-    expect(moves).toEqual(['e4', 'e5', 'Nf3', 'Nc6']);
+    const moves = extractGameMoves(pgn, 'commentGame')!;
+    expect(moves.map((m) => m.san)).toEqual(['e4', 'e5', 'Nf3', 'Nc6']);
+    expect(moves[0].eval).toBe(0.18);
+    expect(moves[0].clock).toBe('1:30:57');
+    expect(moves[2].eval).toBe(0.44);
+    expect(moves[2].clock).toBe('1:15:08');
+    expect(moves[3].eval).toBeNull();
+  });
+
+  it('returns captured piece for a capture move', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "1-0"]
+[GameURL "https://lichess.org/broadcast/t/r/round/captureGame"]
+
+1. e4 d5 2. exd5 1-0`;
+    const moves = extractGameMoves(pgn, 'captureGame')!;
+    expect(moves[2].captured).toBe('p');
   });
 
   it('returns an empty array for a game with no moves', () => {
@@ -537,19 +555,18 @@ describe('extractGameMoves', () => {
 [GameURL "https://lichess.org/broadcast/t/r/round/emptyGame"]
 
 *`;
-    const moves = extractGameMoves(pgn, 'emptyGame');
-    expect(moves).toEqual([]);
+    expect(extractGameMoves(pgn, 'emptyGame')).toEqual([]);
   });
 });
 
 // ── fetchGamePgn ──────────────────────────────────────────────────────────────
 
 describe('fetchGamePgn', () => {
-  it('returns move list for the requested game', async () => {
+  it('returns GameMoveData array for the requested game', async () => {
     global.fetch = mockPgnFetch({ r1: MULTI_GAME_PGN });
 
     const moves = await fetchGamePgn('r1', 'gameAAA');
-    expect(moves).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
+    expect(moves.map((m) => m.san)).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
   });
 
   it('throws when the game is not found in the round PGN', async () => {
