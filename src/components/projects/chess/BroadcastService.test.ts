@@ -519,6 +519,17 @@ describe('extractGameMoves', () => {
     expect(moves).toContain('O-O');
   });
 
+  it('strips multiple consecutive comment blocks per move (Lichess eval+text+clock format)', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "1/2-1/2"]
+[GameURL "https://lichess.org/broadcast/t/r/round/commentGame"]
+
+1. e4 { [%eval 0.18] [%clk 1:30:57] } 1... e5 { [%eval 0.22] [%clk 1:30:53] } 2. Nf3?! { [%eval 0.44] } { Inaccuracy. d4 was best. } { [%clk 1:15:08] } 2... Nc6 1/2-1/2`;
+    const moves = extractGameMoves(pgn, 'commentGame');
+    expect(moves).toEqual(['e4', 'e5', 'Nf3', 'Nc6']);
+  });
+
   it('returns an empty array for a game with no moves', () => {
     const pgn = `[White "A"]
 [Black "B"]

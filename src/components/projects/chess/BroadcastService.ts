@@ -171,9 +171,15 @@ export function detectRoundRobin(standings: PlayerStanding[], pairings: GamePair
   return new Set(pairingPlayers).size === n && pairingPlayers.every((name) => knownPlayers.has(name));
 }
 
-// Lichess broadcast PGNs use 0-0/0-0-0 (zeros) for castling; chess.js requires O-O/O-O-O (letters).
-function normalizeCastling(pgn: string): string {
-  return pgn.replace(/\b0-0-0\b/g, 'O-O-O').replace(/\b0-0\b/g, 'O-O');
+// chess.js v1 fails on multiple consecutive { } comment blocks per move (Lichess includes
+// eval + text + clock as separate blocks). Strip all comments before parsing.
+// Also normalise 0-0/0-0-0 (zeros) to O-O/O-O-O (letters) that chess.js requires.
+function normalizePgn(pgn: string): string {
+  return pgn
+    .replace(/\{[^}]*\}/g, ' ')
+    .replace(/\b0-0-0\b/g, 'O-O-O')
+    .replace(/\b0-0\b/g, 'O-O')
+    .replace(/\s+/g, ' ');
 }
 
 export function extractGameMoves(roundPgn: string, gameId: string): string[] | null {
@@ -185,7 +191,7 @@ export function extractGameMoves(roundPgn: string, gameId: string): string[] | n
   if (!block) return null;
   try {
     const chess = new Chess();
-    chess.loadPgn(normalizeCastling(block));
+    chess.loadPgn(normalizePgn(block));
     return chess.history();
   } catch {
     return null;
