@@ -24,6 +24,7 @@ export function GameModal({ game, onClose }: Props) {
   const [status, setStatus] = useState<Status>('loading');
   const [moves, setMoves] = useState<string[]>([]);
   const [moveIndex, setMoveIndex] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
   // Restore focus to the element that was active when the modal opened.
   const returnFocusRef = useRef<Element | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -48,7 +49,7 @@ export function GameModal({ game, onClose }: Props) {
       });
 
     return () => controller.abort();
-  }, [game.roundId, game.gameId]);
+  }, [game.roundId, game.gameId, retryCount]);
 
   // Close on Escape.
   useEffect(() => {
@@ -112,8 +113,14 @@ export function GameModal({ game, onClose }: Props) {
         )}
 
         {status === 'error' && (
-          <div className="flex items-center justify-center h-[200px]">
+          <div className="flex flex-col items-center justify-center gap-[12px] h-[200px]">
             <p className="font-sans text-[14px] text-muted">Could not load game.</p>
+            <button
+              onClick={() => setRetryCount((n) => n + 1)}
+              className="font-sans text-[13px] font-medium text-ink border border-line-strong px-[16px] py-[7px] rounded hover:bg-bg-soft transition-colors duration-[120ms]"
+            >
+              Try again
+            </button>
           </div>
         )}
 

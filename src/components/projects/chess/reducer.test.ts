@@ -145,3 +145,30 @@ describe('tournamentReducer', () => {
     expect(next.unsupportedFormat).toBe(true);
   });
 });
+
+// ── Error and empty states (issue #30) ───────────────────────────────────────
+
+describe('error and empty state behaviour', () => {
+  it('initial fetch failure shows error phase with no standings visible', () => {
+    const next = tournamentReducer(initialState, { type: 'FETCH_ERROR' });
+    expect(next.phase).toBe('error');
+    expect(next.standings).toHaveLength(0);
+  });
+
+  it('empty broadcast list shows empty phase, not error phase', () => {
+    const next = tournamentReducer(initialState, { type: 'FETCH_EMPTY' });
+    expect(next.phase).toBe('empty');
+  });
+
+  it('RETRY after error phase re-enters loading so a re-fetch can occur', () => {
+    const errState: TournamentState = { ...initialState, phase: 'error' };
+    expect(tournamentReducer(errState, { type: 'RETRY' }).phase).toBe('loading');
+  });
+
+  it('refresh failure while data exists keeps standings and pairings visible', () => {
+    const next = tournamentReducer(readyState, { type: 'FETCH_ERROR' });
+    expect(next.phase).toBe('ready');
+    expect(next.standings).toHaveLength(2);
+    expect(next.pairings).toHaveLength(2);
+  });
+});
