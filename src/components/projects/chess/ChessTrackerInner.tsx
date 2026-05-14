@@ -30,7 +30,18 @@ export function ChessTrackerInner() {
   if (state.phase === 'empty') {
     return (
       <div className="mt-[40px] mb-[48px]">
-        <p className="font-sans text-[15px] text-muted">No active tournaments right now.</p>
+        <p className="font-sans text-[15px] text-muted">No notable tournaments are active right now.</p>
+        {state.upcoming && (
+          <div className="mt-[24px] pt-[24px] border-t border-line">
+            <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[6px]">
+              Next tournament
+            </p>
+            <p className="font-sans text-[15px] text-ink font-medium">{state.upcoming.name}</p>
+            <p className="font-sans text-[13px] text-muted mt-[2px]">
+              Starts {formatDate(state.upcoming.startsAt)}
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -52,7 +63,7 @@ export function ChessTrackerInner() {
   }
 
   // phase === 'ready'
-  const label = state.isLive ? 'Live tournament' : 'Previous tournament';
+  const label = state.isLive ? 'Tournament — live' : 'Tournament';
 
   return (
     <div className="mt-[40px] mb-[48px]">

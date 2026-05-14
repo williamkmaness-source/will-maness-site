@@ -9,6 +9,7 @@ import {
   extractGameMoves,
   DEFAULT_INTERVAL,
   BACKOFF_INTERVAL,
+  ELITE_TIER,
 } from './BroadcastService';
 import type { LichessBroadcast, LichessBroadcastRound } from './types';
 
@@ -20,7 +21,7 @@ function makeRound(overrides: Partial<LichessBroadcastRound> = {}): LichessBroad
 
 function makeBroadcast(overrides: Partial<LichessBroadcast> = {}): LichessBroadcast {
   return {
-    tour: { id: 'tour1', name: 'Norway Chess 2026', slug: 'norway-chess-2026' },
+    tour: { id: 'tour1', name: 'Norway Chess 2026', slug: 'norway-chess-2026', tier: ELITE_TIER },
     rounds: [
       makeRound({ id: 'r1', name: 'Round 1', startsAt: 1000, finished: true, finishedAt: 2000 }),
       makeRound({ id: 'r2', name: 'Round 2', startsAt: 2000, ongoing: true }),
@@ -88,11 +89,14 @@ beforeEach(() => {
 
 // ── fetchTopBroadcast ─────────────────────────────────────────────────────────
 
+// Far-future timestamps ensure these rounds don't trigger the hasStartedRounds fallback.
+const FAR_FUTURE = 9_000_000_000_000; // ~2255 AD
+
 const upcomingBroadcast: LichessBroadcast = {
-  tour: { id: 'tour2', name: 'GCT Romania 2026', slug: 'gct-romania-2026' },
+  tour: { id: 'tour2', name: 'GCT Romania 2026', slug: 'gct-romania-2026', tier: ELITE_TIER },
   rounds: [
-    makeRound({ id: 'u1', name: 'Round 1', startsAt: 9000 }),
-    makeRound({ id: 'u2', name: 'Round 2', startsAt: 10000 }),
+    makeRound({ id: 'u1', name: 'Round 1', startsAt: FAR_FUTURE }),
+    makeRound({ id: 'u2', name: 'Round 2', startsAt: FAR_FUTURE + 86_400_000 }),
   ],
 };
 
@@ -102,12 +106,12 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result).not.toBeNull();
-    expect(result!.tournamentName).toBe('Norway Chess 2026');
-    expect(result!.isLive).toBe(true);
-    expect(result!.roundName).toBe('Round 2');
-    expect(result!.activeRoundId).toBe('r2');
-    expect(result!.upcoming).toBeNull(); // no upcoming shown while live
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.tournamentName).toBe('Norway Chess 2026');
+    expect(result.isLive).toBe(true);
+    expect(result.roundName).toBe('Round 2');
+    expect(result.activeRoundId).toBe('r2');
+    expect(result.upcoming).toBeNull(); // no upcoming shown while live
   });
 
   it('returns the most recently played broadcast when none is live, with upcoming', async () => {
@@ -121,11 +125,12 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.tournamentName).toBe('Norway Chess 2026');
-    expect(result!.isLive).toBe(false);
-    expect(result!.upcoming).not.toBeNull();
-    expect(result!.upcoming!.name).toBe('GCT Romania 2026');
-    expect(result!.upcoming!.startsAt).toBe(9000);
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.tournamentName).toBe('Norway Chess 2026');
+    expect(result.isLive).toBe(false);
+    expect(result.upcoming).not.toBeNull();
+    expect(result.upcoming!.name).toBe('GCT Romania 2026');
+    expect(result.upcoming!.startsAt).toBe(FAR_FUTURE);
   });
 
   it('includes allRounds in the result', async () => {
@@ -133,8 +138,9 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.allRounds).toHaveLength(3);
-    expect(result!.allRounds[0].id).toBe('r1');
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.allRounds).toHaveLength(3);
+    expect(result.allRounds[0].id).toBe('r1');
   });
 
   it('falls back to the last finished round when none is ongoing', async () => {
@@ -148,29 +154,59 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.roundName).toBe('Round 2');
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.roundName).toBe('Round 2');
   });
 
-  it('returns null when no broadcasts have played rounds', async () => {
+  it('returns inactive result with upcoming when no elite broadcasts have played rounds', async () => {
     global.fetch = mockBroadcastFetch([upcomingBroadcast]);
 
     const result = await fetchTopBroadcast();
 
-    expect(result).toBeNull();
+    expect(result.active).toBe(false);
+    expect(result.upcoming).toEqual({ name: 'GCT Romania 2026', startsAt: FAR_FUTURE });
   });
 
-  it('returns null when the broadcast list is empty', async () => {
+  it('returns inactive result with null upcoming when the broadcast list is empty', async () => {
     global.fetch = mockBroadcastFetch([]);
 
     const result = await fetchTopBroadcast();
 
-    expect(result).toBeNull();
+    expect(result.active).toBe(false);
+    expect(result.upcoming).toBeNull();
+  });
+
+  it('falls back to a started broadcast when no played-round flags exist', async () => {
+    const startedNoFlags: LichessBroadcast = {
+      tour: { id: 'tour4', name: 'Norway Chess 2026', slug: 'norway-chess-2026', tier: ELITE_TIER },
+      // startsAt in the past, no finished/ongoing flags — simulates API omission
+      rounds: [makeRound({ id: 'r1', startsAt: 1000 }), makeRound({ id: 'r2', startsAt: 2000 })],
+    };
+    global.fetch = mockBroadcastFetch([startedNoFlags]);
+
+    const result = await fetchTopBroadcast();
+
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.tournamentName).toBe('Norway Chess 2026');
+    expect(result.isLive).toBe(false);
+  });
+
+  it('filters out broadcasts below ELITE_TIER', async () => {
+    const lowTierBroadcast = makeBroadcast({
+      tour: { id: 'low1', name: 'Regional Open 2026', slug: 'regional-open', tier: ELITE_TIER - 1 },
+      rounds: [makeRound({ id: 'r1', finished: true })],
+    });
+    global.fetch = mockBroadcastFetch([lowTierBroadcast]);
+
+    const result = await fetchTopBroadcast();
+
+    expect(result.active).toBe(false); // low-tier event was filtered out
   });
 
   it('picks the upcoming broadcast with the earliest startsAt', async () => {
     const soonerUpcoming: LichessBroadcast = {
-      tour: { id: 'tour3', name: 'Sooner Event', slug: 'sooner' },
-      rounds: [makeRound({ id: 's1', startsAt: 500 })],
+      tour: { id: 'tour3', name: 'Sooner Event', slug: 'sooner', tier: ELITE_TIER },
+      rounds: [makeRound({ id: 's1', startsAt: FAR_FUTURE - 1 })],
     };
     const completedBroadcast = makeBroadcast({
       rounds: [makeRound({ id: 'r1', startsAt: 1000, finished: true })],
@@ -179,7 +215,8 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.upcoming!.name).toBe('Sooner Event');
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.upcoming!.name).toBe('Sooner Event');
   });
 
   it('applies BACKOFF_INTERVAL when X-RateLimit-Remaining is below threshold', async () => {
@@ -187,7 +224,7 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.pollingInterval).toBe(BACKOFF_INTERVAL);
+    expect(result.pollingInterval).toBe(BACKOFF_INTERVAL);
   });
 
   it('uses DEFAULT_INTERVAL when X-RateLimit-Remaining is at the threshold', async () => {
@@ -195,7 +232,7 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.pollingInterval).toBe(DEFAULT_INTERVAL);
+    expect(result.pollingInterval).toBe(DEFAULT_INTERVAL);
   });
 
   it('uses DEFAULT_INTERVAL when X-RateLimit-Remaining header is absent', async () => {
@@ -203,7 +240,7 @@ describe('fetchTopBroadcast', () => {
 
     const result = await fetchTopBroadcast();
 
-    expect(result!.pollingInterval).toBe(DEFAULT_INTERVAL);
+    expect(result.pollingInterval).toBe(DEFAULT_INTERVAL);
   });
 
   it('throws on a non-2xx response', async () => {

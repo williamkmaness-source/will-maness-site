@@ -13,9 +13,24 @@ const LICHESS_BASE = 'https://lichess.org/api';
 export const DEFAULT_INTERVAL = 60_000;
 export const BACKOFF_INTERVAL = 300_000;
 const RATE_LIMIT_THRESHOLD = 10;
+// Lichess tier scale: 5 = featured marquee events, 4 = national/notable, 3–0 = lower
+export const ELITE_TIER = 4;
 
 function hasPlayedRounds(broadcast: LichessBroadcast): boolean {
   return broadcast.rounds.some((r) => r.finished || r.ongoing);
+}
+
+// Fallback for when the list API omits finished/ongoing flags on already-started rounds.
+function hasStartedRounds(broadcast: LichessBroadcast, now: number): boolean {
+  return broadcast.rounds.some((r) => (r.startsAt ?? 0) < now);
+}
+
+// Returns active candidates from a set of broadcasts: prefers explicit played-round flags,
+// falls back to rounds whose startsAt is in the past when flags are absent.
+function candidatesFrom(broadcasts: LichessBroadcast[], now: number): LichessBroadcast[] {
+  const played = broadcasts.filter(hasPlayedRounds);
+  if (played.length > 0) return played;
+  return broadcasts.filter((b) => hasStartedRounds(b, now));
 }
 
 function selectActiveRound(broadcast: LichessBroadcast): LichessBroadcastRound | null {
@@ -45,8 +60,8 @@ function findUpcoming(broadcasts: LichessBroadcast[]): UpcomingTournament | null
 
 export async function fetchTopBroadcast(
   signal?: AbortSignal,
-): Promise<TopBroadcastResult | null> {
-  const res = await fetch(`${LICHESS_BASE}/broadcast?nb=20`, { signal });
+): Promise<TopBroadcastResult> {
+  const res = await fetch(`${LICHESS_BASE}/broadcast?nb=30`, { signal });
   const pollingInterval = resolvePollingInterval(res.headers);
 
   if (!res.ok) {
@@ -55,24 +70,39 @@ export async function fetchTopBroadcast(
 
   // The endpoint returns NDJSON (one JSON object per line), not a JSON array.
   const text = await res.text();
-  const broadcasts: LichessBroadcast[] = text
+  const allBroadcasts: LichessBroadcast[] = text
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line));
 
-  if (!broadcasts.length) return null;
+  // Include all notable events (tier >= 4), but prefer tier-5 marquee events when available.
+  const allElite = allBroadcasts.filter((b) => (b.tour.tier ?? 0) >= ELITE_TIER);
+  const tier5 = allElite.filter((b) => (b.tour.tier ?? 0) >= 5);
+  const tier4 = allElite.filter((b) => (b.tour.tier ?? 0) < 5);
 
-  const played = broadcasts.filter(hasPlayedRounds);
-  if (!played.length) return null;
+  const now = Date.now();
+  const pool5 = candidatesFrom(tier5, now);
+  const candidatePool = pool5.length > 0 ? pool5 : candidatesFrom(tier4, now);
 
-  const liveCandidate = played.find((b) => b.rounds.some((r) => r.ongoing));
-  const current = liveCandidate ?? played[0];
+  if (!candidatePool.length) {
+    // Nothing active — prefer tier-5 upcoming, fall back to any elite upcoming.
+    return {
+      active: false,
+      upcoming: findUpcoming(tier5) ?? findUpcoming(allElite),
+      pollingInterval,
+    };
+  }
+
+  const liveCandidate = candidatePool.find((b) => b.rounds.some((r) => r.ongoing));
+  const current = liveCandidate ?? candidatePool[0];
   const isLive = !!liveCandidate;
-
   const activeRound = selectActiveRound(current);
-  const upcoming = isLive ? null : findUpcoming(broadcasts);
+
+  // Upcoming: prefer tier-5 events regardless of which tier is currently active.
+  const upcomingEvent = isLive ? null : (findUpcoming(tier5) ?? findUpcoming(allElite));
 
   return {
+    active: true,
     isLive,
     tournamentName: current.tour.name,
     tournamentId: current.tour.id,
@@ -80,7 +110,7 @@ export async function fetchTopBroadcast(
     activeRoundId: activeRound?.id ?? null,
     pollingInterval,
     allRounds: current.rounds,
-    upcoming,
+    upcoming: upcomingEvent,
   };
 }
 

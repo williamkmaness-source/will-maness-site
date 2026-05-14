@@ -91,7 +91,7 @@ describe('tournamentReducer', () => {
   });
 
   it('FETCH_EMPTY transitions to empty phase', () => {
-    expect(tournamentReducer(initialState, { type: 'FETCH_EMPTY' }).phase).toBe('empty');
+    expect(tournamentReducer(initialState, { type: 'FETCH_EMPTY', upcoming: null }).phase).toBe('empty');
   });
 
   it('FETCH_ERROR on initial load transitions to error phase', () => {
@@ -157,7 +157,7 @@ describe('error and empty state behaviour', () => {
   });
 
   it('empty broadcast list shows empty phase, not error phase', () => {
-    const next = tournamentReducer(initialState, { type: 'FETCH_EMPTY' });
+    const next = tournamentReducer(initialState, { type: 'FETCH_EMPTY', upcoming: null });
     expect(next.phase).toBe('empty');
   });
 

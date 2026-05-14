@@ -38,7 +38,7 @@ export function tournamentReducer(
       };
 
     case 'FETCH_EMPTY':
-      return { ...state, phase: 'empty' };
+      return { ...state, phase: 'empty', upcoming: action.upcoming };
 
     case 'FETCH_ERROR':
       return { ...state, phase: state.tournamentName ? 'ready' : 'error' };

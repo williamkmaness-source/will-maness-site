@@ -66,7 +66,7 @@ export type TournamentAction =
       upcoming: UpcomingTournament | null;
       unsupportedFormat: boolean;
     }
-  | { type: 'FETCH_EMPTY' }
+  | { type: 'FETCH_EMPTY'; upcoming: UpcomingTournament | null }
   | { type: 'FETCH_ERROR' }
   | { type: 'RETRY' }
   | { type: 'SELECT_GAME'; game: SelectedGame }
@@ -88,17 +88,25 @@ export interface LichessBroadcast {
     id: string;
     name: string;
     slug: string;
+    tier?: number;
   };
   rounds: LichessBroadcastRound[];
 }
 
-export interface TopBroadcastResult {
-  isLive: boolean;
-  tournamentName: string;
-  tournamentId: string;
-  roundName: string | null;
-  activeRoundId: string | null;
-  pollingInterval: number;
-  allRounds: LichessBroadcastRound[];
-  upcoming: UpcomingTournament | null;
-}
+export type TopBroadcastResult =
+  | {
+      active: true;
+      isLive: boolean;
+      tournamentName: string;
+      tournamentId: string;
+      roundName: string | null;
+      activeRoundId: string | null;
+      pollingInterval: number;
+      allRounds: LichessBroadcastRound[];
+      upcoming: UpcomingTournament | null;
+    }
+  | {
+      active: false;
+      upcoming: UpcomingTournament | null;
+      pollingInterval: number;
+    };
