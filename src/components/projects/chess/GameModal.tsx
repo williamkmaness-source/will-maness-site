@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { defaultPieces } from 'react-chessboard';
 import { fetchGamePgn, fetchGamePgnLive, DEFAULT_INTERVAL } from './BroadcastService';
 import { ChessBoard } from './ChessBoard';
 import { ReplayControls } from './ReplayControls';
@@ -9,13 +8,48 @@ import type { GameMoveData, SelectedGame } from './types';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-// Maps internal piece letters to defaultPieces keys (same SVGs as the board).
-const PIECE_KEY: Record<string, keyof typeof defaultPieces> = {
-  p: 'bP', n: 'bN', b: 'bB', r: 'bR', q: 'bQ',
-  P: 'wP', N: 'wN', B: 'wB', R: 'wR', Q: 'wQ',
-};
-
 const PIECE_ORDER = ['q', 'r', 'b', 'n', 'p'];
+
+// Inline SVG piece icons — avoids react-chessboard module-level browser APIs (SSR-safe)
+function PieceIcon({ piece }: { piece: string }) {
+  const type = piece.toLowerCase() as 'p' | 'n' | 'b' | 'r' | 'q';
+  const isLight = piece !== type;
+  const fill = isLight ? '#e8d5b7' : '#4a3a28';
+  const stroke = isLight ? '#7a6040' : '#c8a870';
+  const sw = 0.8;
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {type === 'p' && (<>
+        <circle cx="8" cy="4" r="2.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <path d="M5.5 6.5C5 9 4.5 10.5 4 12h8c-.5-1.5-1-3-1.5-5.5z" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect x="2.5" y="12" width="11" height="2.5" rx="0.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+      </>)}
+      {type === 'n' && (
+        <path d="M5 14V9c0-3 1-4 2-5 .5-.5 1-1 2-1s2 .5 2 2c0 1-1 1.5-1 2v1h1l1 1-1 2h-1l-.5 3z" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      )}
+      {type === 'b' && (<>
+        <circle cx="8" cy="3.5" r="2" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <circle cx="8" cy="3.5" r="0.6" fill={stroke} />
+        <path d="M6.5 5.5L5 12h6L9.5 5.5z" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect x="2.5" y="12" width="11" height="2.5" rx="0.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+      </>)}
+      {type === 'r' && (<>
+        <rect x="3" y="2" width="2" height="3.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect x="7" y="2" width="2" height="3.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect x="11" y="2" width="2" height="3.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect x="3" y="4.5" width="10" height="7" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect x="2" y="12" width="12" height="2.5" rx="0.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+      </>)}
+      {type === 'q' && (<>
+        <circle cx="8" cy="3" r="1.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <circle cx="3.5" cy="4.5" r="1.2" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <circle cx="12.5" cy="4.5" r="1.2" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <path d="M2.5 6l1.5 5h8l1.5-5-3 2.5L8 5l-2.5 3.5z" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        <rect x="2.5" y="11.5" width="11" height="2.5" rx="0.5" fill={fill} stroke={stroke} strokeWidth={sw} />
+      </>)}
+    </svg>
+  );
+}
 
 interface Props {
   game: SelectedGame;
@@ -59,14 +93,11 @@ function materialDelta(byWhite: string[], byBlack: string[]): number {
 function CapturedPieces({ pieces, advantage }: { pieces: string[]; advantage: number }) {
   return (
     <div className="flex items-center gap-[1px] min-h-[16px]">
-      {pieces.map((p, i) => {
-        const PieceSvg = defaultPieces[PIECE_KEY[p]];
-        return (
-          <span key={i} className="inline-block w-[16px] h-[16px] opacity-70 shrink-0">
-            {PieceSvg && <PieceSvg />}
-          </span>
-        );
-      })}
+      {pieces.map((p, i) => (
+        <span key={i} className="inline-block w-[16px] h-[16px] opacity-70 shrink-0">
+          <PieceIcon piece={p} />
+        </span>
+      ))}
       {advantage > 0 && (
         <span className="font-sans text-[11px] text-muted ml-[4px]">+{advantage}</span>
       )}
