@@ -3,10 +3,9 @@ import {
   fetchTopBroadcast,
   fetchRoundData,
   fetchGamePgn,
-  fetchGamePgnLive,
   parsePairings,
   computeStandings,
-  detectFormat,
+  detectRoundRobin,
   extractGameMoves,
   DEFAULT_INTERVAL,
   BACKOFF_INTERVAL,
@@ -55,24 +54,6 @@ function mockPgnFetch(pgns: Record<string, string>, status = 200) {
     return {
       ok: status >= 200 && status < 300,
       status,
-      headers: { get: (_key: string) => null },
-      text: () => Promise.resolve(body),
-    };
-  });
-}
-
-function mockPgnFetchWithHeaders(
-  pgns: Record<string, string>,
-  headers: Record<string, string> = {},
-  status = 200,
-) {
-  return vi.fn().mockImplementation(async (url: string) => {
-    const roundId = /\/study\/([^.]+)\.pgn/.exec(url)?.[1];
-    const body = roundId && pgns[roundId] ? pgns[roundId] : '';
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      headers: { get: (key: string) => headers[key] ?? null },
       text: () => Promise.resolve(body),
     };
   });
@@ -468,70 +449,57 @@ describe('fetchRoundData', () => {
   });
 });
 
-// ── detectFormat ──────────────────────────────────────────────────────────────
+// ── detectRoundRobin ──────────────────────────────────────────────────────────
 
-// 4-player standings used across multiple detectFormat tests.
-const fmtStandings = [
-  { rank: 1, name: 'Alice', points: 1,   wins: 1, draws: 0, losses: 0 },
-  { rank: 2, name: 'Bob',   points: 0,   wins: 0, draws: 0, losses: 1 },
+const rrStandings = [
+  { rank: 1, name: 'Alice', points: 1, wins: 1, draws: 0, losses: 0 },
+  { rank: 2, name: 'Bob', points: 0, wins: 0, draws: 0, losses: 1 },
   { rank: 3, name: 'Carol', points: 0.5, wins: 0, draws: 1, losses: 0 },
-  { rank: 4, name: 'Dave',  points: 0.5, wins: 0, draws: 1, losses: 0 },
+  { rank: 4, name: 'Dave', points: 0.5, wins: 0, draws: 1, losses: 0 },
 ];
 
-// PGN helpers — minimal valid PGN blocks for testing pairing detection.
-function makePgn(pairs: Array<[string, string, string]>): string {
-  return pairs
-    .map(([white, black, result], i) =>
-      `[White "${white}"]\n[Black "${black}"]\n[Result "${result}"]\n[GameURL "https://lichess.org/broadcast/t/r/round/g${i}"]\n\n1. e4 ${result}`
-    )
-    .join('\n\n');
-}
+const rrPairings = [
+  { gameId: 'g1', white: 'Alice', black: 'Bob', result: '1-0', isCompleted: true },
+  { gameId: 'g2', white: 'Carol', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+];
 
-const rrRound1 = makePgn([['Alice', 'Bob', '1-0'], ['Carol', 'Dave', '1/2-1/2']]);
-const rrRound2 = makePgn([['Alice', 'Carol', '1-0'], ['Bob', 'Dave', '0-1']]);
-// Knockout: Alice vs Bob appear in both rounds (match format).
-const koRound2 = makePgn([['Bob', 'Alice', '0-1'], ['Dave', 'Carol', '1-0']]);
-
-describe('detectFormat', () => {
-  it('returns round-robin for a single valid round', () => {
-    expect(detectFormat([rrRound1], fmtStandings)).toBe('round-robin');
+describe('detectRoundRobin', () => {
+  it('returns true for a well-formed round-robin round', () => {
+    expect(detectRoundRobin(rrStandings, rrPairings)).toBe(true);
   });
 
-  it('returns round-robin when multiple rounds have unique pairings covering all players', () => {
-    expect(detectFormat([rrRound1, rrRound2], fmtStandings)).toBe('round-robin');
+  it('returns true when there are no pairings yet (insufficient data)', () => {
+    expect(detectRoundRobin(rrStandings, [])).toBe(true);
   });
 
-  it('returns knockout when the same opponent pair appears in multiple rounds', () => {
-    expect(detectFormat([rrRound1, koRound2], fmtStandings)).toBe('knockout');
+  it('returns true when standings are empty (insufficient data)', () => {
+    expect(detectRoundRobin([], rrPairings)).toBe(true);
   });
 
-  it('returns unknown when standings have fewer than 2 players', () => {
-    const onePlayer = [{ rank: 1, name: 'Alice', points: 1, wins: 1, draws: 0, losses: 0 }];
-    expect(detectFormat([rrRound1], onePlayer)).toBe('unknown');
+  it('returns false when pairings count does not equal n/2', () => {
+    const extraPairing = [...rrPairings, { gameId: 'g3', white: 'Alice', black: 'Carol', result: '*', isCompleted: false }];
+    expect(detectRoundRobin(rrStandings, extraPairing)).toBe(false);
   });
 
-  it('returns unknown when no PGN texts are provided', () => {
-    expect(detectFormat([], fmtStandings)).toBe('unknown');
+  it('returns false when a pairing player is not in standings', () => {
+    const unknownPairing = [
+      { gameId: 'g1', white: 'Alice', black: 'Unknown', result: '1-0', isCompleted: true },
+      { gameId: 'g2', white: 'Carol', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+    ];
+    expect(detectRoundRobin(rrStandings, unknownPairing)).toBe(false);
   });
 
-  it('returns unknown when a pairing includes a player not in standings', () => {
-    const unknownPlayer = makePgn([['Alice', 'Nobody', '1-0'], ['Carol', 'Dave', '1/2-1/2']]);
-    expect(detectFormat([unknownPlayer], fmtStandings)).toBe('unknown');
+  it('returns false when the same player appears twice in pairings', () => {
+    const duplicatePairing = [
+      { gameId: 'g1', white: 'Alice', black: 'Bob', result: '1-0', isCompleted: true },
+      { gameId: 'g2', white: 'Alice', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+    ];
+    expect(detectRoundRobin(rrStandings, duplicatePairing)).toBe(false);
   });
 
-  it('returns unknown when a round has the wrong number of pairings', () => {
-    const threeGames = makePgn([['Alice', 'Bob', '1-0'], ['Carol', 'Dave', '1/2-1/2'], ['Alice', 'Carol', '1-0']]);
-    expect(detectFormat([threeGames], fmtStandings)).toBe('unknown');
-  });
-
-  it('returns unknown when a player appears twice in the same round', () => {
-    const duplicate = makePgn([['Alice', 'Bob', '1-0'], ['Alice', 'Dave', '1/2-1/2']]);
-    expect(detectFormat([duplicate], fmtStandings)).toBe('unknown');
-  });
-
-  it('returns unknown when player count is odd', () => {
-    const threeStandings = fmtStandings.slice(0, 3);
-    expect(detectFormat([rrRound1], threeStandings)).toBe('unknown');
+  it('returns false when player count is odd', () => {
+    const oddStandings = rrStandings.slice(0, 3);
+    expect(detectRoundRobin(oddStandings, rrPairings)).toBe(false);
   });
 });
 
@@ -606,19 +574,6 @@ describe('extractGameMoves', () => {
     expect(moves[3].eval).toBeNull();
   });
 
-  it('maps mate-in-N eval annotations to ±Infinity', () => {
-    const pgn = `[White "A"]
-[Black "B"]
-[Result "1-0"]
-[GameURL "https://lichess.org/broadcast/t/r/round/mateGame"]
-
-1. e4 { [%eval 0.18] } 1... e5 { [%eval #5] } 2. Qh5 { [%eval #-3] } 2... Nc6 1-0`;
-    const moves = extractGameMoves(pgn, 'mateGame')!;
-    expect(moves[0].eval).toBe(0.18);
-    expect(moves[1].eval).toBe(Infinity);
-    expect(moves[2].eval).toBe(-Infinity);
-  });
-
   it('returns captured piece for a capture move', () => {
     const pgn = `[White "A"]
 [Black "B"]
@@ -661,58 +616,5 @@ describe('fetchGamePgn', () => {
     global.fetch = mockPgnFetch({}, 503);
 
     await expect(fetchGamePgn('r1', 'gameAAA')).rejects.toThrow('PGN fetch failed: 503');
-  });
-});
-
-// ── fetchGamePgnLive ──────────────────────────────────────────────────────────
-
-const LIVE_GAME_PGN = `[White "Magnus Carlsen"]
-[Black "Hikaru Nakamura"]
-[Result "*"]
-[GameURL "https://lichess.org/broadcast/t/r/round/liveGame"]
-
-1. e4 e5 2. Nf3 *`;
-
-const FINISHED_GAME_PGN = `[White "Magnus Carlsen"]
-[Black "Hikaru Nakamura"]
-[Result "1-0"]
-[GameURL "https://lichess.org/broadcast/t/r/round/liveGame"]
-
-1. e4 e5 2. Nf3 Nc6 3. Bc4 1-0`;
-
-describe('fetchGamePgnLive', () => {
-  it('returns moves and isComplete=false for an in-progress game', async () => {
-    global.fetch = mockPgnFetchWithHeaders({ r1: LIVE_GAME_PGN });
-
-    const result = await fetchGamePgnLive('r1', 'liveGame');
-    expect(result.moves.map((m) => m.san)).toEqual(['e4', 'e5', 'Nf3']);
-    expect(result.isComplete).toBe(false);
-    expect(result.pollingInterval).toBe(DEFAULT_INTERVAL);
-  });
-
-  it('returns isComplete=true when the result header is decisive', async () => {
-    global.fetch = mockPgnFetchWithHeaders({ r1: FINISHED_GAME_PGN });
-
-    const result = await fetchGamePgnLive('r1', 'liveGame');
-    expect(result.isComplete).toBe(true);
-  });
-
-  it('applies BACKOFF_INTERVAL when X-RateLimit-Remaining is below threshold', async () => {
-    global.fetch = mockPgnFetchWithHeaders({ r1: LIVE_GAME_PGN }, { 'X-RateLimit-Remaining': '5' });
-
-    const result = await fetchGamePgnLive('r1', 'liveGame');
-    expect(result.pollingInterval).toBe(BACKOFF_INTERVAL);
-  });
-
-  it('throws on a non-2xx response', async () => {
-    global.fetch = mockPgnFetchWithHeaders({}, {}, 503);
-
-    await expect(fetchGamePgnLive('r1', 'liveGame')).rejects.toThrow('PGN fetch failed: 503');
-  });
-
-  it('throws when the game is not found in the round PGN', async () => {
-    global.fetch = mockPgnFetchWithHeaders({ r1: LIVE_GAME_PGN });
-
-    await expect(fetchGamePgnLive('r1', 'unknownGame')).rejects.toThrow('not found in round');
   });
 });

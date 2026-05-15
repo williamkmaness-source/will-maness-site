@@ -1,5 +1,5 @@
 import { DEFAULT_INTERVAL } from './BroadcastService';
-import type { TournamentAction, TournamentFormat, TournamentState } from './types';
+import type { TournamentAction, TournamentState } from './types';
 
 export const initialState: TournamentState = {
   phase: 'loading',
@@ -13,7 +13,7 @@ export const initialState: TournamentState = {
   pairings: [],
   selectedGame: null,
   upcoming: null,
-  format: 'unknown' as TournamentFormat,
+  unsupportedFormat: false,
 };
 
 export function tournamentReducer(
@@ -34,7 +34,7 @@ export function tournamentReducer(
         standings: action.standings,
         pairings: action.pairings,
         upcoming: action.upcoming,
-        format: action.format,
+        unsupportedFormat: action.unsupportedFormat,
       };
 
     case 'FETCH_EMPTY':
