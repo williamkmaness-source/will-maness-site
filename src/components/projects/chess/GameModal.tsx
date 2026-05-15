@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { defaultPieces } from 'react-chessboard';
 import { fetchGamePgn, fetchGamePgnLive, DEFAULT_INTERVAL } from './BroadcastService';
 import { ChessBoard } from './ChessBoard';
 import { ReplayControls } from './ReplayControls';
@@ -8,10 +9,10 @@ import type { GameMoveData, SelectedGame } from './types';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-// ︎ (variation selector-15) forces text presentation, suppressing iOS emoji substitution.
-const PIECE_UNICODE: Record<string, string> = {
-  p: '♟︎', n: '♞︎', b: '♝︎', r: '♜︎', q: '♛︎',
-  P: '♙︎', N: '♘︎', B: '♗︎', R: '♖︎', Q: '♕︎',
+// Maps internal piece letters to defaultPieces keys (same SVGs as the board).
+const PIECE_KEY: Record<string, keyof typeof defaultPieces> = {
+  p: 'bP', n: 'bN', b: 'bB', r: 'bR', q: 'bQ',
+  P: 'wP', N: 'wN', B: 'wB', R: 'wR', Q: 'wQ',
 };
 
 const PIECE_ORDER = ['q', 'r', 'b', 'n', 'p'];
@@ -57,10 +58,15 @@ function materialDelta(byWhite: string[], byBlack: string[]): number {
 
 function CapturedPieces({ pieces, advantage }: { pieces: string[]; advantage: number }) {
   return (
-    <div className="flex items-center gap-[2px] min-h-[18px]">
-      {pieces.map((p, i) => (
-        <span key={i} className="text-[14px] leading-none opacity-70 [font-variant-emoji:text]">{PIECE_UNICODE[p]}</span>
-      ))}
+    <div className="flex items-center gap-[1px] min-h-[16px]">
+      {pieces.map((p, i) => {
+        const PieceSvg = defaultPieces[PIECE_KEY[p]];
+        return (
+          <span key={i} className="inline-block w-[16px] h-[16px] opacity-70 shrink-0">
+            {PieceSvg && <PieceSvg />}
+          </span>
+        );
+      })}
       {advantage > 0 && (
         <span className="font-sans text-[11px] text-muted ml-[4px]">+{advantage}</span>
       )}
