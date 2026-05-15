@@ -1,4 +1,5 @@
 export type TournamentPhase = 'loading' | 'ready' | 'error' | 'empty';
+export type TournamentFormat = 'round-robin' | 'knockout' | 'unknown';
 
 export interface PlayerStanding {
   rank: number;
@@ -22,6 +23,7 @@ export interface SelectedGame {
   gameId: string;
   white: string;
   black: string;
+  isLive: boolean;
 }
 
 export interface GameMoveData {
@@ -49,7 +51,7 @@ export interface TournamentState {
   pairings: GamePairing[];
   selectedGame: SelectedGame | null;
   upcoming: UpcomingTournament | null;
-  unsupportedFormat: boolean;
+  format: TournamentFormat;
 }
 
 export type TournamentAction =
@@ -64,7 +66,7 @@ export type TournamentAction =
       standings: PlayerStanding[];
       pairings: GamePairing[];
       upcoming: UpcomingTournament | null;
-      unsupportedFormat: boolean;
+      format: TournamentFormat;
     }
   | { type: 'FETCH_EMPTY'; upcoming: UpcomingTournament | null }
   | { type: 'FETCH_ERROR' }

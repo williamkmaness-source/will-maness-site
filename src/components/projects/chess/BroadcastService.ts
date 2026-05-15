@@ -6,6 +6,7 @@ import type {
   LichessBroadcastRound,
   PlayerStanding,
   TopBroadcastResult,
+  TournamentFormat,
   UpcomingTournament,
 } from './types';
 
@@ -193,13 +194,39 @@ export function computeStandings(pgnTexts: string[]): PlayerStanding[] {
     .map((p, i) => ({ ...p, rank: i + 1 }));
 }
 
-export function detectRoundRobin(standings: PlayerStanding[], pairings: GamePairing[]): boolean {
+export function detectFormat(allPgnTexts: string[], standings: PlayerStanding[]): TournamentFormat {
   const n = standings.length;
-  if (n < 2 || pairings.length === 0) return true;
-  if (n % 2 !== 0 || pairings.length !== n / 2) return false;
+  if (n < 2 || allPgnTexts.length === 0) return 'unknown';
+
   const knownPlayers = new Set(standings.map((p) => p.name));
-  const pairingPlayers = pairings.flatMap((p) => [p.white, p.black]);
-  return new Set(pairingPlayers).size === n && pairingPlayers.every((name) => knownPlayers.has(name));
+  const perRoundPairings = allPgnTexts.map(parsePairings).filter((rp) => rp.length > 0);
+  if (perRoundPairings.length === 0) return 'unknown';
+
+  // Track unique opponent pairs and total pairings across all rounds.
+  const uniquePairs = new Set<string>();
+  let totalPairings = 0;
+  for (const roundPairings of perRoundPairings) {
+    for (const p of roundPairings) {
+      if (!knownPlayers.has(p.white) || !knownPlayers.has(p.black)) return 'unknown';
+      uniquePairs.add([p.white, p.black].sort().join('|'));
+      totalPairings++;
+    }
+  }
+
+  // Knockout: same opponents face each other across multiple rounds (match format).
+  if (uniquePairs.size < totalPairings) return 'knockout';
+
+  // Round-robin: n must be even, and every round must have exactly n/2 pairings
+  // covering all n known players with no player appearing twice.
+  if (n % 2 !== 0) return 'unknown';
+  const expectedPerRound = n / 2;
+  const validRRStructure = perRoundPairings.every((roundPairings) => {
+    if (roundPairings.length !== expectedPerRound) return false;
+    const pairingPlayers = roundPairings.flatMap((p) => [p.white, p.black]);
+    return new Set(pairingPlayers).size === n;
+  });
+
+  return validRRStructure ? 'round-robin' : 'unknown';
 }
 
 // chess.js v1 fails on multiple consecutive { } comment blocks per move (Lichess includes
@@ -245,11 +272,16 @@ function parseAnnotations(pgn: string): Array<{ eval: number | null; clock: stri
       while (j < body.length && body[j] !== '}') j++;
       const comment = body.slice(i + 1, j);
       if (current) {
-        const evalMatch = /\[%eval ([+-]?[\d.]+)/.exec(comment);
+        const evalMatch = /\[%eval (#-?\d+|[+-]?[\d.]+)/.exec(comment);
         const clkMatch = /\[%clk (\d+:\d+:\d+)/.exec(comment);
         if (evalMatch && current.eval === null) {
-          const v = parseFloat(evalMatch[1]);
-          if (!isNaN(v)) current.eval = v;
+          const raw = evalMatch[1];
+          if (raw.startsWith('#')) {
+            current.eval = raw.startsWith('#-') ? -Infinity : Infinity;
+          } else {
+            const v = parseFloat(raw);
+            if (!isNaN(v)) current.eval = v;
+          }
         }
         if (clkMatch && current.clock === null) current.clock = clkMatch[1];
       }
@@ -319,13 +351,33 @@ export async function fetchGamePgn(
   return moves;
 }
 
+export async function fetchGamePgnLive(
+  roundId: string,
+  gameId: string,
+  signal?: AbortSignal,
+): Promise<{ moves: GameMoveData[]; isComplete: boolean; pollingInterval: number }> {
+  const res = await fetch(`${LICHESS_BASE}/study/${roundId}.pgn`, { signal });
+  if (!res.ok) throw new Error(`PGN fetch failed: ${res.status}`);
+  const text = await res.text();
+  const moves = extractGameMoves(text, gameId);
+  if (!moves) throw new Error(`Game ${gameId} not found in round ${roundId}`);
+  const block = splitGames(text).find((g) => {
+    const url = /\[GameURL "([^"]+)"\]/.exec(g)?.[1] ?? /\[Site "([^"]+)"\]/.exec(g)?.[1];
+    return url?.split('/').at(-1) === gameId;
+  });
+  const result = block ? extractHeaders(block).result : undefined;
+  const isComplete = !!result && result !== '*';
+  const pollingInterval = resolvePollingInterval(res.headers);
+  return { moves, isComplete, pollingInterval };
+}
+
 export async function fetchRoundData(
   rounds: LichessBroadcastRound[],
   activeRoundId: string | null,
   signal?: AbortSignal,
-): Promise<{ standings: PlayerStanding[]; pairings: GamePairing[] }> {
+): Promise<{ standings: PlayerStanding[]; pairings: GamePairing[]; pgnTexts: string[] }> {
   const playedRounds = rounds.filter((r) => r.finished || r.ongoing);
-  if (!playedRounds.length) return { standings: [], pairings: [] };
+  if (!playedRounds.length) return { standings: [], pairings: [], pgnTexts: [] };
 
   const pgnTexts = await Promise.all(
     playedRounds.map((r) =>
@@ -341,5 +393,5 @@ export async function fetchRoundData(
   const activeIndex = playedRounds.findIndex((r) => r.id === activeRoundId);
   const pairings = activeIndex >= 0 ? parsePairings(pgnTexts[activeIndex]) : [];
 
-  return { standings, pairings };
+  return { standings, pairings, pgnTexts };
 }

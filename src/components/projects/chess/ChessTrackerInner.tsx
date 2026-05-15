@@ -81,7 +81,7 @@ export function ChessTrackerInner() {
         standings={state.standings}
         tournamentName={state.tournamentName}
         isLive={state.isLive}
-        unsupportedFormat={state.unsupportedFormat}
+        format={state.format}
       />
 
       <PairingsTable

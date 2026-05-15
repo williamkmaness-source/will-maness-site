@@ -1,16 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { fetchGamePgn } from './BroadcastService';
+import { fetchGamePgn, fetchGamePgnLive, DEFAULT_INTERVAL } from './BroadcastService';
 import { ChessBoard } from './ChessBoard';
 import { ReplayControls } from './ReplayControls';
 import type { GameMoveData, SelectedGame } from './types';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+// ︎ (variation selector-15) forces text presentation, suppressing iOS emoji substitution.
 const PIECE_UNICODE: Record<string, string> = {
-  p: '♟', n: '♞', b: '♝', r: '♜', q: '♛',
-  P: '♙', N: '♘', B: '♗', R: '♖', Q: '♕',
+  p: '♟︎', n: '♞︎', b: '♝︎', r: '♜︎', q: '♛︎',
+  P: '♙︎', N: '♘︎', B: '♗︎', R: '♖︎', Q: '♕︎',
 };
 
 const PIECE_ORDER = ['q', 'r', 'b', 'n', 'p'];
@@ -22,8 +23,9 @@ interface Props {
 
 type Status = 'loading' | 'ready' | 'error';
 
-// Convert eval (pawns) to a 0–100 white-advantage percentage.
+// Convert eval (pawns, or ±Infinity for mate) to a 0–100 white-advantage percentage.
 function evalToPercent(e: number): number {
+  if (!isFinite(e)) return e > 0 ? 100 : 0;
   return Math.round(50 + Math.min(Math.max(e, -5), 5) * 10);
 }
 
@@ -57,7 +59,7 @@ function CapturedPieces({ pieces, advantage }: { pieces: string[]; advantage: nu
   return (
     <div className="flex items-center gap-[2px] min-h-[18px]">
       {pieces.map((p, i) => (
-        <span key={i} className="text-[14px] leading-none opacity-70">{PIECE_UNICODE[p]}</span>
+        <span key={i} className="text-[14px] leading-none opacity-70 [font-variant-emoji:text]">{PIECE_UNICODE[p]}</span>
       ))}
       {advantage > 0 && (
         <span className="font-sans text-[11px] text-muted ml-[4px]">+{advantage}</span>
@@ -69,7 +71,9 @@ function CapturedPieces({ pieces, advantage }: { pieces: string[]; advantage: nu
 function EvalBar({ evalValue }: { evalValue: number | null }) {
   const pct = evalValue !== null ? evalToPercent(evalValue) : 50;
   const label = evalValue !== null
-    ? (evalValue >= 0 ? `+${evalValue.toFixed(1)}` : evalValue.toFixed(1))
+    ? !isFinite(evalValue)
+      ? (evalValue > 0 ? 'M+' : 'M−')
+      : (evalValue >= 0 ? `+${evalValue.toFixed(1)}` : evalValue.toFixed(1))
     : null;
 
   return (
@@ -172,8 +176,11 @@ export function GameModal({ game, onClose }: Props) {
   const [moves, setMoves] = useState<GameMoveData[]>([]);
   const [moveIndex, setMoveIndex] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+  const [newMoveCount, setNewMoveCount] = useState(0);
   const returnFocusRef = useRef<Element | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const movesLenRef = useRef(0);
 
   useEffect(() => {
     returnFocusRef.current = document.activeElement;
@@ -185,8 +192,9 @@ export function GameModal({ game, onClose }: Props) {
     const controller = new AbortController();
     setStatus('loading');
     setMoveIndex(0);
+    setNewMoveCount(0);
     fetchGamePgn(game.roundId, game.gameId, controller.signal)
-      .then((m) => { setMoves(m); setStatus('ready'); })
+      .then((m) => { movesLenRef.current = m.length; setMoves(m); setStatus('ready'); })
       .catch((err) => { if ((err as Error).name !== 'AbortError') setStatus('error'); });
     return () => controller.abort();
   }, [game.roundId, game.gameId, retryCount]);
@@ -199,10 +207,66 @@ export function GameModal({ game, onClose }: Props) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    function trapFocus(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+      const focusable = Array.from(
+        dialog!.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    dialog.addEventListener('keydown', trapFocus);
+    return () => dialog.removeEventListener('keydown', trapFocus);
+  }, []);
+
+  useEffect(() => {
+    if (!game.isLive || status !== 'ready') return;
+
+    let aborted = false;
+    const controller = new AbortController();
+    let timerId: ReturnType<typeof setTimeout>;
+
+    async function runPoll() {
+      if (aborted) return;
+      try {
+        const { moves: newMoves, isComplete, pollingInterval } = await fetchGamePgnLive(
+          game.roundId, game.gameId, controller.signal,
+        );
+        if (aborted) return;
+        const prevLen = movesLenRef.current;
+        movesLenRef.current = newMoves.length;
+        if (newMoves.length > prevLen) {
+          setNewMoveCount((n) => n + (newMoves.length - prevLen));
+          setMoves(newMoves);
+        }
+        if (!isComplete) timerId = setTimeout(runPoll, pollingInterval);
+      } catch (err) {
+        if (!aborted && (err as Error).name !== 'AbortError') {
+          timerId = setTimeout(runPoll, DEFAULT_INTERVAL);
+        }
+      }
+    }
+
+    timerId = setTimeout(runPoll, DEFAULT_INTERVAL);
+    return () => { aborted = true; controller.abort(); clearTimeout(timerId); };
+  }, [game.isLive, game.roundId, game.gameId, status]);
+
   const goFirst = useCallback(() => setMoveIndex(0), []);
   const goPrev  = useCallback(() => setMoveIndex((i) => Math.max(0, i - 1)), []);
   const goNext  = useCallback(() => setMoveIndex((i) => Math.min(moves.length, i + 1)), [moves.length]);
   const goLast  = useCallback(() => setMoveIndex(moves.length), [moves.length]);
+  const jumpToLatest = useCallback(() => { setMoveIndex(moves.length); setNewMoveCount(0); }, [moves.length]);
 
   const fen = moveIndex === 0 ? START_FEN : (moves[moveIndex - 1]?.fen ?? START_FEN);
 
@@ -224,6 +288,7 @@ export function GameModal({ game, onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={`${game.white} vs ${game.black}`}
@@ -241,7 +306,7 @@ export function GameModal({ game, onClose }: Props) {
             ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close game replay"
-            className="font-sans text-[20px] leading-none text-muted hover:text-ink transition-colors duration-[100ms]"
+            className="font-sans text-[20px] leading-none text-muted hover:text-ink transition-colors duration-[100ms] p-[8px] -m-[8px]"
           >
             ×
           </button>
@@ -295,6 +360,16 @@ export function GameModal({ game, onClose }: Props) {
             </div>
 
             <EvalBar evalValue={currentEval} />
+
+            {game.isLive && newMoveCount > 0 && (
+              <button
+                onClick={jumpToLatest}
+                className="w-full flex items-center justify-center gap-[6px] font-mono text-[11px] tracking-[0.04em] uppercase text-ink bg-bg-soft border border-line rounded py-[5px] mb-[6px] hover:bg-line transition-colors duration-[100ms]"
+              >
+                <span className="w-[6px] h-[6px] rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+                {newMoveCount} new {newMoveCount === 1 ? 'move' : 'moves'} — Jump to latest
+              </button>
+            )}
 
             <ReplayControls
               moveIndex={moveIndex}

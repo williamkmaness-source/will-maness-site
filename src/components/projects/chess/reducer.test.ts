@@ -27,7 +27,7 @@ const readyState: TournamentState = {
   pairings: mockPairings,
   selectedGame: null,
   upcoming: null,
-  unsupportedFormat: false,
+  format: 'round-robin' as const,
 };
 
 const successAction = {
@@ -41,7 +41,7 @@ const successAction = {
   standings: mockStandings,
   pairings: mockPairings,
   upcoming: null,
-  unsupportedFormat: false,
+  format: 'round-robin' as const,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ describe('tournamentReducer', () => {
   });
 
   it('FETCH_SUCCESS preserves selectedGame so the open modal survives polling', () => {
-    const game = { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B' };
+    const game = { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B', isLive: false };
     const withGame: TournamentState = { ...readyState, selectedGame: game };
     const next = tournamentReducer(withGame, successAction);
     expect(next.selectedGame).toEqual(game);
@@ -112,7 +112,7 @@ describe('tournamentReducer', () => {
   });
 
   it('SELECT_GAME stores the selected game', () => {
-    const game: SelectedGame = { roundId: 'r4', gameId: 'gAAA', white: 'Magnus Carlsen', black: 'Hikaru Nakamura' };
+    const game: SelectedGame = { roundId: 'r4', gameId: 'gAAA', white: 'Magnus Carlsen', black: 'Hikaru Nakamura', isLive: false };
     const next = tournamentReducer(readyState, { type: 'SELECT_GAME', game });
 
     expect(next.selectedGame).toEqual(game);
@@ -121,7 +121,7 @@ describe('tournamentReducer', () => {
   it('CLOSE_GAME clears the selected game', () => {
     const withGame: TournamentState = {
       ...readyState,
-      selectedGame: { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B' },
+      selectedGame: { roundId: 'r4', gameId: 'gAAA', white: 'A', black: 'B', isLive: false },
     };
     const next = tournamentReducer(withGame, { type: 'CLOSE_GAME' });
     expect(next.selectedGame).toBeNull();
@@ -136,14 +136,14 @@ describe('tournamentReducer', () => {
     expect(ready.pairings).toHaveLength(2);
   });
 
-  it('FETCH_SUCCESS sets unsupportedFormat false for a round-robin broadcast', () => {
+  it('FETCH_SUCCESS stores the detected format', () => {
     const next = tournamentReducer(initialState, successAction);
-    expect(next.unsupportedFormat).toBe(false);
+    expect(next.format).toBe('round-robin');
   });
 
-  it('FETCH_SUCCESS sets unsupportedFormat true for a non-round-robin broadcast', () => {
-    const next = tournamentReducer(initialState, { ...successAction, unsupportedFormat: true });
-    expect(next.unsupportedFormat).toBe(true);
+  it('FETCH_SUCCESS stores knockout format when detected', () => {
+    const next = tournamentReducer(initialState, { ...successAction, format: 'knockout' as const });
+    expect(next.format).toBe('knockout');
   });
 });
 
