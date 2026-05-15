@@ -1,0 +1,41 @@
+---
+title: "Pipeline Dashboard"
+eyebrow: "Engineering · Infrastructure"
+year: "2026"
+status: "in-progress"
+tags: ["engineering", "data"]
+summary: "A live dashboard showing the health of the data pipelines that power this site — Boston 311 and Chess tournament tracking — streamed in real time via Server-Sent Events."
+featured: false
+---
+
+<PipelineDashboard />
+
+The embedded apps on this site pull from live data sources: the [Boston CKAN API](https://data.boston.gov) for 311 data and the [Lichess Broadcasts API](https://lichess.org/api#tag/Broadcasts) for chess tournaments. This dashboard shows whether those pipelines are healthy.
+
+## How it works
+
+The dashboard connects to a [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) endpoint at `/api/pipeline-status`. On connect the server emits the current status for every pipeline, then re-emits every 10 seconds. The browser reconnects automatically on drop — no page refresh needed.
+
+The status cards show:
+
+- **Last success** — the most recent time the pipeline completed without errors
+- **Records** — how many rows were fetched or processed
+- **Health dot** — green for healthy, yellow for running, red for failed, grey for unknown
+
+## What's next
+
+Right now the endpoint emits a static shape. The next step is wiring each pipeline to a real data source:
+
+- **311 pipeline** — a nightly GitHub Actions workflow writes to Vercel KV. The endpoint reads from KV instead of the static object.
+- **Chess pipeline** — a Vercel Cron job pings the Lichess API hourly and writes a health record to KV.
+
+Both are tracked as open issues.
+
+## Stack
+
+<StackList items={[
+  { name: "Next.js Route Handler", role: "SSE endpoint — streams text/event-stream with keepalive pings", frequency: "daily" },
+  { name: "EventSource API", role: "Browser-native SSE client with auto-reconnect", frequency: "daily" },
+  { name: "React useReducer / useState", role: "Connection state and status array, no external store", frequency: "daily" },
+  { name: "Tailwind CSS", role: "Styling — uses site design tokens throughout", frequency: "daily" }
+]} />
