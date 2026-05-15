@@ -55,7 +55,7 @@ function findUpcoming(broadcasts: LichessBroadcast[]): UpcomingTournament | null
 
   if (!candidates.length) return null;
   const next = candidates[0];
-  return { name: next.tour.name, startsAt: next.rounds[0].startsAt };
+  return { name: next.tour.name, startsAt: next.rounds[0].startsAt ?? null };
 }
 
 export async function fetchTopBroadcast(

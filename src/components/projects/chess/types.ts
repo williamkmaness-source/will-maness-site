@@ -34,7 +34,7 @@ export interface GameMoveData {
 
 export interface UpcomingTournament {
   name: string;
-  startsAt: number; // Unix ms timestamp
+  startsAt: number | null; // Unix ms timestamp; null when API omits it
 }
 
 export interface TournamentState {

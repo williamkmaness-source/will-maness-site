@@ -5,7 +5,8 @@ import { TournamentStandings } from './TournamentStandings';
 import { PairingsTable } from './PairingsTable';
 import { GameModal } from './GameModal';
 
-function formatDate(ms: number): string {
+function formatDate(ms: number | null): string | null {
+  if (ms == null || !isFinite(ms)) return null;
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
@@ -37,9 +38,11 @@ export function ChessTrackerInner() {
               Next tournament
             </p>
             <p className="font-sans text-[15px] text-ink font-medium">{state.upcoming.name}</p>
-            <p className="font-sans text-[13px] text-muted mt-[2px]">
-              Starts {formatDate(state.upcoming.startsAt)}
-            </p>
+            {formatDate(state.upcoming.startsAt) && (
+              <p className="font-sans text-[13px] text-muted mt-[2px]">
+                Starts {formatDate(state.upcoming.startsAt)}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -100,9 +103,11 @@ export function ChessTrackerInner() {
             Next tournament
           </p>
           <p className="font-sans text-[15px] text-ink font-medium">{state.upcoming.name}</p>
-          <p className="font-sans text-[13px] text-muted mt-[2px]">
-            Starts {formatDate(state.upcoming.startsAt)}
-          </p>
+          {formatDate(state.upcoming.startsAt) && (
+            <p className="font-sans text-[13px] text-muted mt-[2px]">
+              Starts {formatDate(state.upcoming.startsAt)}
+            </p>
+          )}
         </div>
       )}
     </div>
