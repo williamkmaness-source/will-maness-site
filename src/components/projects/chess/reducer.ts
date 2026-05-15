@@ -13,7 +13,7 @@ export const initialState: TournamentState = {
   pairings: [],
   selectedGame: null,
   upcoming: null,
-  unsupportedFormat: false,
+  format: 'unknown' as const,
 };
 
 export function tournamentReducer(
@@ -34,7 +34,7 @@ export function tournamentReducer(
         standings: action.standings,
         pairings: action.pairings,
         upcoming: action.upcoming,
-        unsupportedFormat: action.unsupportedFormat,
+        format: action.format,
       };
 
     case 'FETCH_EMPTY':

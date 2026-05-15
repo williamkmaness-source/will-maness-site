@@ -5,7 +5,7 @@ import {
   fetchGamePgn,
   parsePairings,
   computeStandings,
-  detectRoundRobin,
+  detectFormat,
   extractGameMoves,
   DEFAULT_INTERVAL,
   BACKOFF_INTERVAL,
@@ -449,57 +449,51 @@ describe('fetchRoundData', () => {
   });
 });
 
-// ── detectRoundRobin ──────────────────────────────────────────────────────────
+// ── detectFormat ─────────────────────────────────────────────────────────────
 
-const rrStandings = [
+function makePgn(white: string, black: string, result = '1-0'): string {
+  return `[White "${white}"]\n[Black "${black}"]\n[Result "${result}"]\n\n1. e4 e5 ${result}\n\n`;
+}
+
+const fourPlayerStandings = [
   { rank: 1, name: 'Alice', points: 1, wins: 1, draws: 0, losses: 0 },
   { rank: 2, name: 'Bob', points: 0, wins: 0, draws: 0, losses: 1 },
   { rank: 3, name: 'Carol', points: 0.5, wins: 0, draws: 1, losses: 0 },
   { rank: 4, name: 'Dave', points: 0.5, wins: 0, draws: 1, losses: 0 },
 ];
 
-const rrPairings = [
-  { gameId: 'g1', white: 'Alice', black: 'Bob', result: '1-0', isCompleted: true },
-  { gameId: 'g2', white: 'Carol', black: 'Dave', result: '1/2-1/2', isCompleted: true },
+const twoPlayerStandings = [
+  { rank: 1, name: 'Alice', points: 1, wins: 1, draws: 0, losses: 0 },
+  { rank: 2, name: 'Bob', points: 0, wins: 0, draws: 0, losses: 1 },
 ];
 
-describe('detectRoundRobin', () => {
-  it('returns true for a well-formed round-robin round', () => {
-    expect(detectRoundRobin(rrStandings, rrPairings)).toBe(true);
+describe('detectFormat', () => {
+  it('returns round-robin for distinct pairings across rounds', () => {
+    const round1 = makePgn('Alice', 'Bob') + makePgn('Carol', 'Dave');
+    const round2 = makePgn('Alice', 'Carol') + makePgn('Bob', 'Dave');
+    expect(detectFormat([round1, round2], fourPlayerStandings)).toBe('round-robin');
   });
 
-  it('returns true when there are no pairings yet (insufficient data)', () => {
-    expect(detectRoundRobin(rrStandings, [])).toBe(true);
+  it('returns knockout when the same pair appears in multiple rounds', () => {
+    const round1 = makePgn('Alice', 'Bob');
+    const round2 = makePgn('Alice', 'Bob');
+    expect(detectFormat([round1, round2], twoPlayerStandings)).toBe('knockout');
   });
 
-  it('returns true when standings are empty (insufficient data)', () => {
-    expect(detectRoundRobin([], rrPairings)).toBe(true);
+  it('returns unknown for a single round with odd player count', () => {
+    const round1 = makePgn('Alice', 'Bob');
+    const threePlayerStandings = [...twoPlayerStandings, { rank: 3, name: 'Carol', points: 0, wins: 0, draws: 0, losses: 0 }];
+    expect(detectFormat([round1], threePlayerStandings)).toBe('unknown');
   });
 
-  it('returns false when pairings count does not equal n/2', () => {
-    const extraPairing = [...rrPairings, { gameId: 'g3', white: 'Alice', black: 'Carol', result: '*', isCompleted: false }];
-    expect(detectRoundRobin(rrStandings, extraPairing)).toBe(false);
+  it('returns unknown when fewer than 2 players', () => {
+    expect(detectFormat([makePgn('Alice', 'Bob')], [])).toBe('unknown');
   });
 
-  it('returns false when a pairing player is not in standings', () => {
-    const unknownPairing = [
-      { gameId: 'g1', white: 'Alice', black: 'Unknown', result: '1-0', isCompleted: true },
-      { gameId: 'g2', white: 'Carol', black: 'Dave', result: '1/2-1/2', isCompleted: true },
-    ];
-    expect(detectRoundRobin(rrStandings, unknownPairing)).toBe(false);
-  });
-
-  it('returns false when the same player appears twice in pairings', () => {
-    const duplicatePairing = [
-      { gameId: 'g1', white: 'Alice', black: 'Bob', result: '1-0', isCompleted: true },
-      { gameId: 'g2', white: 'Alice', black: 'Dave', result: '1/2-1/2', isCompleted: true },
-    ];
-    expect(detectRoundRobin(rrStandings, duplicatePairing)).toBe(false);
-  });
-
-  it('returns false when player count is odd', () => {
-    const oddStandings = rrStandings.slice(0, 3);
-    expect(detectRoundRobin(oddStandings, rrPairings)).toBe(false);
+  it('returns unknown for mismatched game count per round', () => {
+    const round1 = makePgn('Alice', 'Bob') + makePgn('Carol', 'Dave');
+    const round2 = makePgn('Alice', 'Carol'); // only 1 game, not n/2=2
+    expect(detectFormat([round1, round2], fourPlayerStandings)).toBe('unknown');
   });
 });
 
