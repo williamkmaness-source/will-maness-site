@@ -34,24 +34,20 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
           {pairings.map((pairing) => {
             const inProgress = pairing.result === '*';
             const clickable = activeRoundId !== null && (pairing.isCompleted || inProgress);
+            const selectGame = clickable
+              ? () => onSelectGame({ roundId: activeRoundId!, gameId: pairing.gameId, white: pairing.white, black: pairing.black, isLive: inProgress })
+              : undefined;
             return (
               <tr
                 key={pairing.gameId}
-                onClick={
-                  clickable
-                    ? () =>
-                        onSelectGame({
-                          roundId: activeRoundId!,
-                          gameId: pairing.gameId,
-                          white: pairing.white,
-                          black: pairing.black,
-                        })
-                    : undefined
-                }
+                onClick={selectGame}
+                onKeyDown={selectGame ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectGame(); } } : undefined}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
                 className={[
                   'border-b border-line transition-colors duration-[100ms]',
                   clickable
-                    ? 'cursor-pointer hover:bg-bg-soft'
+                    ? 'cursor-pointer hover:bg-bg-soft focus-visible:outline-none focus-visible:bg-bg-soft'
                     : 'cursor-default',
                 ].join(' ')}
               >

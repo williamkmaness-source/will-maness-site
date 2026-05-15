@@ -22,6 +22,7 @@ export interface SelectedGame {
   gameId: string;
   white: string;
   black: string;
+  isLive: boolean;
 }
 
 export interface GameMoveData {
@@ -37,6 +38,8 @@ export interface UpcomingTournament {
   startsAt: number | null; // Unix ms timestamp; null when API omits it
 }
 
+export type TournamentFormat = 'round-robin' | 'knockout' | 'unknown';
+
 export interface TournamentState {
   phase: TournamentPhase;
   isLive: boolean;
@@ -49,7 +52,7 @@ export interface TournamentState {
   pairings: GamePairing[];
   selectedGame: SelectedGame | null;
   upcoming: UpcomingTournament | null;
-  unsupportedFormat: boolean;
+  format: TournamentFormat;
 }
 
 export type TournamentAction =
@@ -64,7 +67,7 @@ export type TournamentAction =
       standings: PlayerStanding[];
       pairings: GamePairing[];
       upcoming: UpcomingTournament | null;
-      unsupportedFormat: boolean;
+      format: TournamentFormat;
     }
   | { type: 'FETCH_EMPTY'; upcoming: UpcomingTournament | null }
   | { type: 'FETCH_ERROR' }
