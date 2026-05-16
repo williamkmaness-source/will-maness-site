@@ -66,7 +66,7 @@ function buildHeadline(
 }
 
 export function HeadlineCard() {
-  const { data, loading, error, selectedRequestType, selectedMetric } =
+  const { data, loading, error, retry, selectedRequestType, selectedMetric } =
     useTracker();
 
   const activeType = useMemo(() => {
@@ -99,9 +99,17 @@ export function HeadlineCard() {
         <p className="font-mono text-[12px] tracking-[0.06em] uppercase text-clay mb-[20px]">
           Boston 311 Equity Tracker
         </p>
-        <p className="font-sans text-[17px] text-muted">
+        <p className="font-sans text-[17px] text-muted mb-[20px]">
           {error ?? "No data available for this period."}
         </p>
+        {error && (
+          <button
+            onClick={retry}
+            className="font-sans text-[13px] font-medium text-ink border border-line-strong rounded-[4px] px-[16px] py-[7px] hover:bg-bg-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Try again
+          </button>
+        )}
       </div>
     );
   }

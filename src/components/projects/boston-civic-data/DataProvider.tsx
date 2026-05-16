@@ -17,6 +17,7 @@ type ContextValue = {
   data: TrackerData | null;
   loading: boolean;
   error: string | null;
+  retry: () => void;
   selectedRequestType: string | null;
   setSelectedRequestType: (type: string) => void;
   selectedMetric: Metric;
@@ -53,9 +54,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<TrackerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [selectedRequestType, setSelectedRequestType] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<Metric>("medianDays");
   const [backlogView, setBacklogView] = useState<BacklogView>("absolute");
+
+  function retry() {
+    setData(null);
+    setError(null);
+    setLoading(true);
+    setRetryCount((n) => n + 1);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,7 +86,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [retryCount]);
 
   return (
     <TrackerContext.Provider
@@ -85,6 +94,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         data,
         loading,
         error,
+        retry,
         selectedRequestType,
         setSelectedRequestType,
         selectedMetric,

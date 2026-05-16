@@ -17,7 +17,7 @@ function formatDate(iso: string): string {
 }
 
 export function BacklogHeadlineCard() {
-  const { data, loading, error, selectedRequestType } = useTracker();
+  const { data, loading, error, retry, selectedRequestType } = useTracker();
 
   const activeType = useMemo(() => {
     if (!data) return null;
@@ -56,9 +56,17 @@ export function BacklogHeadlineCard() {
         <p className="font-mono text-[12px] tracking-[0.06em] uppercase text-clay mb-[20px]">
           Boston 311 Backlog Flow
         </p>
-        <p className="font-sans text-[17px] text-muted">
+        <p className="font-sans text-[17px] text-muted mb-[20px]">
           {error ?? "No opened or closed cases for this category in the last 30 days."}
         </p>
+        {error && (
+          <button
+            onClick={retry}
+            className="font-sans text-[13px] font-medium text-ink border border-line-strong rounded-[4px] px-[16px] py-[7px] hover:bg-bg-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Try again
+          </button>
+        )}
       </div>
     );
   }

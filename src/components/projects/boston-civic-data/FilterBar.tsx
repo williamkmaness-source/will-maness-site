@@ -4,6 +4,7 @@
 // variant="backlog"  → shows Absolute / Net view toggle for the backlog chart.
 // variant="ranking"  → shows Median days / On-time rate toggle for the ranking chart.
 
+import { useState } from "react";
 import { useTracker, MIN_NEIGHBORHOODS } from "./DataProvider";
 import type { Metric, BacklogView } from "./DataProvider";
 
@@ -30,8 +31,22 @@ export function FilterBar({ variant = "ranking" }: Props) {
     backlogView,
     setBacklogView,
   } = useTracker();
+  const [announcement, setAnnouncement] = useState("");
 
-  if (loading || !data) return null;
+  if (loading || !data) {
+    return (
+      <div className="flex flex-wrap gap-x-[32px] gap-y-[16px] items-end py-[24px] border-t border-line mb-[8px]">
+        <div>
+          <div className="h-[11px] w-[88px] bg-line rounded-[2px] mb-[8px] animate-pulse" />
+          <div className="h-[34px] w-[200px] bg-line rounded-[4px] animate-pulse" />
+        </div>
+        <div>
+          <div className="h-[11px] w-[48px] bg-line rounded-[2px] mb-[8px] animate-pulse" />
+          <div className="h-[34px] w-[200px] bg-line rounded-[4px] animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   const options = data.requestTypes.filter(
     (rt) => rt.neighborhoods.length >= MIN_NEIGHBORHOODS
@@ -65,9 +80,13 @@ export function FilterBar({ variant = "ranking" }: Props) {
             ? (Object.keys(BACKLOG_VIEW_LABELS) as BacklogView[]).map((view) => (
                 <button
                   key={view}
-                  onClick={() => setBacklogView(view)}
+                  aria-pressed={backlogView === view}
+                  onClick={() => {
+                    setBacklogView(view);
+                    setAnnouncement(`View: ${BACKLOG_VIEW_LABELS[view]}`);
+                  }}
                   className={[
-                    "font-sans text-[13px] px-[12px] py-[6px] transition-colors",
+                    "font-sans text-[13px] px-[12px] py-[6px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset",
                     backlogView === view
                       ? "bg-accent text-bg"
                       : "text-muted hover:text-ink hover:bg-bg-soft",
@@ -79,9 +98,13 @@ export function FilterBar({ variant = "ranking" }: Props) {
             : (Object.keys(METRIC_LABELS) as Metric[]).map((metric) => (
                 <button
                   key={metric}
-                  onClick={() => setSelectedMetric(metric)}
+                  aria-pressed={selectedMetric === metric}
+                  onClick={() => {
+                    setSelectedMetric(metric);
+                    setAnnouncement(`Metric: ${METRIC_LABELS[metric]}`);
+                  }}
                   className={[
-                    "font-sans text-[13px] px-[12px] py-[6px] transition-colors",
+                    "font-sans text-[13px] px-[12px] py-[6px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset",
                     selectedMetric === metric
                       ? "bg-accent text-bg"
                       : "text-muted hover:text-ink hover:bg-bg-soft",
@@ -92,6 +115,14 @@ export function FilterBar({ variant = "ranking" }: Props) {
               ))}
         </div>
       </div>
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </span>
     </div>
   );
 }

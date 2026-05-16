@@ -9,6 +9,7 @@ import { useReducer, useMemo, useState, useRef, useEffect } from 'react';
 import { trainerReducer, initialState } from './reducer';
 import { BlackNode, TheoryNode, WhiteNode } from './types';
 import theoryTree from '../../../../content/projects/vienna-trainer/theory.json';
+import { playPieceSound } from '@/lib/playPieceSound';
 
 // react-chessboard does not re-export handler types from its package root — inline them.
 type PieceDropHandlerArgs = { piece: unknown; sourceSquare: string; targetSquare: string | null };
@@ -58,6 +59,13 @@ export function ViennaTrainer() {
     const id = setTimeout(() => dispatch({ type: 'APPLY_BLACK' }), BLACK_RESPONSE_DELAY_MS);
     return () => clearTimeout(id);
   }, [state.phase]);
+
+  // Play a piece-landing sound on every accepted move (white or black).
+  // moveHistory grows only on valid moves — wrong attempts don't trigger this.
+  useEffect(() => {
+    if (state.moveHistory.length === 0) return;
+    playPieceSound();
+  }, [state.moveHistory.length]);
 
   const isWhiteTurn = state.currentNode.turn === 'w' && state.phase === 'playing';
 
