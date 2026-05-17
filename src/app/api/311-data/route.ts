@@ -5,6 +5,15 @@
 // which feeds both the closed-case equity metrics and the BacklogFlowChart's opened/closed
 // counts. Closed-status filtering happens in the aggregator, not the SQL.
 // Response is CDN-cached for 24 hours.
+//
+// Resilience:
+//   • fetchFromResource retries up to MAX_RETRIES times with exponential backoff on
+//     transient failures (network errors, 5xx). 4xx errors are not retried.
+//   • Each paginated fetch has a per-page deadline via AbortController + setTimeout.
+//   • fetchWindow only pulls year resources whose year-range overlaps the query window,
+//     eliminating unnecessary fetches (e.g. a May 2026 window never touches 2024 data).
+//   • If one year resource fails after retries, fetchWindow returns partial data and sets
+//     `degraded: true` on the response. A full failure still returns 502.
 
 import {
   ALL_CATEGORIES,
@@ -16,6 +25,9 @@ import {
 const CKAN_SQL_URL =
   "https://data.boston.gov/api/3/action/datastore_search_sql";
 const PAGE_SIZE = 50000;
+const MAX_RETRIES = 3;
+// Per-page fetch deadline — a single stuck CKAN call won't consume the whole Vercel timeout.
+const PAGE_TIMEOUT_MS = 20_000;
 
 // Per-year resource IDs from Analyze Boston. Indexed by case-open year.
 const YEAR_RESOURCES: ReadonlyArray<readonly [number, string]> = [
@@ -75,12 +87,47 @@ async function fetchFromResource(
     ].join(" ");
 
     const url = `${CKAN_SQL_URL}?sql=${encodeURIComponent(sql)}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error(`CKAN API responded ${res.status}: ${res.statusText}`);
+
+    let json: CKANResponse | undefined;
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
+
+      try {
+        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+        clearTimeout(timer);
+
+        // 4xx errors are not retried — they indicate a bad query or missing resource.
+        if (res.status >= 400 && res.status < 500) {
+          throw new Error(`CKAN API responded ${res.status}: ${res.statusText}`);
+        }
+        if (!res.ok) {
+          throw new Error(`CKAN API responded ${res.status}: ${res.statusText}`);
+        }
+
+        json = await res.json() as CKANResponse;
+        lastError = undefined;
+        break;
+      } catch (err) {
+        clearTimeout(timer);
+        const e = err instanceof Error ? err : new Error(String(err));
+        // Don't retry on 4xx or if it's our own schema error.
+        if (e.message.startsWith("CKAN API responded 4")) throw e;
+        lastError = e;
+
+        if (attempt < MAX_RETRIES) {
+          // Exponential backoff: 500ms, 1000ms, 2000ms …
+          await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+        }
+      }
     }
 
-    const json: CKANResponse = await res.json();
+    if (!json) {
+      throw lastError ?? new Error("fetchFromResource: exhausted retries");
+    }
+
     if (!json.success || !json.result) {
       const msg = json.error?.message ?? "Unknown CKAN error";
       throw new Error(`CKAN API error: ${msg}`);
@@ -94,16 +141,52 @@ async function fetchFromResource(
   return rows;
 }
 
-// Fetches all year resources for a window in parallel.
-async function fetchWindow(start: Date, end: Date): Promise<RawRow[]> {
+type FetchWindowResult = {
+  rows: RawRow[];
+  degraded: boolean;
+};
+
+// Fetches only the year resources whose year overlaps the query window, avoiding
+// unnecessary fetches (e.g. a May 2026 window never touches 2024 data).
+// Partial failures (one resource down) return the surviving rows with degraded: true.
+// Total failure re-throws.
+async function fetchWindow(start: Date, end: Date): Promise<FetchWindowResult> {
   const startDate = toDateStr(start);
   const endDate = toDateStr(end);
-  const results = await Promise.all(
-    YEAR_RESOURCES.map(([, resourceId]) =>
+
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+
+  // Include a resource if its year is within [startYear - 1, endYear].
+  // The -1 handles cases where a case opened in late December of the prior year
+  // but closed within the window.
+  const relevant = YEAR_RESOURCES.filter(
+    ([year]) => year >= startYear - 1 && year <= endYear
+  );
+
+  const settled = await Promise.allSettled(
+    relevant.map(([, resourceId]) =>
       fetchFromResource(resourceId, startDate, endDate)
     )
   );
-  return results.flat();
+
+  const rows: RawRow[] = [];
+  let degraded = false;
+
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      rows.push(...result.value);
+    } else {
+      degraded = true;
+      console.error("311 data: resource fetch failed:", result.reason);
+    }
+  }
+
+  if (rows.length === 0 && degraded) {
+    throw new Error("All CKAN resources failed; cannot produce a response.");
+  }
+
+  return { rows, degraded };
 }
 
 // Per-neighborhood aggregated data for a single window.
@@ -292,18 +375,18 @@ export async function GET() {
   );
 
   try {
-    const [currentRows, priorRows] = await Promise.all([
+    const [currentResult, priorResult] = await Promise.all([
       fetchWindow(windowStart, windowEnd),
       fetchWindow(priorStart, priorEnd),
     ]);
 
     const currentWindow = computeWindow(
-      currentRows,
+      currentResult.rows,
       windowStart.getTime(),
       windowEnd.getTime()
     );
     const priorWindow = computeWindow(
-      priorRows,
+      priorResult.rows,
       priorStart.getTime(),
       priorEnd.getTime()
     );
@@ -314,11 +397,14 @@ export async function GET() {
     const featured =
       requestTypes.find((r) => r.requestType !== ALL_CATEGORIES) ?? null;
 
-    const payload: TrackerData = {
+    const degraded = currentResult.degraded || priorResult.degraded;
+
+    const payload: TrackerData & { degraded?: boolean } = {
       windowStart: windowStart.toISOString(),
       windowEnd: windowEnd.toISOString(),
       featured,
       requestTypes,
+      ...(degraded && { degraded: true }),
     };
 
     return Response.json(payload, {
