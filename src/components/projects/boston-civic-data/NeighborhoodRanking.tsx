@@ -196,7 +196,10 @@ export function NeighborhoodRanking() {
           <YAxis
             type="category"
             dataKey="neighborhood"
-            width={148}
+            width={164}
+            tickFormatter={(name: string) =>
+              name.length > 20 ? name.slice(0, 19) + "…" : name
+            }
             tick={{
               fontSize: 12,
               fontFamily: fontFamilies.sans,
