@@ -18,20 +18,23 @@ That's the project. The [Boston 311 Equity Tracker](/work/boston-civic-data) com
 
 ## How it works
 
-The city's data now lives on the Analyze Boston CKAN platform, split into per-year CSV resources. The tracker queries that API directly at request time using a SQL interface, pulls a rolling 30-day window of cases, and aggregates everything server-side.
+The city's data lives on the Analyze Boston CKAN platform, split into per-year CSV resources. A GitHub Actions job runs every night, queries the API for a rolling 30-day window of cases, aggregates everything server-side, and upserts the results into a Neon Postgres database. The Next.js route handler reads from Postgres on every request — fast, consistent, and decoupled from CKAN availability. If the database is empty (e.g. on first deploy), it falls back to a live CKAN fetch.
 
 A few deliberate choices in the methodology:
 
-- **Median, not mean.** A single outlier case open for two years drags the mean badly. Median gives a better read on what a typical resident actually experiences.
-- **`reason` field, not `type`.** The `reason` field is more stable across years and produces cleaner groupings for filtering.
+- **Median, not mean.** A single outlier case open for two years drags the mean. Median gives a better read on what a typical resident actually experiences.
+- **`reason` field, not `type`.** More stable across years and produces cleaner groupings for filtering.
+- **Per-request retry with backoff.** The nightly pipeline retries each CKAN call up to three times with exponential backoff before failing — CKAN can be slow, and a transient hiccup shouldn't abort the run.
 
-The API response is cached at the CDN edge for 24 hours, so the data is fresh daily without hitting the CKAN endpoint on every page load.
+Each nightly run accumulates a snapshot row per neighborhood per request type. That history is what will eventually power trend analysis over time.
 
 ## Stack
 
 <StackList items={[
   { name: "Next.js", role: "App Router — tracker lives as a page within this site", frequency: "daily" },
-  { name: "Recharts", role: "Horizontal bar chart and trend line, both responsive", frequency: "occasional" },
+  { name: "Neon Postgres", role: "Nightly snapshots — route handler reads from DB, not live CKAN", frequency: "daily" },
+  { name: "GitHub Actions", role: "Nightly pipeline cron — fetches, aggregates, upserts to Postgres", frequency: "daily" },
+  { name: "Recharts", role: "Horizontal bar chart and flow chart, both responsive", frequency: "occasional" },
   { name: "CKAN API", role: "Analyze Boston data source — SQL queries over public CSVs", frequency: "occasional" },
   { name: "Tailwind CSS", role: "Styling — uses this site's design tokens throughout", frequency: "daily" },
   { name: "Vercel CDN", role: "24-hour edge cache on the route handler response", frequency: "daily" }
@@ -39,6 +42,6 @@ The API response is cached at the CDN edge for 24 hours, so the data is fresh da
 
 ## What's next
 
-A couple basic visuals are live here. Next step is likely an aggregation of total tickets by month over time and tracking of the median closure time over time.
+The nightly pipeline is now accumulating snapshots. Once a few weeks of data have built up, the next phase is a trend chart showing how median closure time has moved for the best and worst-performing neighborhoods — turning a point-in-time equity gap into a trajectory. There's also a pipeline health dashboard in progress that surfaces pipeline status and data freshness in real time.
 
 [Open the tracker →](/work/boston-civic-data)
