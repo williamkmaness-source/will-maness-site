@@ -1,0 +1,52 @@
+---
+title: "Vendor intelligence feed"
+eyebrow: "Data · Engineering · AI"
+year: "2026"
+status: "in-progress"
+tags: ["data", "engineering", "ai"]
+summary: "An automated pipeline that tracks feature launches, pricing changes, partnerships, and architectural shifts from 15 data integration companies — extracted daily by Claude and surfaced in a live filterable feed."
+featured: true
+---
+
+The data integration space moves fast. Fivetran ships a new connector, dbt Labs drops a pricing tier, Airbyte announces a partnership — and that information is scattered across blog posts, GitHub release notes, and press pages with no easy way to track it at scale. This pipeline changes that.
+
+Every morning, a GitHub Actions job scrapes the blog and GitHub releases pages for 15 companies, sends the raw content to Claude Haiku for structured extraction, and upserts the results into Neon Postgres. A Next.js page reads from Postgres and renders the feed — filterable by company and entity type, with state reflected in the URL.
+
+## How it works
+
+The pipeline runs in three stages:
+
+1. **Scrape** — `getSourceUrls()` assembles a list of URLs per company, preferring RSS feeds where available and falling back to the blog root. For companies with GitHub release notes, the releases page is also included. Each page is fetched and content-hashed (SHA-256). If the hash matches what's already in Postgres, the page is skipped — no unnecessary extraction.
+
+2. **Extract** — Pending pages are passed to Claude Haiku via a single `tool_use` call that returns all four entity types at once: feature launches, pricing changes, partnerships, and architectural shifts. The tool schema enforces date format, required fields, and company attribution. Missing or malformed fields default gracefully rather than abort the run.
+
+3. **Upsert** — Extracted entities are written to four typed tables (`vf_feature_launches`, `vf_pricing_changes`, `vf_partnerships`, `vf_architectural_shifts`). Duplicate source URLs are resolved by updating only when the content hash changes.
+
+A separate weekly cron resets any failed pages back to `pending` and re-runs extraction — so transient scrape failures are recovered automatically without manual intervention.
+
+## The feed
+
+The [live feed](/work/vendor_feed) shows everything the pipeline has extracted. Filters for company and entity type are multi-select and URL-reflected — so filtered views are shareable. The company list is derived from actual data, so companies with no extracted entities don't appear as empty filter options.
+
+> First pipeline run returned 321 entities across 12 companies. The retry worker recovered all 3 initially-failed pages on its first pass.
+
+## Stack
+
+<StackList items={[
+  { name: "GitHub Actions", role: "Daily cron at 7am UTC — scrape, extract, upsert pipeline", frequency: "daily" },
+  { name: "Claude Haiku", role: "Structured entity extraction — single tool_use call per page extracts all 4 entity types", frequency: "daily" },
+  { name: "Neon Postgres", role: "Entity storage — 5 tables with vf_ prefix, SHA-256 deduplication", frequency: "daily" },
+  { name: "Next.js", role: "App Router server component reads from Postgres; client component handles filters", frequency: "daily" },
+  { name: "Zod", role: "Company config validation and pipeline schema enforcement", frequency: "daily" },
+  { name: "Tailwind CSS", role: "Feed UI — uses site design tokens throughout", frequency: "daily" }
+]} />
+
+## What's next
+
+The pipeline is accumulating daily. A few things are planned for phase 2:
+
+- **Payload cap** — the feed query is currently uncapped; a LIMIT + total count label will keep the RSC payload bounded as the dataset grows.
+- **Pipeline status card** — the existing [Pipeline Dashboard](/work/pipeline-dashboard) will get a vendor feed card showing last run time, entity count, and health.
+- **Validations** — record count floors, staleness checks, and deduplication audits to surface data quality issues rather than silently pass bad data.
+
+[Open the feed →](/work/vendor_feed)
