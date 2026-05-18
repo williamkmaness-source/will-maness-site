@@ -2,6 +2,7 @@
 // Usage: pnpm tsx scripts/pipeline-vendor-feed.ts <scrape|extract|retry>
 
 import { config } from "dotenv";
+import { neon } from "@neondatabase/serverless";
 
 config({ path: ".env.local" });
 
@@ -12,9 +13,17 @@ if (!["scrape", "extract", "retry"].includes(command)) {
   process.exit(1);
 }
 
-// Stubs — replaced by issues #3, #4/#5, #6
+const connectionString = process.env.POSTGRES_URL_NON_POOLING;
+if (!connectionString) {
+  console.error("POSTGRES_URL_NON_POOLING is not set");
+  process.exit(1);
+}
+
+const sql = neon(connectionString);
+
 async function scrape() {
-  console.log("scrape: not yet implemented (issue #3)");
+  const { runScraper } = await import("../src/lib/vendor-feed/scraper");
+  await runScraper(sql);
 }
 
 async function extract() {

@@ -27,7 +27,7 @@ async function main() {
       status        vendor_feed_status NOT NULL DEFAULT 'pending',
       error_message text,
       scraped_at    timestamptz NOT NULL DEFAULT now(),
-      UNIQUE (source_url, content_hash)
+      UNIQUE (source_url)
     )
   `;
 

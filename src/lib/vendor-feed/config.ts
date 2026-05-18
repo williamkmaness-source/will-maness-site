@@ -5,6 +5,7 @@ export const CompanySchema = z.object({
   blog_url: z.string().url(),
   github_org: z.string().min(1),
   rss_url: z.string().url().optional(),
+  github_releases_url: z.string().url().optional(),
 });
 
 export type Company = z.infer<typeof CompanySchema>;
@@ -20,6 +21,7 @@ const rawCompanies = [
     blog_url: "https://airbyte.com/blog",
     github_org: "airbytehq",
     rss_url: "https://airbyte.com/blog/rss.xml",
+    github_releases_url: "https://github.com/airbytehq/airbyte/releases",
   },
   {
     name: "Stitch",
@@ -40,6 +42,7 @@ const rawCompanies = [
     name: "dbt Labs",
     blog_url: "https://www.getdbt.com/blog",
     github_org: "dbt-labs",
+    github_releases_url: "https://github.com/dbt-labs/dbt-core/releases",
   },
   {
     name: "Coalesce",
@@ -50,26 +53,31 @@ const rawCompanies = [
     name: "Astronomer",
     blog_url: "https://www.astronomer.io/blog",
     github_org: "astronomer",
+    github_releases_url: "https://github.com/astronomer/astro-cli/releases",
   },
   {
     name: "Mage",
     blog_url: "https://www.mage.ai/blog",
     github_org: "mage-ai",
+    github_releases_url: "https://github.com/mage-ai/mage-ai/releases",
   },
   {
     name: "Prefect",
     blog_url: "https://www.prefect.io/blog",
     github_org: "PrefectHQ",
+    github_releases_url: "https://github.com/PrefectHQ/prefect/releases",
   },
   {
     name: "Unstructured",
     blog_url: "https://unstructured.io/blog",
     github_org: "Unstructured-IO",
+    github_releases_url: "https://github.com/Unstructured-IO/unstructured/releases",
   },
   {
     name: "LlamaIndex",
     blog_url: "https://www.llamaindex.ai/blog",
     github_org: "run-llama",
+    github_releases_url: "https://github.com/run-llama/llama_index/releases",
   },
   {
     name: "Chunkr",
