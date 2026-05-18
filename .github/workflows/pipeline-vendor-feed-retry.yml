@@ -1,0 +1,23 @@
+name: Vendor Feed Weekly Retry
+on:
+  schedule:
+    - cron: '0 8 * * 0'   # 8am UTC every Sunday
+  workflow_dispatch:
+
+jobs:
+  retry-failed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - run: pnpm install --frozen-lockfile
+      - name: Reset failed rows and re-extract
+        run: pnpm tsx scripts/pipeline-vendor-feed.ts retry
+        env:
+          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
