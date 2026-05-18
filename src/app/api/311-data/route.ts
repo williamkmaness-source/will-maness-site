@@ -23,9 +23,11 @@ import {
 const CACHE_HEADER = "s-maxage=86400, stale-while-revalidate";
 
 // Reads the latest snapshot from Postgres. Returns null if the table is empty.
-// Uses the pooled connection string (fine for route handlers).
+// Prefers POSTGRES_URL (pooled, faster for read queries in route handlers)
+// but falls back to POSTGRES_URL_NON_POOLING if only that is configured.
 async function readFromPostgres(): Promise<TrackerData | null> {
-  const connectionString = process.env.POSTGRES_URL;
+  const connectionString =
+    process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
   if (!connectionString) return null;
 
   const sql = neon(connectionString);

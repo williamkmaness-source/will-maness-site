@@ -8,18 +8,16 @@ import { neon } from "@neondatabase/serverless";
 
 config({ path: ".env.local" });
 
-import { CKAN_SQL_URL, PAGE_SIZE, YEAR_RESOURCES, toDateStr } from "../src/lib/boston-311";
-
-type RawCaseRow = {
-  case_enquiry_id?: string | null;
-  neighborhood?: string | null;
-  reason?: string | null;
-  subject?: string | null;
-  open_dt?: string | null;
-  closed_dt?: string | null;
-  on_time?: string | null;
-  sla_target_dt?: string | null;
-};
+import {
+  CKAN_SQL_URL,
+  PAGE_SIZE,
+  YEAR_RESOURCES,
+  toDateStr,
+  assertIsoDate,
+  type RawCaseRow,
+  prepareCaseEvent,
+  batchUpsertCaseEvents,
+} from "../src/lib/boston-311";
 
 const MAX_RETRIES = 3;
 const BACKFILL_START = "2024-01-01";
@@ -29,6 +27,9 @@ async function fetchCaseEvents(
   startDate: string,
   endDate: string
 ): Promise<RawCaseRow[]> {
+  assertIsoDate(startDate);
+  assertIsoDate(endDate);
+
   const rows: RawCaseRow[] = [];
   let offset = 0;
 
@@ -113,70 +114,17 @@ async function main() {
   for (const [year, resourceId] of YEAR_RESOURCES) {
     console.log(`[${year}] Fetching resource ${resourceId}...`);
     const rows = await fetchCaseEvents(resourceId, BACKFILL_START, backfillEnd);
-    console.log(`\n[${year}] Fetched ${rows.length} rows. Upserting...`);
+    console.log(`\n[${year}] Fetched ${rows.length} rows. Preparing upsert...`);
 
-    let upserted = 0;
-    const BATCH = 200;
+    const records = rows
+      .map(prepareCaseEvent)
+      .filter((r): r is NonNullable<typeof r> => r !== null);
 
-    for (let i = 0; i < rows.length; i += BATCH) {
-      const batch = rows.slice(i, i + BATCH);
-
-      for (const r of batch) {
-        if (!r.case_enquiry_id || !r.neighborhood?.trim() || !r.open_dt) continue;
-
-        const openDate = r.open_dt.slice(0, 10);
-        const closeDate = r.closed_dt ? r.closed_dt.slice(0, 10) : null;
-
-        let daysToClose: number | null = null;
-        if (r.closed_dt && r.open_dt) {
-          const diff = new Date(r.closed_dt).getTime() - new Date(r.open_dt).getTime();
-          if (diff >= 0) daysToClose = Math.round((diff / 86400000) * 100) / 100;
-        }
-
-        let slaDays: number | null = null;
-        if (r.sla_target_dt && r.open_dt) {
-          const diff = new Date(r.sla_target_dt).getTime() - new Date(r.open_dt).getTime();
-          if (diff >= 0) slaDays = Math.round((diff / 86400000) * 100) / 100;
-        }
-
-        const onTime =
-          r.on_time === "ONTIME" ? true : r.on_time === "OVERDUE" ? false : null;
-
-        await sql`
-          INSERT INTO case_events (
-            case_id, neighborhood, request_type, department,
-            open_date, close_date, days_to_close, on_time, sla_days
-          ) VALUES (
-            ${r.case_enquiry_id},
-            ${r.neighborhood.trim()},
-            ${r.reason ?? "Unknown"},
-            ${r.subject ?? null},
-            ${openDate},
-            ${closeDate},
-            ${daysToClose},
-            ${onTime},
-            ${slaDays}
-          )
-          ON CONFLICT (case_id) DO UPDATE SET
-            neighborhood  = EXCLUDED.neighborhood,
-            request_type  = EXCLUDED.request_type,
-            department    = EXCLUDED.department,
-            open_date     = EXCLUDED.open_date,
-            close_date    = EXCLUDED.close_date,
-            days_to_close = EXCLUDED.days_to_close,
-            on_time       = EXCLUDED.on_time,
-            sla_days      = EXCLUDED.sla_days
-        `;
-        upserted++;
-      }
-
-      if (i % 2000 === 0 && i > 0) {
-        process.stdout.write(`\r  ${upserted}/${rows.length} upserted...`);
-      }
-    }
+    console.log(`[${year}] ${records.length} valid records. Batch upserting...`);
+    const upserted = await batchUpsertCaseEvents(sql as any, records);
 
     totalProcessed += upserted;
-    console.log(`\n[${year}] Done — ${upserted} rows upserted.`);
+    console.log(`[${year}] Done — ${upserted} rows upserted.`);
   }
 
   const elapsed = computeElapsed(Date.now() - start);

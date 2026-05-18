@@ -13,29 +13,22 @@ import {
   PAGE_SIZE,
   YEAR_RESOURCES,
   toDateStr,
+  assertIsoDate,
+  type RawCaseRow,
+  prepareCaseEvent,
+  batchUpsertCaseEvents,
 } from "../src/lib/boston-311";
-
-// Raw row shape for case-level upserts (superset of the existing RawRow type).
-type RawCaseRow = {
-  case_enquiry_id?: string | null;
-  neighborhood?: string | null;
-  reason?: string | null;
-  subject?: string | null;
-  open_dt?: string | null;
-  closed_dt?: string | null;
-  on_time?: string | null;
-  sla_target_dt?: string | null;
-};
 
 const MAX_RETRIES = 3;
 
-// Fetches cases where open_dt or closed_dt falls within [startDate, endDate].
-// Selects the full field set needed for case_events upserts.
 async function fetchCasesInWindow(
   resourceId: string,
   startDate: string,
   endDate: string
 ): Promise<RawCaseRow[]> {
+  assertIsoDate(startDate);
+  assertIsoDate(endDate);
+
   const rows: RawCaseRow[] = [];
   let offset = 0;
 
@@ -110,7 +103,6 @@ async function main() {
   const sql = neon(connectionString);
 
   // Fetch the last 2 days to catch both newly-opened and recently-closed cases.
-  // The 2-day buffer handles late-closing cases that may close after their open_dt window.
   const windowEnd = new Date();
   const windowStart = new Date(windowEnd.getTime() - 2 * 24 * 60 * 60 * 1000);
   const startDate = toDateStr(windowStart);
@@ -133,58 +125,12 @@ async function main() {
     console.log(`  ${rows.length} cases from ${year}.`);
   }
 
-  console.log(`Upserting ${allRows.length} cases to case_events...`);
+  const records = allRows
+    .map(prepareCaseEvent)
+    .filter((r): r is NonNullable<typeof r> => r !== null);
 
-  let upserted = 0;
-  for (const r of allRows) {
-    if (!r.case_enquiry_id || !r.neighborhood?.trim() || !r.open_dt) continue;
-
-    const openDate = r.open_dt.slice(0, 10);
-    const closeDate = r.closed_dt ? r.closed_dt.slice(0, 10) : null;
-
-    let daysToClose: number | null = null;
-    if (r.closed_dt && r.open_dt) {
-      const diff = new Date(r.closed_dt).getTime() - new Date(r.open_dt).getTime();
-      if (diff >= 0) daysToClose = Math.round((diff / 86400000) * 100) / 100;
-    }
-
-    let slaDays: number | null = null;
-    if (r.sla_target_dt && r.open_dt) {
-      const diff = new Date(r.sla_target_dt).getTime() - new Date(r.open_dt).getTime();
-      if (diff >= 0) slaDays = Math.round((diff / 86400000) * 100) / 100;
-    }
-
-    const onTime =
-      r.on_time === "ONTIME" ? true : r.on_time === "OVERDUE" ? false : null;
-
-    await sql`
-      INSERT INTO case_events (
-        case_id, neighborhood, request_type, department,
-        open_date, close_date, days_to_close, on_time, sla_days
-      ) VALUES (
-        ${r.case_enquiry_id},
-        ${r.neighborhood.trim()},
-        ${r.reason ?? "Unknown"},
-        ${r.subject ?? null},
-        ${openDate},
-        ${closeDate},
-        ${daysToClose},
-        ${onTime},
-        ${slaDays}
-      )
-      ON CONFLICT (case_id) DO UPDATE SET
-        neighborhood  = EXCLUDED.neighborhood,
-        request_type  = EXCLUDED.request_type,
-        department    = EXCLUDED.department,
-        open_date     = EXCLUDED.open_date,
-        close_date    = EXCLUDED.close_date,
-        days_to_close = EXCLUDED.days_to_close,
-        on_time       = EXCLUDED.on_time,
-        sla_days      = EXCLUDED.sla_days
-    `;
-    upserted++;
-  }
-
+  console.log(`Batch upserting ${records.length} cases to case_events...`);
+  const upserted = await batchUpsertCaseEvents(sql as any, records);
   console.log(`case_events upsert complete: ${upserted} rows.`);
 
   // Rebuild request_type_meta from the full case_events table.

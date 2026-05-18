@@ -39,6 +39,15 @@ export type CKANResponse = {
   error?: { message?: string };
 };
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function assertIsoDate(value: string): string {
+  if (!ISO_DATE_RE.test(value)) {
+    throw new Error(`Invalid ISO date string: "${value}". Expected YYYY-MM-DD.`);
+  }
+  return value;
+}
+
 export function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -62,15 +71,15 @@ export function inWindow(
   return Number.isFinite(t) && t >= start && t <= end;
 }
 
-// startDate/endDate must be ISO YYYY-MM-DD strings — we derive them from Date.toISOString
-// in the caller, which guarantees no characters that would break the SQL string. Do not pass
-// untrusted input here without a stricter validator (CKAN does not parameterize this endpoint).
-// Retries up to MAX_RETRIES times with exponential backoff (2s, 4s, 8s) on transient failures.
+// Validates and builds the CKAN SQL query. Date params are validated against ISO_DATE_RE
+// to prevent SQL injection (CKAN's datastore_search_sql does not support parameterized queries).
 export async function fetchFromResource(
   resourceId: string,
   startDate: string,
   endDate: string
 ): Promise<RawRow[]> {
+  assertIsoDate(startDate);
+  assertIsoDate(endDate);
   const rows: RawRow[] = [];
   let offset = 0;
 
@@ -358,4 +367,128 @@ export function mergeWindows(
   const all = allIdx >= 0 ? results.splice(allIdx, 1)[0] : null;
   results.sort((a, b) => b.totalCases - a.totalCases);
   return all ? [all, ...results] : results;
+}
+
+// --- Case-event upsert utilities (shared by backfill + pipeline scripts) ---
+
+export type RawCaseRow = {
+  case_enquiry_id?: string | null;
+  neighborhood?: string | null;
+  reason?: string | null;
+  subject?: string | null;
+  open_dt?: string | null;
+  closed_dt?: string | null;
+  on_time?: string | null;
+  sla_target_dt?: string | null;
+};
+
+export type CaseEventRecord = {
+  case_id: string;
+  neighborhood: string;
+  request_type: string;
+  department: string | null;
+  open_date: string;
+  close_date: string | null;
+  days_to_close: number | null;
+  on_time: boolean | null;
+  sla_days: number | null;
+};
+
+export function prepareCaseEvent(r: RawCaseRow): CaseEventRecord | null {
+  if (!r.case_enquiry_id || !r.neighborhood?.trim() || !r.open_dt) return null;
+
+  const openDate = r.open_dt.slice(0, 10);
+  const closeDate = r.closed_dt ? r.closed_dt.slice(0, 10) : null;
+
+  let daysToClose: number | null = null;
+  if (r.closed_dt && r.open_dt) {
+    const diff = new Date(r.closed_dt).getTime() - new Date(r.open_dt).getTime();
+    if (diff >= 0) daysToClose = Math.round((diff / 86400000) * 100) / 100;
+  }
+
+  let slaDays: number | null = null;
+  if (r.sla_target_dt && r.open_dt) {
+    const diff = new Date(r.sla_target_dt).getTime() - new Date(r.open_dt).getTime();
+    if (diff >= 0) slaDays = Math.round((diff / 86400000) * 100) / 100;
+  }
+
+  const onTime =
+    r.on_time === "ONTIME" ? true : r.on_time === "OVERDUE" ? false : null;
+
+  return {
+    case_id: r.case_enquiry_id,
+    neighborhood: r.neighborhood.trim(),
+    request_type: r.reason ?? "Unknown",
+    department: r.subject ?? null,
+    open_date: openDate,
+    close_date: closeDate,
+    days_to_close: daysToClose,
+    on_time: onTime,
+    sla_days: slaDays,
+  };
+}
+
+// Neon's tagged-template driver doesn't support multi-row VALUES in a single tagged call,
+// so we build a raw SQL string with positional $N params and call sql(query, params).
+// Batches of BATCH_SIZE rows are sent in a single round-trip.
+export const UPSERT_BATCH_SIZE = 200;
+
+// The Neon driver's tagged-template function also supports raw (query, params) calls.
+// We use a minimal callable type to avoid coupling to Neon's generic type parameters.
+type SqlExecutor = (query: string, params: (string | number | boolean | null)[]) => Promise<unknown>;
+
+export async function batchUpsertCaseEvents(
+  sql: SqlExecutor,
+  records: CaseEventRecord[]
+): Promise<number> {
+  if (records.length === 0) return 0;
+
+  let upserted = 0;
+
+  for (let i = 0; i < records.length; i += UPSERT_BATCH_SIZE) {
+    const batch = records.slice(i, i + UPSERT_BATCH_SIZE);
+    const params: (string | number | boolean | null)[] = [];
+    const valuesClauses: string[] = [];
+
+    for (const rec of batch) {
+      const offset = params.length;
+      params.push(
+        rec.case_id,
+        rec.neighborhood,
+        rec.request_type,
+        rec.department,
+        rec.open_date,
+        rec.close_date,
+        rec.days_to_close,
+        rec.on_time,
+        rec.sla_days
+      );
+      valuesClauses.push(
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, ` +
+          `$${offset + 5}::date, $${offset + 6}::date, $${offset + 7}::numeric, ` +
+          `$${offset + 8}::boolean, $${offset + 9}::numeric)`
+      );
+    }
+
+    const query = `
+      INSERT INTO case_events (
+        case_id, neighborhood, request_type, department,
+        open_date, close_date, days_to_close, on_time, sla_days
+      ) VALUES ${valuesClauses.join(", ")}
+      ON CONFLICT (case_id) DO UPDATE SET
+        neighborhood  = EXCLUDED.neighborhood,
+        request_type  = EXCLUDED.request_type,
+        department    = EXCLUDED.department,
+        open_date     = EXCLUDED.open_date,
+        close_date    = EXCLUDED.close_date,
+        days_to_close = EXCLUDED.days_to_close,
+        on_time       = EXCLUDED.on_time,
+        sla_days      = EXCLUDED.sla_days
+    `;
+
+    await sql(query, params);
+    upserted += batch.length;
+  }
+
+  return upserted;
 }
