@@ -13,8 +13,12 @@ async function main() {
 
   const sql = neon(connectionString);
 
+  // CREATE TYPE has no IF NOT EXISTS in Postgres — use DO block to swallow duplicate_object
   await sql`
-    CREATE TYPE IF NOT EXISTS vendor_feed_status AS ENUM ('pending', 'extracted', 'failed')
+    DO $$ BEGIN
+      CREATE TYPE vendor_feed_status AS ENUM ('pending', 'extracted', 'failed');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
   `;
 
   await sql`
