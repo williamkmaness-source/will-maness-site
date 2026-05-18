@@ -119,6 +119,75 @@ export function HeadlineCard() {
   const cityLabel =
     selectedMetric === "medianDays" ? "City median" : "City on-time rate";
 
+  // SLA-enriched lede: only when a specific type is selected, metric is median days,
+  // and the API returned a slaTarget for this request type.
+  const slaTarget = !isAll ? activeType.slaTarget : null;
+  const showSlaLede =
+    selectedMetric === "medianDays" &&
+    headline !== null &&
+    slaTarget !== null;
+
+  function renderMedianDaysLede() {
+    if (!headline) return null;
+
+    if (showSlaLede && slaTarget !== null) {
+      const worstDays = headline.worst.medianDays;
+      const bestDays = headline.best.medianDays;
+      const delta = worstDays - slaTarget;
+
+      if (delta > 0) {
+        // Worst neighborhood exceeds SLA — accountability framing
+        return (
+          <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
+            <span className="text-accent">{headline.worst.neighborhood}</span>
+            {"'"}s median{" "}
+            <span className="italic">{requestLabel}</span> response is{" "}
+            <span className="text-clay">{formatDays(worstDays)}</span> —{" "}
+            {formatDays(delta)} past the city{"'"}s {slaTarget}-day target.{" "}
+            <span className="text-accent">{headline.best.neighborhood}</span>{" "}
+            closes the same requests in {formatDays(bestDays)}.
+          </p>
+        );
+      } else {
+        // All neighborhoods within SLA — positive framing
+        const underBy = Math.abs(delta);
+        return (
+          <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
+            <span className="text-accent">{headline.best.neighborhood}</span>{" "}
+            closes{" "}
+            <span className="italic">{requestLabel}</span> requests in{" "}
+            <span className="text-clay">{formatDays(bestDays)}</span> —{" "}
+            {formatDays(underBy)} under the city{"'"}s {slaTarget}-day target.
+            The slowest neighborhood,{" "}
+            <span className="text-accent">{headline.worst.neighborhood}</span>,
+            takes {formatDays(worstDays)}.
+          </p>
+        );
+      }
+    }
+
+    // Standard relative-comparison lede (All categories or no slaTarget)
+    if (headline.ratio !== null) {
+      return (
+        <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
+          Residents in{" "}
+          <span className="text-accent">{headline.worst.neighborhood}</span>{" "}
+          wait{" "}
+          <span className="text-clay">{formatMultiplier(headline.ratio)}</span>{" "}
+          longer than residents in{" "}
+          <span className="text-accent">{headline.best.neighborhood}</span>{" "}
+          {isAll ? (
+            <>for <span className="italic">{requestLabel}</span> to be resolved.</>
+          ) : (
+            <>for the same <span className="italic">{requestLabel}</span> request to be resolved.</>
+          )}
+        </p>
+      );
+    }
+
+    return null;
+  }
+
   return (
     <div className="py-[64px]">
       <p className="font-mono text-[12px] leading-[1.5] tracking-[0.06em] uppercase text-clay mb-[24px]">
@@ -126,22 +195,14 @@ export function HeadlineCard() {
       </p>
 
       {headline ? (
-        selectedMetric === "medianDays" && headline.ratio !== null ? (
-          <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
-            Residents in{" "}
-            <span className="text-accent">{headline.worst.neighborhood}</span>{" "}
-            wait{" "}
-            <span className="text-clay">
-              {formatMultiplier(headline.ratio)}
-            </span>{" "}
-            longer than residents in{" "}
-            <span className="text-accent">{headline.best.neighborhood}</span>{" "}
-            {isAll ? (
-              <>for <span className="italic">{requestLabel}</span> to be resolved.</>
-            ) : (
-              <>for the same <span className="italic">{requestLabel}</span> request to be resolved.</>
-            )}
-          </p>
+        selectedMetric === "medianDays" ? (
+          renderMedianDaysLede() ?? (
+            <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
+              Not enough neighborhood data to compute an equity gap for{" "}
+              <span className="italic">{requestLabel}</span> requests in this
+              period.
+            </p>
+          )
         ) : selectedMetric === "onTimeRate" ? (
           <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
             Boston resolves{" "}

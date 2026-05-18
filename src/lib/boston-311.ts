@@ -354,6 +354,8 @@ export function mergeWindows(
 
     results.push({
       requestType,
+      department: null,
+      slaTarget: null,
       equityGap: curr.equityGap,
       cityMedian: curr.cityMedian,
       totalCases: curr.totalCases,

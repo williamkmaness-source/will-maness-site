@@ -1,10 +1,8 @@
 // route.ts — Equity Tracker API route.
-// Attempts to serve the latest snapshot from Postgres; falls back to live CKAN fetch.
-// Fetches two 30-day windows in parallel (current + prior year) for YoY comparison.
-// Note: Analyze Boston migrated from Socrata to CKAN/OpenGov; data is split per-year by
-// case-open year. We pull every case where open_dt OR closed_dt falls in the window,
-// which feeds both the closed-case equity metrics and the BacklogFlowChart's opened/closed
-// counts. Closed-status filtering happens in the aggregator, not the SQL.
+// Primary path: compute metrics live from case_events using PERCENTILE_CONT,
+// joined with request_type_meta for department/slaTarget fields.
+// Fallback: read pre-aggregated snapshots table (no department/slaTarget).
+// Returns 503 if both stores are empty.
 // Response is CDN-cached for 24 hours.
 
 import { neon } from "@neondatabase/serverless";
@@ -14,63 +12,236 @@ import {
   type RequestTypeMetrics,
   type TrackerData,
 } from "@/components/projects/boston-civic-data/types";
-import {
-  fetchWindow,
-  computeWindow,
-  mergeWindows,
-} from "@/lib/boston-311";
+import { toDateStr } from "@/lib/boston-311";
 
 const CACHE_HEADER = "s-maxage=86400, stale-while-revalidate";
 
-// Reads the latest snapshot from Postgres. Returns null if the table is empty.
-// Prefers POSTGRES_URL (pooled, faster for read queries in route handlers)
-// but falls back to POSTGRES_URL_NON_POOLING if only that is configured.
-async function readFromPostgres(): Promise<TrackerData | null> {
-  const connectionString =
-    process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
-  if (!connectionString) return null;
+// Using any for the neon function parameter type to avoid generic variance issues
+// in helper functions. The concrete sql value is always NeonQueryFunction<false, false>.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SqlFn = any;
 
-  const sql = neon(connectionString);
+// DB row shapes used for explicit casts on query results.
+type NbRow = {
+  neighborhood: string;
+  request_type: string;
+  median_days: string | null;
+  on_time_rate: string | null;
+  case_count: string;
+  opened_count: string;
+  closed_count: string;
+  department?: string | null;
+  sla_days?: string | null;
+};
+type CityRow = { request_type: string; city_median: string | null; total_cases: string };
+type AllCityRow = { city_median: string | null; total_cases: string };
+type SnapshotRow = {
+  neighborhood: string;
+  request_type: string;
+  median_days: string | null;
+  on_time_rate: string | null;
+  case_count: string | null;
+  opened_count: string | null;
+  closed_count: string | null;
+  city_median: string | null;
+  equity_gap: string | null;
+  total_cases: string | null;
+  yoy_equity_gap: string | null;
+};
 
-  const rows = await sql`
+function computeEquityGap(neighborhoods: NeighborhoodStat[]): number | null {
+  const withDays = neighborhoods
+    .map((n) => n.medianDays)
+    .filter((d) => d > 0)
+    .sort((a, b) => b - a);
+  const worst = withDays[0] ?? null;
+  const best = withDays[withDays.length - 1] ?? null;
+  return worst !== null && best !== null && best > 0 ? worst / best : null;
+}
+
+// Queries case_events (with PERCENTILE_CONT) and request_type_meta for a
+// 30-day window. Returns null if case_events is empty.
+async function readFromCaseEvents(
+  sql: SqlFn,
+  startDate: string,
+  endDate: string
+): Promise<RequestTypeMetrics[] | null> {
+  const [{ cnt }] = await sql`SELECT COUNT(*)::int AS cnt FROM case_events`;
+  if (Number(cnt) === 0) return null;
+
+  // All four data queries can run in parallel once we know the table has rows.
+  const [nbRows, cityRows, allNbRows, allCityArr] = (await Promise.all([
+    // Per-neighborhood, per-request-type metrics + request_type_meta join
+    sql`
+      SELECT
+        ce.neighborhood,
+        ce.request_type,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ce.days_to_close)          AS median_days,
+        AVG(ce.on_time::int)                                                    AS on_time_rate,
+        COUNT(*) FILTER (WHERE ce.close_date BETWEEN ${startDate}::date AND ${endDate}::date) AS case_count,
+        COUNT(*) FILTER (WHERE ce.open_date  BETWEEN ${startDate}::date AND ${endDate}::date) AS opened_count,
+        COUNT(*) FILTER (WHERE ce.close_date BETWEEN ${startDate}::date AND ${endDate}::date) AS closed_count,
+        MAX(rtm.department)                                                      AS department,
+        MAX(rtm.sla_days)                                                        AS sla_days
+      FROM case_events ce
+      LEFT JOIN request_type_meta rtm ON rtm.request_type = ce.request_type
+      WHERE (ce.open_date  BETWEEN ${startDate}::date AND ${endDate}::date
+          OR ce.close_date BETWEEN ${startDate}::date AND ${endDate}::date)
+      GROUP BY ce.neighborhood, ce.request_type
+    `,
+    // City-level per-request-type (for city median + total cases)
+    sql`
+      SELECT
+        request_type,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_to_close) AS city_median,
+        COUNT(*) FILTER (WHERE close_date BETWEEN ${startDate}::date AND ${endDate}::date) AS total_cases
+      FROM case_events
+      WHERE (open_date  BETWEEN ${startDate}::date AND ${endDate}::date
+          OR close_date BETWEEN ${startDate}::date AND ${endDate}::date)
+      GROUP BY request_type
+    `,
+    // Per-neighborhood across ALL request types (for ALL_CATEGORIES)
+    sql`
+      SELECT
+        neighborhood,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_to_close) AS median_days,
+        AVG(on_time::int)                                            AS on_time_rate,
+        COUNT(*) FILTER (WHERE close_date BETWEEN ${startDate}::date AND ${endDate}::date) AS case_count,
+        COUNT(*) FILTER (WHERE open_date  BETWEEN ${startDate}::date AND ${endDate}::date) AS opened_count,
+        COUNT(*) FILTER (WHERE close_date BETWEEN ${startDate}::date AND ${endDate}::date) AS closed_count
+      FROM case_events
+      WHERE (open_date  BETWEEN ${startDate}::date AND ${endDate}::date
+          OR close_date BETWEEN ${startDate}::date AND ${endDate}::date)
+      GROUP BY neighborhood
+    `,
+    // City-level all-categories
+    sql`
+      SELECT
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_to_close) AS city_median,
+        COUNT(*) FILTER (WHERE close_date BETWEEN ${startDate}::date AND ${endDate}::date) AS total_cases
+      FROM case_events
+      WHERE (open_date  BETWEEN ${startDate}::date AND ${endDate}::date
+          OR close_date BETWEEN ${startDate}::date AND ${endDate}::date)
+    `,
+  ])) as [NbRow[], CityRow[], NbRow[], AllCityRow[]];
+
+  const allCityRow = allCityArr[0];
+
+  // City-level lookup by request type
+  const cityByType = new Map<
+    string,
+    { cityMedian: number | null; totalCases: number }
+  >();
+  for (const r of cityRows) {
+    cityByType.set(r.request_type as string, {
+      cityMedian: r.city_median != null ? Number(r.city_median) : null,
+      totalCases: Number(r.total_cases),
+    });
+  }
+
+  // Group neighborhood rows by request type
+  const nbByType = new Map<string, NbRow[]>();
+  for (const r of nbRows) {
+    const rt = r.request_type as string;
+    if (!nbByType.has(rt)) nbByType.set(rt, []);
+    nbByType.get(rt)!.push(r);
+  }
+
+  const requestTypes: RequestTypeMetrics[] = [];
+
+  for (const [requestType, rows] of nbByType) {
+    const neighborhoods: NeighborhoodStat[] = rows
+      .map((r) => ({
+        neighborhood: r.neighborhood as string,
+        medianDays: Number(r.median_days ?? 0),
+        onTimeRate: Number(r.on_time_rate ?? 0),
+        count: Number(r.case_count),
+        openedCount: Number(r.opened_count),
+        closedCount: Number(r.closed_count),
+      }))
+      .sort((a, b) => b.medianDays - a.medianDays);
+
+    const city = cityByType.get(requestType);
+    const first = rows[0];
+
+    requestTypes.push({
+      requestType,
+      department: (first.department as string | null) ?? null,
+      slaTarget: first.sla_days != null ? Number(first.sla_days) : null,
+      equityGap: computeEquityGap(neighborhoods),
+      cityMedian: city?.cityMedian ?? null,
+      totalCases: city?.totalCases ?? 0,
+      neighborhoods,
+      yoyEquityGap: null,
+    });
+  }
+
+  // Build ALL_CATEGORIES entry
+  const allNeighborhoods: NeighborhoodStat[] = allNbRows
+    .map((r) => ({
+      neighborhood: r.neighborhood as string,
+      medianDays: Number(r.median_days ?? 0),
+      onTimeRate: Number(r.on_time_rate ?? 0),
+      count: Number(r.case_count),
+      openedCount: Number(r.opened_count),
+      closedCount: Number(r.closed_count),
+    }))
+    .sort((a, b) => b.medianDays - a.medianDays);
+
+  const allEntry: RequestTypeMetrics = {
+    requestType: ALL_CATEGORIES,
+    department: null,
+    slaTarget: null,
+    equityGap: computeEquityGap(allNeighborhoods),
+    cityMedian:
+      allCityRow?.city_median != null ? Number(allCityRow.city_median) : null,
+    totalCases:
+      allCityRow?.total_cases != null ? Number(allCityRow.total_cases) : 0,
+    neighborhoods: allNeighborhoods,
+    yoyEquityGap: null,
+  };
+
+  requestTypes.sort((a, b) => b.totalCases - a.totalCases);
+  return [allEntry, ...requestTypes];
+}
+
+// Fallback: read from legacy snapshots table. department/slaTarget not available.
+async function readFromSnapshots(
+  sql: SqlFn
+): Promise<RequestTypeMetrics[] | null> {
+  const rows = (await sql`
     SELECT * FROM snapshots
     WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots)
-  `;
+  `) as SnapshotRow[];
 
   if (rows.length === 0) return null;
 
-  // Group rows by request_type to reconstruct RequestTypeMetrics[].
-  const byType = new Map<string, typeof rows>();
+  const byType = new Map<string, SnapshotRow[]>();
   for (const row of rows) {
     const rt = row.request_type as string;
     if (!byType.has(rt)) byType.set(rt, []);
     byType.get(rt)!.push(row);
   }
 
-  // Pull window bounds from any row.
-  const anyRow = rows[0];
-  const windowStart = new Date(anyRow.window_start as string).toISOString();
-  const windowEnd = new Date(anyRow.window_end as string).toISOString();
-
   const requestTypes: RequestTypeMetrics[] = [];
 
   for (const [requestType, typeRows] of byType) {
-    const neighborhoods: NeighborhoodStat[] = typeRows.map((r) => ({
-      neighborhood: r.neighborhood as string,
-      medianDays: Number(r.median_days ?? 0),
-      onTimeRate: Number(r.on_time_rate ?? 0),
-      count: Number(r.case_count ?? 0),
-      openedCount: Number(r.opened_count ?? 0),
-      closedCount: Number(r.closed_count ?? 0),
-    }));
+    const neighborhoods: NeighborhoodStat[] = typeRows
+      .map((r) => ({
+        neighborhood: r.neighborhood as string,
+        medianDays: Number(r.median_days ?? 0),
+        onTimeRate: Number(r.on_time_rate ?? 0),
+        count: Number(r.case_count ?? 0),
+        openedCount: Number(r.opened_count ?? 0),
+        closedCount: Number(r.closed_count ?? 0),
+      }))
+      .sort((a, b) => b.medianDays - a.medianDays);
 
-    // Sort neighborhoods by medianDays desc — matches mergeWindows output shape.
-    neighborhoods.sort((a, b) => b.medianDays - a.medianDays);
-
-    // Type-level fields are identical across all neighborhood rows; read from first.
     const first = typeRows[0];
     requestTypes.push({
       requestType,
+      department: null,
+      slaTarget: null,
       equityGap: first.equity_gap != null ? Number(first.equity_gap) : null,
       cityMedian: first.city_median != null ? Number(first.city_median) : null,
       totalCases: Number(first.total_cases ?? 0),
@@ -80,88 +251,77 @@ async function readFromPostgres(): Promise<TrackerData | null> {
     });
   }
 
-  // Reconstruct sort order: ALL_CATEGORIES first, then by totalCases desc.
   const allIdx = requestTypes.findIndex((r) => r.requestType === ALL_CATEGORIES);
   const all = allIdx >= 0 ? requestTypes.splice(allIdx, 1)[0] : null;
   requestTypes.sort((a, b) => b.totalCases - a.totalCases);
-  const sorted = all ? [all, ...requestTypes] : requestTypes;
-
-  const featured =
-    sorted.find((r) => r.requestType !== ALL_CATEGORIES) ?? null;
-
-  return {
-    windowStart,
-    windowEnd,
-    featured,
-    requestTypes: sorted,
-  };
+  return all ? [all, ...requestTypes] : requestTypes;
 }
 
 export async function GET() {
-  // Attempt Postgres read first.
-  try {
-    const cached = await readFromPostgres();
-    if (cached) {
-      return Response.json(cached, {
-        headers: { "Cache-Control": CACHE_HEADER },
-      });
-    }
-    // Empty table — fall through to live CKAN fetch.
-  } catch (err) {
-    // Postgres unavailable — log and fall through to CKAN.
-    console.warn("311 route: Postgres read failed, falling back to CKAN:", err);
+  const connectionString =
+    process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
+
+  if (!connectionString) {
+    return Response.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  // Live CKAN fetch (fallback path).
+  const sql = neon(connectionString);
+
   const windowEnd = new Date();
-  const windowStart = new Date(
-    windowEnd.getTime() - 30 * 24 * 60 * 60 * 1000
-  );
+  const windowStart = new Date(windowEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
   const priorEnd = new Date(windowEnd.getTime() - 365 * 24 * 60 * 60 * 1000);
   const priorStart = new Date(
     windowStart.getTime() - 365 * 24 * 60 * 60 * 1000
   );
 
+  const startDate = toDateStr(windowStart);
+  const endDate = toDateStr(windowEnd);
+  const priorStartDate = toDateStr(priorStart);
+  const priorEndDate = toDateStr(priorEnd);
+
   try {
-    const [currentResult, priorResult] = await Promise.all([
-      fetchWindow(windowStart, windowEnd),
-      fetchWindow(priorStart, priorEnd),
-    ]);
+    let current = await readFromCaseEvents(sql, startDate, endDate);
 
-    const currentWindow = computeWindow(
-      currentResult.rows,
-      windowStart.getTime(),
-      windowEnd.getTime()
-    );
-    const priorWindow = computeWindow(
-      priorResult.rows,
-      priorStart.getTime(),
-      priorEnd.getTime()
-    );
-    const requestTypes = mergeWindows(currentWindow, priorWindow);
+    if (!current) {
+      // Fallback to legacy snapshots if case_events is empty.
+      current = await readFromSnapshots(sql);
+    }
 
-    // The "featured" type is the most common single category — the one the editorial
-    // lede should fall back to if "All categories" isn't suitable. Skip the pooled entry.
+    if (!current) {
+      return Response.json(
+        {
+          error:
+            "No pipeline data available. Check back after the first pipeline run.",
+        },
+        { status: 503 }
+      );
+    }
+
+    // YoY equity gap — run prior-year window in parallel with the current request.
+    const prior = await readFromCaseEvents(sql, priorStartDate, priorEndDate);
+    if (prior) {
+      const priorByType = new Map(prior.map((r) => [r.requestType, r]));
+      for (const r of current) {
+        r.yoyEquityGap = priorByType.get(r.requestType)?.equityGap ?? null;
+      }
+    }
+
     const featured =
-      requestTypes.find((r) => r.requestType !== ALL_CATEGORIES) ?? null;
+      current.find((r) => r.requestType !== ALL_CATEGORIES) ?? null;
 
-    const degraded = currentResult.degraded || priorResult.degraded;
-
-    const payload: TrackerData & { degraded?: boolean } = {
+    const payload: TrackerData = {
       windowStart: windowStart.toISOString(),
       windowEnd: windowEnd.toISOString(),
       featured,
-      requestTypes,
-      ...(degraded && { degraded: true }),
+      requestTypes: current,
     };
 
     return Response.json(payload, {
-      headers: {
-        "Cache-Control": CACHE_HEADER,
-      },
+      headers: { "Cache-Control": CACHE_HEADER },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("311 API:", err);
     return Response.json({ error: message }, { status: 502 });
   }
 }
