@@ -12,6 +12,12 @@ import {
 } from "./db";
 
 const MAX_CONTENT_CHARS = 60_000;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizeDate(val: unknown): string | null {
+  if (typeof val !== "string" || !ISO_DATE_RE.test(val)) return null;
+  return val;
+}
 
 export function stripHtml(html: string): string {
   return html
@@ -173,14 +179,15 @@ ${cleaned}`,
     throw new Error("Claude did not return a tool_use block");
   }
 
-  const input = toolUse.input as ExtractedEntities;
-  for (const key of ["feature_launches", "pricing_changes", "partnerships", "architectural_shifts"] as const) {
-    if (!Array.isArray(input[key])) {
-      throw new Error(`Claude returned malformed tool input: ${key} is not an array`);
-    }
-  }
+  const raw = toolUse.input as Record<string, unknown>;
 
-  return input;
+  // Defensive: if Claude omits or mis-types a field, default to empty array
+  return {
+    feature_launches: Array.isArray(raw.feature_launches) ? (raw.feature_launches as ExtractedFeatureLaunch[]) : [],
+    pricing_changes: Array.isArray(raw.pricing_changes) ? (raw.pricing_changes as ExtractedPricingChange[]) : [],
+    partnerships: Array.isArray(raw.partnerships) ? (raw.partnerships as ExtractedPartnership[]) : [],
+    architectural_shifts: Array.isArray(raw.architectural_shifts) ? (raw.architectural_shifts as ExtractedArchitecturalShift[]) : [],
+  };
 }
 
 // ── Per-page extraction ───────────────────────────────────────────────────────
@@ -199,7 +206,7 @@ export async function extractFromPage(
         company: rawPage.company,
         productName: e.product_name,
         description: e.description,
-        releaseDate: e.release_date ?? null,
+        releaseDate: normalizeDate(e.release_date),
         sourceUrl: rawPage.source_url,
       });
     }
@@ -210,7 +217,7 @@ export async function extractFromPage(
         company: rawPage.company,
         description: e.description,
         direction: e.direction ?? null,
-        effectiveDate: e.effective_date ?? null,
+        effectiveDate: normalizeDate(e.effective_date),
         sourceUrl: rawPage.source_url,
       });
     }
@@ -222,7 +229,7 @@ export async function extractFromPage(
         partnerCompany: e.partner_company,
         integrationType: e.integration_type ?? null,
         description: e.description,
-        announcedDate: e.announced_date ?? null,
+        announcedDate: normalizeDate(e.announced_date),
         sourceUrl: rawPage.source_url,
       });
     }
@@ -234,7 +241,7 @@ export async function extractFromPage(
         fromTechnology: e.from_technology ?? null,
         toTechnology: e.to_technology ?? null,
         description: e.description,
-        announcedDate: e.announced_date ?? null,
+        announcedDate: normalizeDate(e.announced_date),
         sourceUrl: rawPage.source_url,
       });
     }
