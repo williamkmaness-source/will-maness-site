@@ -32,7 +32,11 @@ async function extract() {
 }
 
 async function retry() {
-  console.log("retry: not yet implemented (issue #6)");
+  const { resetFailedToPending } = await import("../src/lib/vendor-feed/db");
+  const { runExtractor } = await import("../src/lib/vendor-feed/extractor");
+  const reset = await resetFailedToPending(sql);
+  console.log(`[retry] reset ${reset} failed row(s) to pending`);
+  await runExtractor(sql);
 }
 
 const steps: Record<string, () => Promise<void>> = { scrape, extract, retry };

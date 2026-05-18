@@ -80,6 +80,80 @@ export async function insertFeatureLaunch(
   `;
 }
 
+// ── Pricing changes ──────────────────────────────────────────────────────────
+
+export interface PricingChangeData {
+  rawPageId: number;
+  company: string;
+  description: string;
+  direction: string | null;
+  effectiveDate: string | null;
+  sourceUrl: string;
+}
+
+export async function insertPricingChange(
+  sql: NeonQueryFunction<false, false>,
+  data: PricingChangeData
+): Promise<void> {
+  await sql`
+    INSERT INTO vf_pricing_changes
+      (raw_page_id, company, description, direction, effective_date, source_url)
+    VALUES
+      (${data.rawPageId}, ${data.company}, ${data.description},
+       ${data.direction}, ${data.effectiveDate}, ${data.sourceUrl})
+  `;
+}
+
+// ── Partnerships ─────────────────────────────────────────────────────────────
+
+export interface PartnershipData {
+  rawPageId: number;
+  company: string;
+  partnerCompany: string;
+  integrationType: string | null;
+  description: string;
+  announcedDate: string | null;
+  sourceUrl: string;
+}
+
+export async function insertPartnership(
+  sql: NeonQueryFunction<false, false>,
+  data: PartnershipData
+): Promise<void> {
+  await sql`
+    INSERT INTO vf_partnerships
+      (raw_page_id, company, partner_company, integration_type, description, announced_date, source_url)
+    VALUES
+      (${data.rawPageId}, ${data.company}, ${data.partnerCompany}, ${data.integrationType},
+       ${data.description}, ${data.announcedDate}, ${data.sourceUrl})
+  `;
+}
+
+// ── Architectural shifts ──────────────────────────────────────────────────────
+
+export interface ArchitecturalShiftData {
+  rawPageId: number;
+  company: string;
+  fromTechnology: string | null;
+  toTechnology: string | null;
+  description: string;
+  announcedDate: string | null;
+  sourceUrl: string;
+}
+
+export async function insertArchitecturalShift(
+  sql: NeonQueryFunction<false, false>,
+  data: ArchitecturalShiftData
+): Promise<void> {
+  await sql`
+    INSERT INTO vf_architectural_shifts
+      (raw_page_id, company, from_technology, to_technology, description, announced_date, source_url)
+    VALUES
+      (${data.rawPageId}, ${data.company}, ${data.fromTechnology}, ${data.toTechnology},
+       ${data.description}, ${data.announcedDate}, ${data.sourceUrl})
+  `;
+}
+
 // ── Status updates ───────────────────────────────────────────────────────────
 
 export async function markExtracted(
