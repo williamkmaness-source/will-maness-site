@@ -27,7 +27,8 @@ async function scrape() {
 }
 
 async function extract() {
-  console.log("extract: not yet implemented (issues #4, #5)");
+  const { runExtractor } = await import("../src/lib/vendor-feed/extractor");
+  await runExtractor(sql);
 }
 
 async function retry() {
