@@ -16,6 +16,8 @@ export const ALL_CATEGORIES = "All categories" as const;
 
 export type RequestTypeMetrics = {
   requestType: string;
+  department: string | null;
+  slaTarget: number | null;
   equityGap: number | null;
   cityMedian: number | null;
   totalCases: number;

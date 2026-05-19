@@ -243,6 +243,33 @@ export function NeighborhoodRanking() {
               }}
             />
           )}
+          {activeType?.slaTarget != null &&
+            selectedMetric === "medianDays" && (
+              <ReferenceLine
+                x={activeType.slaTarget}
+                stroke={colors.clay}
+                strokeWidth={1.5}
+                strokeDasharray="2 4"
+                label={(props) => {
+                  const vb = (props as { viewBox?: { x?: number; y?: number } }).viewBox ?? {};
+                  const x = (vb.x ?? 0) + 6;
+                  const y = (vb.y ?? 0) + 14;
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fontSize={11}
+                      fontFamily={fontFamilies.mono}
+                      fontWeight={500}
+                      fill={colors.clay}
+                      textAnchor="start"
+                    >
+                      City SLA: {activeType.slaTarget}d
+                    </text>
+                  );
+                }}
+              />
+            )}
           <Bar dataKey="value" radius={[0, 2, 2, 0]} maxBarSize={22}>
             {chartData.map((entry) => (
               <Cell

@@ -52,6 +52,30 @@ export function FilterBar({ variant = "ranking" }: Props) {
     (rt) => rt.neighborhoods.length >= MIN_NEIGHBORHOODS
   );
 
+  // Separate "All categories" and group the rest by department.
+  const allCategoriesOption = options.find(
+    (rt) => rt.requestType === "All categories"
+  );
+  const specificOptions = options.filter(
+    (rt) => rt.requestType !== "All categories"
+  );
+
+  // Build sorted groups: { department → sorted request types }
+  const groupMap = new Map<string, typeof specificOptions>();
+  for (const rt of specificOptions) {
+    const dept = rt.department ?? "Other";
+    if (!groupMap.has(dept)) groupMap.set(dept, []);
+    groupMap.get(dept)!.push(rt);
+  }
+  const groups = Array.from(groupMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dept, items]) => ({
+      dept,
+      items: [...items].sort((a, b) =>
+        a.requestType.localeCompare(b.requestType)
+      ),
+    }));
+
   return (
     <div className="flex flex-wrap gap-x-[32px] gap-y-[16px] items-end py-[24px] border-t border-line mb-[8px]">
       <div>
@@ -63,10 +87,19 @@ export function FilterBar({ variant = "ranking" }: Props) {
           onChange={(e) => setSelectedRequestType(e.target.value)}
           className="font-sans text-[14px] text-ink bg-bg border border-line-strong rounded-[4px] px-[10px] py-[6px] cursor-pointer focus:outline-none focus:border-accent transition-colors"
         >
-          {options.map((rt) => (
-            <option key={rt.requestType} value={rt.requestType}>
-              {rt.requestType}
+          {allCategoriesOption && (
+            <option value={allCategoriesOption.requestType}>
+              {allCategoriesOption.requestType}
             </option>
+          )}
+          {groups.map(({ dept, items }) => (
+            <optgroup key={dept} label={dept}>
+              {items.map((rt) => (
+                <option key={rt.requestType} value={rt.requestType}>
+                  {rt.requestType}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>
