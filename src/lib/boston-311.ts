@@ -435,9 +435,8 @@ export function prepareCaseEvent(r: RawCaseRow): CaseEventRecord | null {
 // Batches of BATCH_SIZE rows are sent in a single round-trip.
 export const UPSERT_BATCH_SIZE = 200;
 
-// The Neon driver's tagged-template function also supports raw (query, params) calls.
-// We use a minimal callable type to avoid coupling to Neon's generic type parameters.
-type SqlExecutor = (query: string, params: (string | number | boolean | null)[]) => Promise<unknown>;
+// Neon v1.1+ dropped the sql(query, params) calling convention — use sql.query() instead.
+type SqlExecutor = { query: (query: string, params: (string | number | boolean | null)[]) => Promise<unknown> };
 
 export async function batchUpsertCaseEvents(
   sql: SqlExecutor,
@@ -488,7 +487,7 @@ export async function batchUpsertCaseEvents(
         sla_days      = EXCLUDED.sla_days
     `;
 
-    await sql(query, params);
+    await sql.query(query, params);
     upserted += batch.length;
   }
 
