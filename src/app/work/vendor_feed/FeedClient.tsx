@@ -145,10 +145,12 @@ function EntityCard({ entity }: { entity: FeedEntity }) {
 
 export function FeedClient({
   entities,
+  totalCount,
   initialCompanies,
   initialTypes,
 }: {
   entities: FeedEntity[];
+  totalCount: number;
   initialCompanies: string[];
   initialTypes: string[];
 }) {
@@ -268,8 +270,10 @@ export function FeedClient({
         {/* Clear + count row */}
         <div className="flex items-center justify-between pt-[4px]">
           <span className="font-mono text-[12px] text-hint">
-            {filtered.length} of {entities.length}{" "}
-            {entities.length === 1 ? "entity" : "entities"}
+            {filtered.length} of{" "}
+            {totalCount > entities.length
+              ? `${totalCount.toLocaleString()} total (showing most recent ${entities.length})`
+              : `${entities.length} ${entities.length === 1 ? "entity" : "entities"}`}
           </span>
           {hasActiveFilters && (
             <button
