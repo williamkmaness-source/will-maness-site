@@ -1,5 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 
+const MAX_ENTITY_AGE_MONTHS = 12;
+
 export type EntityType =
   | "feature_launch"
   | "pricing_change"
@@ -37,6 +39,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
         source_url,
         created_at
       FROM vf_feature_launches
+      WHERE COALESCE(release_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
 
       UNION ALL
 
@@ -50,6 +53,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
         source_url,
         created_at
       FROM vf_pricing_changes
+      WHERE COALESCE(effective_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
 
       UNION ALL
 
@@ -63,6 +67,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
         source_url,
         created_at
       FROM vf_partnerships
+      WHERE COALESCE(announced_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
 
       UNION ALL
 
@@ -79,6 +84,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
         source_url,
         created_at
       FROM vf_architectural_shifts
+      WHERE COALESCE(announced_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
     ) entities
     ORDER BY created_at DESC, date DESC NULLS LAST
   `;
