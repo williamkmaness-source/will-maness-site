@@ -29,7 +29,7 @@ const TYPE_BADGE: Record<EntityType, string> = {
   feature_launch: "bg-accent text-bg",
   pricing_change: "bg-clay text-bg",
   partnership: "bg-accent-soft text-accent",
-  architectural_shift: "bg-bg-soft text-ink-soft border border-line",
+  architectural_shift: "bg-ink text-bg",
 };
 
 const ALL_TYPES = Object.keys(TYPE_CONFIG) as EntityType[];
