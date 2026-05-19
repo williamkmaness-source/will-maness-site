@@ -86,7 +86,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
       FROM vf_architectural_shifts
       WHERE COALESCE(announced_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
     ) entities
-    ORDER BY created_at DESC, date DESC NULLS LAST
+    ORDER BY date DESC NULLS LAST, created_at DESC
   `;
 
   return rows.map((r) => ({
