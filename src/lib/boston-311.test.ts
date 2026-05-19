@@ -217,10 +217,12 @@ describe("prepareCaseEvent", () => {
 // --- batchUpsertCaseEvents ---
 
 describe("batchUpsertCaseEvents", () => {
-  let mockSql: ReturnType<typeof vi.fn>;
+  let mockSql: ReturnType<typeof vi.fn> & { query: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    mockSql = vi.fn().mockResolvedValue([]);
+    const fn = vi.fn().mockResolvedValue([]) as typeof mockSql;
+    fn.query = vi.fn().mockResolvedValue([]);
+    mockSql = fn;
   });
 
   it("returns 0 for empty records array without calling sql", async () => {
@@ -244,7 +246,7 @@ describe("batchUpsertCaseEvents", () => {
 
     const result = await batchUpsertCaseEvents(mockSql as any, records);
     expect(result).toBe(5);
-    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect(mockSql.query).toHaveBeenCalledTimes(1);
   });
 
   it("splits into multiple batches for large record sets", async () => {
@@ -265,7 +267,7 @@ describe("batchUpsertCaseEvents", () => {
 
     const result = await batchUpsertCaseEvents(mockSql as any, records);
     expect(result).toBe(UPSERT_BATCH_SIZE + 50);
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    expect(mockSql.query).toHaveBeenCalledTimes(2);
   });
 
   it("passes correctly indexed $N params in the SQL", async () => {
@@ -285,7 +287,7 @@ describe("batchUpsertCaseEvents", () => {
 
     await batchUpsertCaseEvents(mockSql as any, records);
 
-    const [query, params] = mockSql.mock.calls[0];
+    const [query, params] = mockSql.query.mock.calls[0];
     expect(query).toContain("INSERT INTO case_events");
     expect(query).toContain("ON CONFLICT (case_id) DO UPDATE");
     expect(query).toContain("$1");
@@ -313,7 +315,7 @@ describe("batchUpsertCaseEvents", () => {
 
     await batchUpsertCaseEvents(mockSql as any, records);
 
-    const [, params] = mockSql.mock.calls[0];
+    const [, params] = mockSql.query.mock.calls[0];
     expect(params[3]).toBeNull(); // department
     expect(params[5]).toBeNull(); // close_date
     expect(params[6]).toBeNull(); // days_to_close
