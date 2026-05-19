@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import type {
+  ActiveTournamentOption,
   GameMoveData,
   GamePairing,
   LichessBroadcast,
@@ -102,6 +103,14 @@ export async function fetchTopBroadcast(
   // Upcoming: prefer tier-5 events regardless of which tier is currently active.
   const upcomingEvent = isLive ? null : (findUpcoming(tier5) ?? findUpcoming(allElite));
 
+  // Build the full list of active elite tournaments for the multi-tournament dropdown.
+  const allActiveTournaments: ActiveTournamentOption[] = candidatePool.map((b) => ({
+    id: b.tour.id,
+    name: b.tour.name,
+    isLive: b.rounds.some((r) => r.ongoing),
+    allRounds: b.rounds,
+  }));
+
   return {
     active: true,
     isLive,
@@ -112,6 +121,7 @@ export async function fetchTopBroadcast(
     pollingInterval,
     allRounds: current.rounds,
     upcoming: upcomingEvent,
+    allActiveTournaments,
   };
 }
 

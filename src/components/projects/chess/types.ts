@@ -1,5 +1,11 @@
 export type TournamentPhase = 'loading' | 'ready' | 'error' | 'empty';
 
+export interface AvailableTournament {
+  id: string;
+  name: string;
+  isLive: boolean;
+}
+
 export interface PlayerStanding {
   rank: number;
   name: string;
@@ -53,6 +59,8 @@ export interface TournamentState {
   selectedGame: SelectedGame | null;
   upcoming: UpcomingTournament | null;
   format: TournamentFormat;
+  availableTournaments: AvailableTournament[];
+  selectedTournamentId: string | null;
 }
 
 export type TournamentAction =
@@ -68,12 +76,14 @@ export type TournamentAction =
       pairings: GamePairing[];
       upcoming: UpcomingTournament | null;
       format: TournamentFormat;
+      availableTournaments: AvailableTournament[];
     }
   | { type: 'FETCH_EMPTY'; upcoming: UpcomingTournament | null }
   | { type: 'FETCH_ERROR' }
   | { type: 'RETRY' }
   | { type: 'SELECT_GAME'; game: SelectedGame }
-  | { type: 'CLOSE_GAME' };
+  | { type: 'CLOSE_GAME' }
+  | { type: 'SELECT_TOURNAMENT'; tournamentId: string };
 
 // Raw shapes from the Lichess Broadcasts API
 export interface LichessBroadcastRound {
@@ -96,6 +106,13 @@ export interface LichessBroadcast {
   rounds: LichessBroadcastRound[];
 }
 
+export interface ActiveTournamentOption {
+  id: string;
+  name: string;
+  isLive: boolean;
+  allRounds: LichessBroadcastRound[];
+}
+
 export type TopBroadcastResult =
   | {
       active: true;
@@ -107,6 +124,7 @@ export type TopBroadcastResult =
       pollingInterval: number;
       allRounds: LichessBroadcastRound[];
       upcoming: UpcomingTournament | null;
+      allActiveTournaments: ActiveTournamentOption[];
     }
   | {
       active: false;

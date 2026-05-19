@@ -15,6 +15,10 @@ const mockPairings: GamePairing[] = [
   { gameId: 'gBBB', white: 'Fabiano Caruana', black: 'Ian Nepomniachtchi', result: '*', isCompleted: false },
 ];
 
+const mockAvailableTournaments = [
+  { id: 'tour1', name: 'Norway Chess 2026', isLive: true },
+];
+
 const readyState: TournamentState = {
   phase: 'ready',
   isLive: true,
@@ -28,6 +32,8 @@ const readyState: TournamentState = {
   selectedGame: null,
   upcoming: null,
   format: 'round-robin' as const,
+  availableTournaments: mockAvailableTournaments,
+  selectedTournamentId: null,
 };
 
 const successAction = {
@@ -42,6 +48,7 @@ const successAction = {
   pairings: mockPairings,
   upcoming: null,
   format: 'round-robin' as const,
+  availableTournaments: mockAvailableTournaments,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -144,6 +151,36 @@ describe('tournamentReducer', () => {
   it('FETCH_SUCCESS stores knockout format when detected', () => {
     const next = tournamentReducer(initialState, { ...successAction, format: 'knockout' as const });
     expect(next.format).toBe('knockout');
+  });
+
+  it('FETCH_SUCCESS stores the availableTournaments list', () => {
+    const next = tournamentReducer(initialState, successAction);
+    expect(next.availableTournaments).toHaveLength(1);
+    expect(next.availableTournaments[0].id).toBe('tour1');
+  });
+
+  it('FETCH_SUCCESS preserves a valid selectedTournamentId across polls', () => {
+    const withSelection: TournamentState = { ...readyState, selectedTournamentId: 'tour1' };
+    const next = tournamentReducer(withSelection, successAction);
+    expect(next.selectedTournamentId).toBe('tour1');
+  });
+
+  it('FETCH_SUCCESS clears selectedTournamentId when tournament is no longer active', () => {
+    const withSelection: TournamentState = { ...readyState, selectedTournamentId: 'tour-gone' };
+    const next = tournamentReducer(withSelection, successAction);
+    expect(next.selectedTournamentId).toBeNull();
+  });
+
+  it('SELECT_TOURNAMENT sets the selectedTournamentId', () => {
+    const next = tournamentReducer(readyState, { type: 'SELECT_TOURNAMENT', tournamentId: 'tour2' });
+    expect(next.selectedTournamentId).toBe('tour2');
+  });
+
+  it('SELECT_TOURNAMENT does not change other state fields', () => {
+    const next = tournamentReducer(readyState, { type: 'SELECT_TOURNAMENT', tournamentId: 'tour2' });
+    expect(next.standings).toEqual(readyState.standings);
+    expect(next.tournamentName).toBe(readyState.tournamentName);
+    expect(next.phase).toBe('ready');
   });
 });
 

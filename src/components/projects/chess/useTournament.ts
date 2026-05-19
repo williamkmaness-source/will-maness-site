@@ -10,18 +10,24 @@ export interface UseTournamentReturn {
   retry: () => void;
   selectGame: (game: SelectedGame) => void;
   closeGame: () => void;
+  selectTournament: (tournamentId: string) => void;
 }
 
 export function useTournament(): UseTournamentReturn {
   const [state, dispatch] = useReducer(tournamentReducer, initialState);
-  // Incremented by retry() to restart the polling effect.
+  // Incremented by retry() or selectTournament() to restart the polling effect.
   const [fetchSeq, setFetchSeq] = useState(0);
-  // Ref so the polling callback reads the latest interval without re-subscribing.
+  // Refs so polling callbacks read the latest values without re-subscribing.
   const pollingIntervalRef = useRef(DEFAULT_INTERVAL);
+  const selectedTournamentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     pollingIntervalRef.current = state.pollingInterval;
   }, [state.pollingInterval]);
+
+  useEffect(() => {
+    selectedTournamentIdRef.current = state.selectedTournamentId;
+  }, [state.selectedTournamentId]);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -35,10 +41,53 @@ export function useTournament(): UseTournamentReturn {
         if (!broadcast.active) {
           dispatch({ type: 'FETCH_EMPTY', upcoming: broadcast.upcoming });
         } else {
-          const { active: _, allRounds, ...broadcastData } = broadcast;
-          const { standings, pairings, pgnTexts } = await fetchRoundData(allRounds, broadcastData.activeRoundId, signal);
+          const { active: _, allActiveTournaments, ...defaultBroadcastData } = broadcast;
+
+          // If the user has selected a specific tournament and it's still active, use it.
+          const selectedId = selectedTournamentIdRef.current;
+          const selectedOption = selectedId
+            ? allActiveTournaments.find((t) => t.id === selectedId)
+            : null;
+
+          const { allRounds, tournamentId, tournamentName, isLive, roundName, activeRoundId } =
+            selectedOption
+              ? {
+                  allRounds: selectedOption.allRounds,
+                  tournamentId: selectedOption.id,
+                  tournamentName: selectedOption.name,
+                  isLive: selectedOption.isLive,
+                  roundName: null,
+                  activeRoundId: null,
+                }
+              : defaultBroadcastData;
+
+          const { standings, pairings, pgnTexts } = await fetchRoundData(
+            allRounds,
+            activeRoundId,
+            signal,
+          );
           const format = detectFormat(pgnTexts, standings);
-          dispatch({ type: 'FETCH_SUCCESS', ...broadcastData, standings, pairings, format });
+
+          const availableTournaments = allActiveTournaments.map(({ id, name, isLive: live }) => ({
+            id,
+            name,
+            isLive: live,
+          }));
+
+          dispatch({
+            type: 'FETCH_SUCCESS',
+            isLive,
+            tournamentName,
+            tournamentId,
+            roundName,
+            activeRoundId,
+            pollingInterval: broadcast.pollingInterval,
+            standings,
+            pairings,
+            upcoming: broadcast.upcoming,
+            format,
+            availableTournaments,
+          });
         }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -56,7 +105,7 @@ export function useTournament(): UseTournamentReturn {
       controller.abort();
       clearTimeout(timeoutId);
     };
-    // fetchSeq re-runs this effect when retry() is called.
+    // fetchSeq re-runs this effect when retry() or selectTournament() is called.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchSeq]);
 
@@ -73,5 +122,11 @@ export function useTournament(): UseTournamentReturn {
     dispatch({ type: 'CLOSE_GAME' });
   }, []);
 
-  return { state, retry, selectGame, closeGame };
+  const selectTournament = useCallback((tournamentId: string) => {
+    dispatch({ type: 'SELECT_TOURNAMENT', tournamentId });
+    // Immediately re-fetch so the new tournament's data loads without waiting for the next poll.
+    setFetchSeq((n) => n + 1);
+  }, []);
+
+  return { state, retry, selectGame, closeGame, selectTournament };
 }
