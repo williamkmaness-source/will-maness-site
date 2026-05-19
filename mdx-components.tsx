@@ -10,6 +10,7 @@ import { ViennaTrainer } from "@/components/projects/vienna-trainer";
 import { BostonCivicTracker } from "@/components/projects/boston-civic-data";
 import { ChessTracker } from "@/components/projects/chess";
 import { PipelineDashboard } from "@/components/projects/pipeline-dashboard";
+import { VendorFeedPreview } from "@/components/projects/vendor-feed/VendorFeedPreview";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -54,6 +55,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     BostonCivicTracker,
     ChessTracker,
     PipelineDashboard,
+    VendorFeedPreview,
     ...components,
   };
 }
