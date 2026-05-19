@@ -136,7 +136,6 @@ export function HeadlineCard() {
       const delta = worstDays - slaTarget;
 
       if (delta > 0) {
-        // Worst neighborhood exceeds SLA — accountability framing
         return (
           <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
             <span className="text-accent">{headline.worst.neighborhood}</span>
@@ -148,8 +147,19 @@ export function HeadlineCard() {
             closes the same requests in {formatDays(bestDays)}.
           </p>
         );
+      } else if (delta === 0) {
+        return (
+          <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">
+            <span className="text-accent">{headline.worst.neighborhood}</span>
+            {"'"}s median{" "}
+            <span className="italic">{requestLabel}</span> response is{" "}
+            <span className="text-clay">{formatDays(worstDays)}</span> — exactly
+            at the city{"'"}s {slaTarget}-day target.{" "}
+            <span className="text-accent">{headline.best.neighborhood}</span>{" "}
+            closes the same requests in {formatDays(bestDays)}.
+          </p>
+        );
       } else {
-        // All neighborhoods within SLA — positive framing
         const underBy = Math.abs(delta);
         return (
           <p className="font-serif text-[36px] max-[640px]:text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink max-w-[780px]">

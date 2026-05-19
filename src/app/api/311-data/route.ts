@@ -5,7 +5,7 @@
 // Returns 503 if both stores are empty.
 // Response is CDN-cached for 24 hours.
 
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import {
   ALL_CATEGORIES,
   type NeighborhoodStat,
@@ -16,10 +16,7 @@ import { toDateStr } from "@/lib/boston-311";
 
 const CACHE_HEADER = "s-maxage=86400, stale-while-revalidate";
 
-// Using any for the neon function parameter type to avoid generic variance issues
-// in helper functions. The concrete sql value is always NeonQueryFunction<false, false>.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SqlFn = any;
+type SqlFn = NeonQueryFunction<false, false>;
 
 // DB row shapes used for explicit casts on query results.
 type NbRow = {
@@ -49,7 +46,7 @@ type SnapshotRow = {
   yoy_equity_gap: string | null;
 };
 
-function computeEquityGap(neighborhoods: NeighborhoodStat[]): number | null {
+export function computeEquityGap(neighborhoods: NeighborhoodStat[]): number | null {
   const withDays = neighborhoods
     .map((n) => n.medianDays)
     .filter((d) => d > 0)
@@ -66,8 +63,8 @@ async function readFromCaseEvents(
   startDate: string,
   endDate: string
 ): Promise<RequestTypeMetrics[] | null> {
-  const [{ cnt }] = await sql`SELECT COUNT(*)::int AS cnt FROM case_events`;
-  if (Number(cnt) === 0) return null;
+  const probe = await sql`SELECT 1 FROM case_events LIMIT 1`;
+  if (probe.length === 0) return null;
 
   // All four data queries can run in parallel once we know the table has rows.
   const [nbRows, cityRows, allNbRows, allCityArr] = (await Promise.all([
@@ -280,10 +277,13 @@ export async function GET() {
   const priorEndDate = toDateStr(priorEnd);
 
   try {
-    let current = await readFromCaseEvents(sql, startDate, endDate);
+    const [currentFromEvents, prior] = await Promise.all([
+      readFromCaseEvents(sql, startDate, endDate),
+      readFromCaseEvents(sql, priorStartDate, priorEndDate),
+    ]);
 
+    let current = currentFromEvents;
     if (!current) {
-      // Fallback to legacy snapshots if case_events is empty.
       current = await readFromSnapshots(sql);
     }
 
@@ -297,8 +297,6 @@ export async function GET() {
       );
     }
 
-    // YoY equity gap — run prior-year window in parallel with the current request.
-    const prior = await readFromCaseEvents(sql, priorStartDate, priorEndDate);
     if (prior) {
       const priorByType = new Map(prior.map((r) => [r.requestType, r]));
       for (const r of current) {
