@@ -24,7 +24,10 @@ export default async function VendorFeedPage({
 }: {
   searchParams: PageSearchParams;
 }) {
-  const [entities, params] = await Promise.all([getFeedEntities(), searchParams]);
+  const [{ entities, totalCount }, params] = await Promise.all([
+    getFeedEntities(),
+    searchParams,
+  ]);
 
   const initialCompanies = params.companies?.split(",").filter(Boolean) ?? [];
   const initialTypes = params.types?.split(",").filter(Boolean) ?? [];
@@ -60,6 +63,7 @@ export default async function VendorFeedPage({
       ) : (
         <FeedClient
           entities={entities}
+          totalCount={totalCount}
           initialCompanies={initialCompanies}
           initialTypes={initialTypes}
         />
