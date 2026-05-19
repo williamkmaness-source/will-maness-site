@@ -14,6 +14,8 @@ export const initialState: TournamentState = {
   selectedGame: null,
   upcoming: null,
   format: 'unknown' as const,
+  availableTournaments: [],
+  selectedTournamentId: null,
 };
 
 export function tournamentReducer(
@@ -21,7 +23,13 @@ export function tournamentReducer(
   action: TournamentAction,
 ): TournamentState {
   switch (action.type) {
-    case 'FETCH_SUCCESS':
+    case 'FETCH_SUCCESS': {
+      // Keep user's selection only if the tournament is still in the active list.
+      const validSelectedId =
+        state.selectedTournamentId &&
+        action.availableTournaments.some((t) => t.id === state.selectedTournamentId)
+          ? state.selectedTournamentId
+          : null;
       return {
         ...state,
         phase: 'ready',
@@ -35,7 +43,10 @@ export function tournamentReducer(
         pairings: action.pairings,
         upcoming: action.upcoming,
         format: action.format,
+        availableTournaments: action.availableTournaments,
+        selectedTournamentId: validSelectedId,
       };
+    }
 
     case 'FETCH_EMPTY':
       return { ...state, phase: 'empty', upcoming: action.upcoming };
@@ -51,6 +62,9 @@ export function tournamentReducer(
 
     case 'CLOSE_GAME':
       return { ...state, selectedGame: null };
+
+    case 'SELECT_TOURNAMENT':
+      return { ...state, selectedTournamentId: action.tournamentId };
 
     default:
       return state;
