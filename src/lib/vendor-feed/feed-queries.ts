@@ -19,7 +19,7 @@ export interface FeedEntity {
   createdAt: string;
 }
 
-export async function getFeedEntities(): Promise<FeedEntity[]> {
+export async function getFeedEntities(limit?: number): Promise<FeedEntity[]> {
   const connectionString =
     process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
   if (!connectionString) throw new Error("No Postgres connection string found");
@@ -87,6 +87,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
       WHERE COALESCE(announced_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
     ) entities
     ORDER BY date DESC NULLS LAST, created_at DESC
+    LIMIT ${limit ?? 10000}
   `;
 
   return rows.map((r) => ({

@@ -55,8 +55,7 @@ export async function VendorFeedPreview() {
   let entities: FeedEntity[] = [];
 
   try {
-    const all = await getFeedEntities();
-    entities = all.slice(0, 7);
+    entities = await getFeedEntities(7);
   } catch {
     // No DB connection or empty — degrade silently
   }
