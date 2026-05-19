@@ -58,7 +58,8 @@ export function useTournament(): UseTournamentReturn {
             isLive = selectedOption.isLive;
             const activeRound =
               allRounds.find((r) => r.ongoing) ??
-              [...allRounds].reverse().find((r) => r.finished);
+              [...allRounds].reverse().find((r) => r.finished) ??
+              allRounds.at(-1);
             activeRoundId = activeRound?.id ?? null;
             roundName = activeRound?.name ?? null;
           } else {
