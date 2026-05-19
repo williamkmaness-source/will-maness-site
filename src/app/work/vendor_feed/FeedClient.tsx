@@ -185,6 +185,7 @@ export function FeedClient({
     const next = selectedCompanies.includes(company)
       ? selectedCompanies.filter((c) => c !== company)
       : [...selectedCompanies, company];
+    setSelectedCompanies(next);
     updateParams({ companies: next });
   }
 
@@ -192,10 +193,13 @@ export function FeedClient({
     const next = selectedTypes.includes(type)
       ? selectedTypes.filter((t) => t !== type)
       : [...selectedTypes, type];
+    setSelectedTypes(next);
     updateParams({ types: next });
   }
 
   function clearAll() {
+    setSelectedCompanies([]);
+    setSelectedTypes([]);
     router.replace(pathname, { scroll: false });
   }
 
