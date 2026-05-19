@@ -143,6 +143,49 @@ describe('fetchTopBroadcast', () => {
     expect(result.allRounds[0].id).toBe('r1');
   });
 
+  it('includes allActiveTournaments with one entry when only one tournament is active', async () => {
+    global.fetch = mockBroadcastFetch([makeBroadcast()]);
+
+    const result = await fetchTopBroadcast();
+
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.allActiveTournaments).toHaveLength(1);
+    expect(result.allActiveTournaments[0].id).toBe('tour1');
+    expect(result.allActiveTournaments[0].name).toBe('Norway Chess 2026');
+  });
+
+  it('includes allActiveTournaments with all active elite tournaments when multiple are running', async () => {
+    const second = makeBroadcast({
+      tour: { id: 'tour2', name: 'GCT Rapid 2026', slug: 'gct-rapid-2026', tier: ELITE_TIER },
+      rounds: [makeRound({ id: 's1', finished: true }), makeRound({ id: 's2', ongoing: true })],
+    });
+    global.fetch = mockBroadcastFetch([makeBroadcast(), second]);
+
+    const result = await fetchTopBroadcast();
+
+    if (!result.active) throw new Error('Expected active result');
+    expect(result.allActiveTournaments).toHaveLength(2);
+    expect(result.allActiveTournaments.map((t) => t.id)).toContain('tour1');
+    expect(result.allActiveTournaments.map((t) => t.id)).toContain('tour2');
+  });
+
+  it('marks allActiveTournaments entries as isLive when they have an ongoing round', async () => {
+    const liveB = makeBroadcast();
+    const notLiveB = makeBroadcast({
+      tour: { id: 'tour2', name: 'GCT Rapid 2026', slug: 'gct-rapid-2026', tier: ELITE_TIER },
+      rounds: [makeRound({ id: 's1', finished: true })],
+    });
+    global.fetch = mockBroadcastFetch([liveB, notLiveB]);
+
+    const result = await fetchTopBroadcast();
+
+    if (!result.active) throw new Error('Expected active result');
+    const live = result.allActiveTournaments.find((t) => t.id === 'tour1');
+    const notLive = result.allActiveTournaments.find((t) => t.id === 'tour2');
+    expect(live?.isLive).toBe(true);
+    expect(notLive?.isLive).toBe(false);
+  });
+
   it('falls back to the last finished round when none is ongoing', async () => {
     const broadcast = makeBroadcast({
       rounds: [

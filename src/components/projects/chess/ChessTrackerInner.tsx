@@ -4,6 +4,7 @@ import { useTournament } from './useTournament';
 import { TournamentStandings } from './TournamentStandings';
 import { PairingsTable } from './PairingsTable';
 import { GameModal } from './GameModal';
+import type { AvailableTournament } from './types';
 
 function formatDate(ms: number | null): string | null {
   if (ms == null || !isFinite(ms)) return null;
@@ -15,8 +16,49 @@ function formatDate(ms: number | null): string | null {
   }).format(new Date(ms));
 }
 
+function TournamentDropdown({
+  tournaments,
+  selectedId,
+  onSelect,
+}: {
+  tournaments: AvailableTournament[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="mb-[16px]">
+      <p className="font-mono text-[11px] text-hint tracking-[0.04em] uppercase mb-[8px]">
+        Select tournament
+      </p>
+      <div className="flex flex-wrap gap-[8px]">
+        {tournaments.map((t) => {
+          const isActive = t.id === selectedId || (!selectedId && t.id === tournaments[0]?.id);
+          return (
+            <button
+              key={t.id}
+              onClick={() => onSelect(t.id)}
+              aria-pressed={isActive}
+              className={[
+                'font-mono text-[12px] px-[12px] py-[5px] rounded-sm border transition-colors duration-[120ms] cursor-pointer',
+                isActive
+                  ? 'bg-ink text-bg border-ink'
+                  : 'bg-bg text-muted border-line hover:border-ink hover:text-ink',
+              ].join(' ')}
+            >
+              {t.isLive && (
+                <span className="inline-block w-[6px] h-[6px] rounded-full bg-accent mr-[6px] align-middle" />
+              )}
+              {t.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ChessTrackerInner() {
-  const { state, retry, selectGame, closeGame } = useTournament();
+  const { state, retry, selectGame, closeGame, selectTournament } = useTournament();
 
   if (state.phase === 'loading') {
     return (
@@ -70,6 +112,13 @@ export function ChessTrackerInner() {
 
   return (
     <div className="mt-[40px] mb-[48px]">
+      {state.availableTournaments.length > 1 && (
+        <TournamentDropdown
+          tournaments={state.availableTournaments}
+          selectedId={state.selectedTournamentId}
+          onSelect={selectTournament}
+        />
+      )}
       <p className="font-mono text-[12px] text-muted tracking-[0.04em] uppercase mb-[8px]">
         {label}
       </p>
