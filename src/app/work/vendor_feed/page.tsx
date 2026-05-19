@@ -1,7 +1,7 @@
 // app/work/vendor_feed/page.tsx — public market intelligence feed.
-// Server component fetches all entities at request time; FeedClient handles filtering.
+// Server component reads initial filter state from URL searchParams and passes them
+// to FeedClient so entity cards are server-rendered with the correct filter on first load.
 
-import { Suspense } from "react";
 import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import { SectionLabel } from "@/components/ui/SectionLabel";
@@ -17,8 +17,17 @@ export const metadata: Metadata = {
     "Automated market intelligence tracking feature launches, pricing changes, partnerships, and architecture shifts across data integration companies.",
 };
 
-export default async function VendorFeedPage() {
-  const entities = await getFeedEntities();
+type PageSearchParams = Promise<{ companies?: string; types?: string }>;
+
+export default async function VendorFeedPage({
+  searchParams,
+}: {
+  searchParams: PageSearchParams;
+}) {
+  const [entities, params] = await Promise.all([getFeedEntities(), searchParams]);
+
+  const initialCompanies = params.companies?.split(",").filter(Boolean) ?? [];
+  const initialTypes = params.types?.split(",").filter(Boolean) ?? [];
 
   return (
     <Container>
@@ -49,13 +58,11 @@ export default async function VendorFeedPage() {
           </p>
         </div>
       ) : (
-        <Suspense
-          fallback={
-            <p className="font-mono text-[13px] text-hint">Loading feed…</p>
-          }
-        >
-          <FeedClient entities={entities} />
-        </Suspense>
+        <FeedClient
+          entities={entities}
+          initialCompanies={initialCompanies}
+          initialTypes={initialTypes}
+        />
       )}
     </Container>
   );
