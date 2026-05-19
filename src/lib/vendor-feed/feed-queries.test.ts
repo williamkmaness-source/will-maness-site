@@ -182,6 +182,13 @@ describe("getFeedEntities", () => {
     expect(result[2].id).toBe("feature_launch-1");
   });
 
+  it("propagates SQL query errors to the caller", async () => {
+    mockSql.mockRejectedValue(new Error("connection refused"));
+
+    const { getFeedEntities } = await loadFreshModule();
+    await expect(getFeedEntities()).rejects.toThrow("connection refused");
+  });
+
   it("result objects satisfy the FeedEntity interface shape", async () => {
     mockSql.mockResolvedValue([featureLaunchRow]);
 
