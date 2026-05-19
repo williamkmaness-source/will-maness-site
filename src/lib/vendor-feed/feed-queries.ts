@@ -80,7 +80,7 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
         created_at
       FROM vf_architectural_shifts
     ) entities
-    ORDER BY created_at DESC, date DESC NULLS LAST
+    ORDER BY date DESC NULLS LAST, created_at DESC
   `;
 
   return rows.map((r) => ({
