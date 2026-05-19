@@ -22,6 +22,7 @@ const featureLaunchRow = {
   date: "2025-01-15",
   source_url: "https://prefect.io/blog/v3",
   created_at: "2025-01-15T10:00:00Z",
+  total_count: "4",
 };
 
 const pricingChangeRow = {
@@ -33,6 +34,7 @@ const pricingChangeRow = {
   date: null,
   source_url: "https://airbyte.com/pricing",
   created_at: "2025-02-01T08:00:00Z",
+  total_count: "4",
 };
 
 const partnershipRow = {
@@ -44,6 +46,7 @@ const partnershipRow = {
   date: "2025-03-10",
   source_url: "https://fivetran.com/blog/snowflake",
   created_at: "2025-03-10T12:00:00Z",
+  total_count: "4",
 };
 
 const archShiftRow = {
@@ -55,6 +58,7 @@ const archShiftRow = {
   date: "2025-04-01",
   source_url: "https://www.getdbt.com/blog/ray",
   created_at: "2025-04-01T09:00:00Z",
+  total_count: "4",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,11 +97,11 @@ describe("getFeedEntities", () => {
     mockSql.mockResolvedValue([featureLaunchRow, pricingChangeRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const result = await getFeedEntities();
+    const { entities } = await getFeedEntities();
 
-    expect(result).toHaveLength(2);
+    expect(entities).toHaveLength(2);
 
-    const launch = result.find((e) => e.entityType === "feature_launch");
+    const launch = entities.find((e) => e.entityType === "feature_launch");
     expect(launch).toBeDefined();
     expect(launch!.company).toBe("Prefect");
     expect(launch!.title).toBe("Prefect 3.0");
@@ -110,24 +114,24 @@ describe("getFeedEntities", () => {
     mockSql.mockResolvedValue([featureLaunchRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const [entity] = await getFeedEntities();
-    expect(entity.id).toBe("feature_launch-1");
+    const { entities } = await getFeedEntities();
+    expect(entities[0].id).toBe("feature_launch-1");
   });
 
   it("sets date to null when DB column is null", async () => {
     mockSql.mockResolvedValue([pricingChangeRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const [entity] = await getFeedEntities();
-    expect(entity.date).toBeNull();
+    const { entities } = await getFeedEntities();
+    expect(entities[0].date).toBeNull();
   });
 
   it("preserves non-null date strings unchanged", async () => {
     mockSql.mockResolvedValue([featureLaunchRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const [entity] = await getFeedEntities();
-    expect(entity.date).toBe("2025-01-15");
+    const { entities } = await getFeedEntities();
+    expect(entities[0].date).toBe("2025-01-15");
   });
 
   it("maps all four entity types correctly", async () => {
@@ -139,9 +143,9 @@ describe("getFeedEntities", () => {
     ]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const result = await getFeedEntities();
+    const { entities } = await getFeedEntities();
 
-    const types = result.map((e) => e.entityType);
+    const types = entities.map((e) => e.entityType);
     expect(types).toContain("feature_launch");
     expect(types).toContain("pricing_change");
     expect(types).toContain("partnership");
@@ -152,7 +156,8 @@ describe("getFeedEntities", () => {
     mockSql.mockResolvedValue([partnershipRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const [entity] = await getFeedEntities();
+    const { entities } = await getFeedEntities();
+    const entity = entities[0];
 
     // source_url → sourceUrl; entity_type → entityType; created_at → createdAt
     expect((entity as unknown as Record<string, unknown>)["source_url"]).toBeUndefined();
@@ -167,19 +172,20 @@ describe("getFeedEntities", () => {
     mockSql.mockResolvedValue([]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const result = await getFeedEntities();
-    expect(result).toEqual([]);
+    const { entities, totalCount } = await getFeedEntities();
+    expect(entities).toEqual([]);
+    expect(totalCount).toBe(0);
   });
 
   it("returns entities in the order the DB delivers them", async () => {
     mockSql.mockResolvedValue([archShiftRow, partnershipRow, featureLaunchRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const result = await getFeedEntities();
+    const { entities } = await getFeedEntities();
 
-    expect(result[0].id).toBe("architectural_shift-4");
-    expect(result[1].id).toBe("partnership-3");
-    expect(result[2].id).toBe("feature_launch-1");
+    expect(entities[0].id).toBe("architectural_shift-4");
+    expect(entities[1].id).toBe("partnership-3");
+    expect(entities[2].id).toBe("feature_launch-1");
   });
 
   it("propagates SQL query errors to the caller", async () => {
@@ -189,11 +195,22 @@ describe("getFeedEntities", () => {
     await expect(getFeedEntities()).rejects.toThrow("connection refused");
   });
 
+  it("returns totalCount from the COUNT(*) OVER () window function", async () => {
+    mockSql.mockResolvedValue([
+      { ...featureLaunchRow, total_count: "42" },
+    ]);
+
+    const { getFeedEntities } = await loadFreshModule();
+    const { totalCount } = await getFeedEntities();
+    expect(totalCount).toBe(42);
+  });
+
   it("result objects satisfy the FeedEntity interface shape", async () => {
     mockSql.mockResolvedValue([featureLaunchRow]);
 
     const { getFeedEntities } = await loadFreshModule();
-    const [entity]: FeedEntity[] = await getFeedEntities();
+    const { entities } = await getFeedEntities();
+    const entity: FeedEntity = entities[0];
 
     // TypeScript type check at test time + runtime presence check
     const keys: (keyof FeedEntity)[] = [

@@ -12,6 +12,8 @@ The data integration space moves fast. Fivetran ships a new connector, dbt Labs 
 
 Every morning, a GitHub Actions job scrapes the blog and GitHub releases pages for 15 companies, sends the raw content to Claude Haiku for structured extraction, and upserts the results into Neon Postgres. A Next.js page reads from Postgres and renders the feed — filterable by company and entity type, with state reflected in the URL.
 
+<VendorFeedPreview />
+
 ## How it works
 
 The pipeline runs in three stages:

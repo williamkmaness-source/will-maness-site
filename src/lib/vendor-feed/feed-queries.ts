@@ -25,7 +25,7 @@ export interface FeedResult {
   totalCount: number;
 }
 
-export async function getFeedEntities(): Promise<FeedResult> {
+export async function getFeedEntities(limit?: number): Promise<FeedResult> {
   const connectionString =
     process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
   if (!connectionString) throw new Error("No Postgres connection string found");
@@ -94,7 +94,7 @@ export async function getFeedEntities(): Promise<FeedResult> {
       WHERE COALESCE(announced_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
     ) entities
     ORDER BY date DESC NULLS LAST, created_at DESC
-    LIMIT ${MAX_FEED_ENTITIES}
+    LIMIT ${limit ?? MAX_FEED_ENTITIES}
   `;
 
   const totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
