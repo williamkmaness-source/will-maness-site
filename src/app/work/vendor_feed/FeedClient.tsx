@@ -1,7 +1,11 @@
 "use client";
 
+// FeedClient.tsx — client component for filtering and displaying the vendor feed.
+// useSearchParams is isolated to SearchParamsSyncer (wrapped in Suspense fallback={null})
+// so entity cards are always present in the initial SSR HTML.
+
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import type { FeedEntity, EntityType } from "@/lib/vendor-feed/feed-queries";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -46,6 +50,26 @@ function formatDate(dateStr: string | null): string {
 function parseParam(params: URLSearchParams, key: string): string[] {
   const val = params.get(key);
   return val ? val.split(",").filter(Boolean) : [];
+}
+
+// ── SearchParamsSyncer ────────────────────────────────────────────────────────
+// Isolated client component that reads URL state and syncs it to parent state.
+// Wrapped in <Suspense fallback={null}> in FeedClient so entity cards are not
+// gated on this component during prerendering.
+
+function SearchParamsSyncer({
+  setSelectedCompanies,
+  setSelectedTypes,
+}: {
+  setSelectedCompanies: (c: string[]) => void;
+  setSelectedTypes: (t: EntityType[]) => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    setSelectedCompanies(parseParam(searchParams, "companies"));
+    setSelectedTypes(parseParam(searchParams, "types") as EntityType[]);
+  }, [searchParams, setSelectedCompanies, setSelectedTypes]);
+  return null;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -119,18 +143,21 @@ function EntityCard({ entity }: { entity: FeedEntity }) {
 
 // ── Main client component ─────────────────────────────────────────────────────
 
-export function FeedClient({ entities }: { entities: FeedEntity[] }) {
+export function FeedClient({
+  entities,
+  initialCompanies,
+  initialTypes,
+}: {
+  entities: FeedEntity[];
+  initialCompanies: string[];
+  initialTypes: string[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  const selectedCompanies = useMemo(
-    () => parseParam(searchParams, "companies"),
-    [searchParams]
-  );
-  const selectedTypes = useMemo(
-    () => parseParam(searchParams, "types") as EntityType[],
-    [searchParams]
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>(initialCompanies);
+  const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(
+    initialTypes as EntityType[]
   );
 
   // Unique companies present in the data, alphabetically sorted
@@ -141,30 +168,24 @@ export function FeedClient({ entities }: { entities: FeedEntity[] }) {
 
   const updateParams = useCallback(
     (updates: { companies?: string[]; types?: string[] }) => {
-      const params = new URLSearchParams(searchParams.toString());
       const companies = updates.companies ?? selectedCompanies;
       const types = updates.types ?? selectedTypes;
+      const params = new URLSearchParams();
 
-      if (companies.length > 0) {
-        params.set("companies", companies.join(","));
-      } else {
-        params.delete("companies");
-      }
-      if (types.length > 0) {
-        params.set("types", types.join(","));
-      } else {
-        params.delete("types");
-      }
+      if (companies.length > 0) params.set("companies", companies.join(","));
+      if (types.length > 0) params.set("types", types.join(","));
 
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, searchParams, selectedCompanies, selectedTypes]
+    [router, pathname, selectedCompanies, selectedTypes]
   );
 
   function toggleCompany(company: string) {
     const next = selectedCompanies.includes(company)
       ? selectedCompanies.filter((c) => c !== company)
       : [...selectedCompanies, company];
+    setSelectedCompanies(next);
     updateParams({ companies: next });
   }
 
@@ -172,10 +193,13 @@ export function FeedClient({ entities }: { entities: FeedEntity[] }) {
     const next = selectedTypes.includes(type)
       ? selectedTypes.filter((t) => t !== type)
       : [...selectedTypes, type];
+    setSelectedTypes(next);
     updateParams({ types: next });
   }
 
   function clearAll() {
+    setSelectedCompanies([]);
+    setSelectedTypes([]);
     router.replace(pathname, { scroll: false });
   }
 
@@ -195,6 +219,14 @@ export function FeedClient({ entities }: { entities: FeedEntity[] }) {
 
   return (
     <div className="mb-[96px]">
+      {/* Syncs URL search params → state after hydration, for client-side navigation */}
+      <Suspense fallback={null}>
+        <SearchParamsSyncer
+          setSelectedCompanies={setSelectedCompanies}
+          setSelectedTypes={setSelectedTypes}
+        />
+      </Suspense>
+
       {/* Filter controls */}
       <div className="mb-[32px] space-y-[16px]">
         {/* Type filter */}
