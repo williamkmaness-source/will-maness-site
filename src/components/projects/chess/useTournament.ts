@@ -49,17 +49,22 @@ export function useTournament(): UseTournamentReturn {
             ? allActiveTournaments.find((t) => t.id === selectedId)
             : null;
 
-          const { allRounds, tournamentId, tournamentName, isLive, roundName, activeRoundId } =
-            selectedOption
-              ? {
-                  allRounds: selectedOption.allRounds,
-                  tournamentId: selectedOption.id,
-                  tournamentName: selectedOption.name,
-                  isLive: selectedOption.isLive,
-                  roundName: null,
-                  activeRoundId: null,
-                }
-              : defaultBroadcastData;
+          let allRounds, tournamentId, tournamentName, isLive, roundName, activeRoundId;
+
+          if (selectedOption) {
+            allRounds = selectedOption.allRounds;
+            tournamentId = selectedOption.id;
+            tournamentName = selectedOption.name;
+            isLive = selectedOption.isLive;
+            const activeRound =
+              allRounds.find((r) => r.ongoing) ??
+              [...allRounds].reverse().find((r) => r.finished);
+            activeRoundId = activeRound?.id ?? null;
+            roundName = activeRound?.name ?? null;
+          } else {
+            ({ allRounds, tournamentId, tournamentName, isLive, roundName, activeRoundId } =
+              defaultBroadcastData);
+          }
 
           const { standings, pairings, pgnTexts } = await fetchRoundData(
             allRounds,
