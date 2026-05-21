@@ -61,7 +61,7 @@ export function CountyConditionsHeader({ conditions }: CountyConditionsHeaderPro
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-[16px] max-[480px]:grid-cols-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[16px] sm:grid-cols-4">
         <Stat
           label="Wind"
           value={

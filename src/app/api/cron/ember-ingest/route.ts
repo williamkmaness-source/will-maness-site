@@ -21,13 +21,11 @@ type IngestResult = {
 };
 
 export async function runIngest(sql: NeonQueryFunction<false, false>): Promise<IngestResult> {
-  const [clusterRows] = await Promise.all([
-    sql`
-      INSERT INTO ember_fire_clusters (lat, lng, frp, detection_count, detected_at)
-      VALUES (${STUB_LAT}, ${STUB_LNG}, ${STUB_FRP}, ${STUB_DETECTION_COUNT}, now())
-      RETURNING id
-    `,
-  ]);
+  const clusterRows = await sql`
+    INSERT INTO ember_fire_clusters (lat, lng, frp, detection_count, detected_at)
+    VALUES (${STUB_LAT}, ${STUB_LNG}, ${STUB_FRP}, ${STUB_DETECTION_COUNT}, now())
+    RETURNING id
+  `;
 
   const clusterId = Number(clusterRows[0].id);
 

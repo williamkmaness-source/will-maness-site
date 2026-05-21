@@ -5,7 +5,7 @@ import type { FireCluster, ClusterTier } from "@/lib/ember/ember-queries";
 const TIER_STYLES: Record<ClusterTier, { bg: string; text: string; dot: string }> = {
   Monitor: { bg: "bg-accent-soft", text: "text-accent", dot: "bg-accent" },
   Watch:   { bg: "bg-clay-soft",   text: "text-clay",   dot: "bg-clay"   },
-  Action:  { bg: "bg-clay text-bg",text: "text-bg",     dot: "bg-bg"     },
+  Action:  { bg: "bg-clay",        text: "text-bg",     dot: "bg-bg"     },
 };
 
 function TierBadge({ tier }: { tier: ClusterTier }) {
@@ -14,10 +14,10 @@ function TierBadge({ tier }: { tier: ClusterTier }) {
     <span
       className={[
         "inline-flex items-center gap-[5px] font-mono text-[10px] tracking-[0.06em] uppercase px-[8px] py-[3px] rounded-sm",
-        tier === "Action" ? "bg-clay text-bg" : `${s.bg} ${s.text}`,
+        s.bg, s.text,
       ].join(" ")}
     >
-      <span className={`w-[5px] h-[5px] rounded-full ${tier === "Action" ? "bg-bg" : s.dot}`} />
+      <span className={`w-[5px] h-[5px] rounded-full ${s.dot}`} />
       {tier}
     </span>
   );
