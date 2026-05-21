@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { fetchTopBroadcast, fetchRoundData, detectFormat, DEFAULT_INTERVAL } from './BroadcastService';
+import { fetchTopBroadcast, fetchRoundData, detectFormat, selectActiveRound, DEFAULT_INTERVAL } from './BroadcastService';
 import { tournamentReducer, initialState } from './reducer';
 import type { SelectedGame, TournamentState } from './types';
 
@@ -56,9 +56,7 @@ export function useTournament(): UseTournamentReturn {
             tournamentId = selectedOption.id;
             tournamentName = selectedOption.name;
             isLive = selectedOption.isLive;
-            const activeRound =
-              allRounds.find((r) => r.ongoing) ??
-              [...allRounds].reverse().find((r) => r.finished);
+            const activeRound = selectActiveRound(allRounds);
             activeRoundId = activeRound?.id ?? null;
             roundName = activeRound?.name ?? null;
           } else {

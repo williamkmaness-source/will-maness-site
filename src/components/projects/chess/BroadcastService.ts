@@ -35,8 +35,7 @@ function candidatesFrom(broadcasts: LichessBroadcast[], now: number): LichessBro
   return broadcasts.filter((b) => hasStartedRounds(b, now));
 }
 
-function selectActiveRound(broadcast: LichessBroadcast): LichessBroadcastRound | null {
-  const { rounds } = broadcast;
+export function selectActiveRound(rounds: LichessBroadcastRound[]): LichessBroadcastRound | null {
   return (
     rounds.find((r) => r.ongoing) ??
     rounds.filter((r) => r.finished).at(-1) ??
@@ -98,7 +97,7 @@ export async function fetchTopBroadcast(
   const liveCandidate = candidatePool.find((b) => b.rounds.some((r) => r.ongoing));
   const current = liveCandidate ?? candidatePool[0];
   const isLive = !!liveCandidate;
-  const activeRound = selectActiveRound(current);
+  const activeRound = selectActiveRound(current.rounds);
 
   // Upcoming: prefer tier-5 events regardless of which tier is currently active.
   const upcomingEvent = isLive ? null : (findUpcoming(tier5) ?? findUpcoming(allElite));

@@ -62,6 +62,8 @@ describe('tournamentReducer', () => {
     expect(initialState.selectedGame).toBeNull();
     expect(initialState.isLive).toBe(false);
     expect(initialState.upcoming).toBeNull();
+    expect(initialState.availableTournaments).toHaveLength(0);
+    expect(initialState.selectedTournamentId).toBeNull();
   });
 
   it('FETCH_SUCCESS transitions to ready and sets all fields', () => {
