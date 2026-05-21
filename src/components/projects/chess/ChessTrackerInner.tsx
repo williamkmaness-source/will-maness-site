@@ -32,7 +32,7 @@ function TournamentDropdown({
       </p>
       <div className="flex flex-wrap gap-[8px]">
         {tournaments.map((t) => {
-          const isActive = t.id === selectedId || (!selectedId && t.id === tournaments[0]?.id);
+          const isActive = t.id === selectedId;
           return (
             <button
               key={t.id}
@@ -115,7 +115,7 @@ export function ChessTrackerInner() {
       {state.availableTournaments.length > 1 && (
         <TournamentDropdown
           tournaments={state.availableTournaments}
-          selectedId={state.selectedTournamentId}
+          selectedId={state.selectedTournamentId ?? state.tournamentId}
           onSelect={selectTournament}
         />
       )}
