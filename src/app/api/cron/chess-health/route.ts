@@ -3,7 +3,7 @@
 // Pings the Lichess Broadcasts API, then upserts a status row in pipeline_runs.
 // On failure the row is always written — the handler never throws silently.
 
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ type UpsertPayload = {
 };
 
 export async function upsertPipelineRun(
-  sql: ReturnType<typeof neon>,
+  sql: NeonQueryFunction<false, false>,
   payload: UpsertPayload,
 ): Promise<void> {
   await sql`
@@ -35,7 +35,7 @@ export async function upsertPipelineRun(
     )
     ON CONFLICT (pipeline) DO UPDATE SET
       status          = EXCLUDED.status,
-      last_success_at = EXCLUDED.last_success_at,
+      last_success_at = COALESCE(EXCLUDED.last_success_at, pipeline_runs.last_success_at),
       last_attempt_at = EXCLUDED.last_attempt_at,
       record_count    = EXCLUDED.record_count,
       error           = EXCLUDED.error
