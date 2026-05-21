@@ -58,6 +58,27 @@ async function main() {
   await sql`CREATE INDEX IF NOT EXISTS idx_ce_close_date ON case_events (close_date)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_ce_neighborhood_rt ON case_events (neighborhood, request_type)`;
 
+  // Pipeline health log — one row per pipeline, upserted on every cron/workflow run.
+  // pipeline values: '311' | 'chess' | 'vendor-feed'
+  // status values:   'success' | 'failed' | 'running'
+  await sql`
+    CREATE TABLE IF NOT EXISTS pipeline_runs (
+      id               SERIAL      PRIMARY KEY,
+      pipeline         TEXT        NOT NULL UNIQUE,
+      status           TEXT        NOT NULL,
+      last_success_at  TIMESTAMPTZ,
+      last_attempt_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      record_count     INTEGER,
+      error            TEXT,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_pipeline_runs_pipeline_attempt
+      ON pipeline_runs (pipeline, last_attempt_at DESC)
+  `;
+
   // Derived lookup: mode department and median SLA per request type. Rebuilt nightly
   // by the pipeline after the case_events upsert. Used by the API for department/slaTarget fields.
   await sql`

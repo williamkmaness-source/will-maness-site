@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/chess-health",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
