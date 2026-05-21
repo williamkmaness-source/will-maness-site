@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/chess-health",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
