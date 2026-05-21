@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 
 const MAX_ENTITY_AGE_MONTHS = 12;
+const MAX_FEED_ENTITIES = 500;
 
 export type EntityType =
   | "feature_launch"
@@ -19,7 +20,12 @@ export interface FeedEntity {
   createdAt: string;
 }
 
-export async function getFeedEntities(): Promise<FeedEntity[]> {
+export interface FeedResult {
+  entities: FeedEntity[];
+  totalCount: number;
+}
+
+export async function getFeedEntities(limit?: number): Promise<FeedResult> {
   const connectionString =
     process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
   if (!connectionString) throw new Error("No Postgres connection string found");
@@ -27,7 +33,8 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
   const sql = neon(connectionString);
 
   const rows = await sql`
-    SELECT entity_type, id, company, title, description, date, source_url, created_at
+    SELECT entity_type, id, company, title, description, date, source_url, created_at,
+           COUNT(*) OVER () AS total_count
     FROM (
       SELECT
         'feature_launch'         AS entity_type,
@@ -87,16 +94,22 @@ export async function getFeedEntities(): Promise<FeedEntity[]> {
       WHERE COALESCE(announced_date, created_at) >= NOW() - INTERVAL '1 month' * ${MAX_ENTITY_AGE_MONTHS}
     ) entities
     ORDER BY date DESC NULLS LAST, created_at DESC
+    LIMIT ${limit ?? MAX_FEED_ENTITIES}
   `;
 
-  return rows.map((r) => ({
-    id: `${r.entity_type}-${r.id}`,
-    entityType: r.entity_type as EntityType,
-    company: r.company,
-    title: r.title,
-    description: r.description,
-    date: r.date ?? null,
-    sourceUrl: r.source_url,
-    createdAt: r.created_at,
-  }));
+  const totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
+
+  return {
+    entities: rows.map((r) => ({
+      id: `${r.entity_type}-${r.id}`,
+      entityType: r.entity_type as EntityType,
+      company: r.company,
+      title: r.title,
+      description: r.description,
+      date: r.date ?? null,
+      sourceUrl: r.source_url,
+      createdAt: r.created_at,
+    })),
+    totalCount,
+  };
 }

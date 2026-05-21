@@ -6,13 +6,6 @@ export interface AvailableTournament {
   isLive: boolean;
 }
 
-export interface ActiveTournamentOption {
-  id: string;
-  name: string;
-  isLive: boolean;
-  allRounds: LichessBroadcastRound[];
-}
-
 export interface PlayerStanding {
   rank: number;
   name: string;
@@ -111,6 +104,13 @@ export interface LichessBroadcast {
     tier?: number;
   };
   rounds: LichessBroadcastRound[];
+}
+
+export interface ActiveTournamentOption {
+  id: string;
+  name: string;
+  isLive: boolean;
+  allRounds: LichessBroadcastRound[];
 }
 
 export type TopBroadcastResult =
