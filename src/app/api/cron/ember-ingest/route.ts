@@ -21,6 +21,13 @@ type IngestResult = {
 };
 
 export async function runIngest(sql: NeonQueryFunction<false, false>): Promise<IngestResult> {
+  // Delete previous stub rows to prevent unbounded accumulation (runs every 10 min).
+  // Real ingest (#95) will remove this cleanup and use proper deduplication.
+  await sql`
+    DELETE FROM ember_fire_clusters
+    WHERE lat = ${STUB_LAT} AND lng = ${STUB_LNG}
+  `;
+
   const clusterRows = await sql`
     INSERT INTO ember_fire_clusters (lat, lng, frp, detection_count, detected_at)
     VALUES (${STUB_LAT}, ${STUB_LNG}, ${STUB_FRP}, ${STUB_DETECTION_COUNT}, now())
@@ -69,9 +76,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[ember-ingest] error:", message);
-    return new Response(JSON.stringify({ ok: false, error: message }), {
+    console.error("[ember-ingest] error:", err);
+    return new Response(JSON.stringify({ ok: false, error: "Ingest failed" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

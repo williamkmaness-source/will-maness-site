@@ -28,9 +28,11 @@ describe("runIngest", () => {
   });
 
   it("inserts a cluster and upserts county conditions, returning clusterId", async () => {
-    // First call: INSERT cluster → returns id
+    // First call: DELETE old stub rows
+    mockSql.mockResolvedValueOnce([]);
+    // Second call: INSERT cluster → returns id
     mockSql.mockResolvedValueOnce([{ id: 42 }]);
-    // Second call: UPSERT county conditions
+    // Third call: UPSERT county conditions
     mockSql.mockResolvedValueOnce([]);
 
     const { neon } = await import("@neondatabase/serverless");
@@ -40,7 +42,7 @@ describe("runIngest", () => {
 
     expect(result.clusterId).toBe(42);
     expect(result.conditionsUpserted).toBe(true);
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    expect(mockSql).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -78,6 +80,7 @@ describe("GET /api/cron/ember-ingest", () => {
 
   it("returns ok:true with clusterId on success", async () => {
     vi.stubEnv("POSTGRES_URL", "postgres://dummy");
+    mockSql.mockResolvedValueOnce([]); // DELETE old stubs
     mockSql.mockResolvedValueOnce([{ id: 7 }]);
     mockSql.mockResolvedValueOnce([]);
 
@@ -101,11 +104,12 @@ describe("GET /api/cron/ember-ingest", () => {
 
     const body = await res.json();
     expect(body.ok).toBe(false);
-    expect(body.error).toContain("relation does not exist");
+    expect(body.error).toBe("Ingest failed");
   });
 
   it("proceeds without auth check when CRON_SECRET is unset", async () => {
     vi.stubEnv("POSTGRES_URL", "postgres://dummy");
+    mockSql.mockResolvedValueOnce([]); // DELETE old stubs
     mockSql.mockResolvedValueOnce([{ id: 1 }]);
     mockSql.mockResolvedValueOnce([]);
 

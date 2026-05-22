@@ -19,8 +19,7 @@ export async function GET(_req: NextRequest): Promise<Response> {
     const data = await getEmberData(sql);
     return Response.json(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     console.error("[ember-data]", err);
-    return Response.json({ error: message }, { status: 502 });
+    return Response.json({ error: "Failed to fetch ember data" }, { status: 502 });
   }
 }
