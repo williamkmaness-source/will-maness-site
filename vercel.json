@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/chess-health",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/ember-ingest",
+      "schedule": "0 9 * * *"
     }
   ]
 }
