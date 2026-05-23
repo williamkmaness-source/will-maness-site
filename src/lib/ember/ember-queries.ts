@@ -4,6 +4,8 @@ const MAX_CLUSTERS = 50;
 
 export type ClusterTier = "Monitor" | "Watch" | "Action";
 
+const VALID_TIERS = new Set<string>(["Monitor", "Watch", "Action"]);
+
 export interface FireCluster {
   id: number;
   lat: number;
@@ -61,7 +63,7 @@ export async function getEmberData(sql: NeonQueryFunction<false, false>): Promis
     detectionCount: Number(r.detection_count),
     detectedAt: String(r.detected_at),
     riskScore: r.risk_score != null ? Number(r.risk_score) : null,
-    tier: (r.tier as ClusterTier) ?? null,
+    tier: typeof r.tier === "string" && VALID_TIERS.has(r.tier) ? (r.tier as ClusterTier) : null,
     weather: r.weather as Record<string, unknown> | null,
     briefing: (r.briefing as string) ?? null,
     briefingGeneratedAt: r.briefing_generated_at != null ? String(r.briefing_generated_at) : null,
