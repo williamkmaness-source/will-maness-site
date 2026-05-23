@@ -60,12 +60,12 @@
                         "san": "d5",
                         "from": "d7",
                         "to": "d5",
-                        "weight": 0.62,
+                        "weight": 0.55,
                         "next": {
                           "id": "w6",
                           "turn": "w",
                           "moveNumber": 4,
-                          "variation": "Vienna Gambit",
+                          "variation": "Vienna Gambit Declined",
                           "move": {
                             "san": "fxe5",
                             "from": "f4",
@@ -75,7 +75,7 @@
                             "id": "b7",
                             "turn": "b",
                             "moveNumber": 4,
-                            "variation": "Vienna Gambit",
+                            "variation": "Vienna Gambit Declined",
                             "responses": [
                               {
                                 "san": "Nxe4",
@@ -86,7 +86,7 @@
                                   "id": "w8",
                                   "turn": "w",
                                   "moveNumber": 5,
-                                  "variation": "Vienna Gambit",
+                                  "variation": "Vienna Gambit Declined",
                                   "move": {
                                     "san": "Nf3",
                                     "from": "g1",
@@ -96,7 +96,7 @@
                                     "id": "b9",
                                     "turn": "b",
                                     "moveNumber": 5,
-                                    "variation": "Vienna Gambit",
+                                    "variation": "Vienna Gambit Declined",
                                     "responses": [
                                       {
                                         "san": "Bg4",
@@ -107,7 +107,7 @@
                                           "id": "w10",
                                           "turn": "w",
                                           "moveNumber": 6,
-                                          "variation": "Vienna Gambit",
+                                          "variation": "Vienna Gambit Declined",
                                           "move": {
                                             "san": "d3",
                                             "from": "d2",
@@ -117,7 +117,7 @@
                                             "id": "b11",
                                             "turn": "b",
                                             "moveNumber": 6,
-                                            "variation": "Vienna Gambit",
+                                            "variation": "Vienna Gambit Declined",
                                             "responses": [
                                               {
                                                 "san": "Nc5",
@@ -128,7 +128,7 @@
                                                   "id": "w12",
                                                   "turn": "w",
                                                   "moveNumber": 7,
-                                                  "variation": "Vienna Gambit",
+                                                  "variation": "Vienna Gambit Declined",
                                                   "move": {
                                                     "san": "d4",
                                                     "from": "d3",
@@ -138,7 +138,7 @@
                                                     "id": "b13",
                                                     "turn": "b",
                                                     "moveNumber": 7,
-                                                    "variation": "Vienna Gambit",
+                                                    "variation": "Vienna Gambit Declined",
                                                     "responses": [
                                                       {
                                                         "san": "Ne6",
@@ -149,7 +149,7 @@
                                                           "id": "w14",
                                                           "turn": "w",
                                                           "moveNumber": 8,
-                                                          "variation": "Vienna Gambit",
+                                                          "variation": "Vienna Gambit Declined",
                                                           "move": {
                                                             "san": "Be3",
                                                             "from": "c1",
@@ -178,12 +178,12 @@
                         "san": "exf4",
                         "from": "e5",
                         "to": "f4",
-                        "weight": 0.38,
+                        "weight": 0.35,
                         "next": {
                           "id": "w6",
                           "turn": "w",
                           "moveNumber": 4,
-                          "variation": "Vienna Gambit",
+                          "variation": "Vienna Gambit Accepted",
                           "move": {
                             "san": "e5",
                             "from": "e4",
@@ -193,7 +193,7 @@
                             "id": "b7",
                             "turn": "b",
                             "moveNumber": 4,
-                            "variation": "Vienna Gambit",
+                            "variation": "Vienna Gambit Accepted",
                             "responses": [
                               {
                                 "san": "Ng8",
@@ -204,7 +204,7 @@
                                   "id": "w8",
                                   "turn": "w",
                                   "moveNumber": 5,
-                                  "variation": "Vienna Gambit",
+                                  "variation": "Vienna Gambit Accepted",
                                   "move": {
                                     "san": "Nf3",
                                     "from": "g1",
@@ -214,7 +214,7 @@
                                     "id": "b9",
                                     "turn": "b",
                                     "moveNumber": 5,
-                                    "variation": "Vienna Gambit",
+                                    "variation": "Vienna Gambit Accepted",
                                     "responses": [
                                       {
                                         "san": "d6",
@@ -225,7 +225,7 @@
                                           "id": "w10",
                                           "turn": "w",
                                           "moveNumber": 6,
-                                          "variation": "Vienna Gambit",
+                                          "variation": "Vienna Gambit Accepted",
                                           "move": {
                                             "san": "d4",
                                             "from": "d2",
@@ -235,7 +235,7 @@
                                             "id": "b11",
                                             "turn": "b",
                                             "moveNumber": 6,
-                                            "variation": "Vienna Gambit",
+                                            "variation": "Vienna Gambit Accepted",
                                             "responses": [
                                               {
                                                 "san": "dxe5",
@@ -246,7 +246,7 @@
                                                   "id": "w12",
                                                   "turn": "w",
                                                   "moveNumber": 7,
-                                                  "variation": "Vienna Gambit",
+                                                  "variation": "Vienna Gambit Accepted",
                                                   "move": {
                                                     "san": "dxe5",
                                                     "from": "d4",
@@ -256,7 +256,7 @@
                                                     "id": "b13",
                                                     "turn": "b",
                                                     "moveNumber": 7,
-                                                    "variation": "Vienna Gambit",
+                                                    "variation": "Vienna Gambit Accepted",
                                                     "responses": [
                                                       {
                                                         "san": "Nc6",
@@ -267,11 +267,129 @@
                                                           "id": "w14",
                                                           "turn": "w",
                                                           "moveNumber": 8,
-                                                          "variation": "Vienna Gambit",
+                                                          "variation": "Vienna Gambit Accepted",
                                                           "move": {
                                                             "san": "Bc4",
                                                             "from": "f1",
                                                             "to": "c4"
+                                                          },
+                                                          "next": null
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "san": "d6",
+                        "from": "d7",
+                        "to": "d6",
+                        "weight": 0.1,
+                        "next": {
+                          "id": "w6",
+                          "turn": "w",
+                          "moveNumber": 4,
+                          "variation": "Vienna Gambit — Steinitz Defense",
+                          "move": {
+                            "san": "Nf3",
+                            "from": "g1",
+                            "to": "f3"
+                          },
+                          "next": {
+                            "id": "b7",
+                            "turn": "b",
+                            "moveNumber": 4,
+                            "variation": "Vienna Gambit — Steinitz Defense",
+                            "responses": [
+                              {
+                                "san": "Nc6",
+                                "from": "b8",
+                                "to": "c6",
+                                "weight": 1,
+                                "next": {
+                                  "id": "w8",
+                                  "turn": "w",
+                                  "moveNumber": 5,
+                                  "variation": "Vienna Gambit — Steinitz Defense",
+                                  "move": {
+                                    "san": "Bc4",
+                                    "from": "f1",
+                                    "to": "c4"
+                                  },
+                                  "next": {
+                                    "id": "b9",
+                                    "turn": "b",
+                                    "moveNumber": 5,
+                                    "variation": "Vienna Gambit — Steinitz Defense",
+                                    "responses": [
+                                      {
+                                        "san": "Be7",
+                                        "from": "f8",
+                                        "to": "e7",
+                                        "weight": 1,
+                                        "next": {
+                                          "id": "w10",
+                                          "turn": "w",
+                                          "moveNumber": 6,
+                                          "variation": "Vienna Gambit — Steinitz Defense",
+                                          "move": {
+                                            "san": "d3",
+                                            "from": "d2",
+                                            "to": "d3"
+                                          },
+                                          "next": {
+                                            "id": "b11",
+                                            "turn": "b",
+                                            "moveNumber": 6,
+                                            "variation": "Vienna Gambit — Steinitz Defense",
+                                            "responses": [
+                                              {
+                                                "san": "O-O",
+                                                "from": "e8",
+                                                "to": "g8",
+                                                "weight": 1,
+                                                "next": {
+                                                  "id": "w12",
+                                                  "turn": "w",
+                                                  "moveNumber": 7,
+                                                  "variation": "Vienna Gambit — Steinitz Defense",
+                                                  "move": {
+                                                    "san": "O-O",
+                                                    "from": "e1",
+                                                    "to": "g1"
+                                                  },
+                                                  "next": {
+                                                    "id": "b13",
+                                                    "turn": "b",
+                                                    "moveNumber": 7,
+                                                    "variation": "Vienna Gambit — Steinitz Defense",
+                                                    "responses": [
+                                                      {
+                                                        "san": "Bg4",
+                                                        "from": "c8",
+                                                        "to": "g4",
+                                                        "weight": 1,
+                                                        "next": {
+                                                          "id": "w14",
+                                                          "turn": "w",
+                                                          "moveNumber": 8,
+                                                          "variation": "Vienna Gambit — Steinitz Defense",
+                                                          "move": {
+                                                            "san": "Be3",
+                                                            "from": "c1",
+                                                            "to": "e3"
                                                           },
                                                           "next": null
                                                         }
@@ -321,12 +439,12 @@
                         "san": "g6",
                         "from": "g7",
                         "to": "g6",
-                        "weight": 0.55,
+                        "weight": 0.5,
                         "next": {
                           "id": "w6",
                           "turn": "w",
                           "moveNumber": 4,
-                          "variation": "Symmetrical Vienna",
+                          "variation": "Symmetrical Vienna — Fianchetto",
                           "move": {
                             "san": "Bg2",
                             "from": "f1",
@@ -336,7 +454,7 @@
                             "id": "b7",
                             "turn": "b",
                             "moveNumber": 4,
-                            "variation": "Symmetrical Vienna",
+                            "variation": "Symmetrical Vienna — Fianchetto",
                             "responses": [
                               {
                                 "san": "Bg7",
@@ -347,7 +465,7 @@
                                   "id": "w8",
                                   "turn": "w",
                                   "moveNumber": 5,
-                                  "variation": "Symmetrical Vienna",
+                                  "variation": "Symmetrical Vienna — Fianchetto",
                                   "move": {
                                     "san": "d3",
                                     "from": "d2",
@@ -357,7 +475,7 @@
                                     "id": "b9",
                                     "turn": "b",
                                     "moveNumber": 5,
-                                    "variation": "Symmetrical Vienna",
+                                    "variation": "Symmetrical Vienna — Fianchetto",
                                     "responses": [
                                       {
                                         "san": "d6",
@@ -368,7 +486,7 @@
                                           "id": "w10",
                                           "turn": "w",
                                           "moveNumber": 6,
-                                          "variation": "Symmetrical Vienna",
+                                          "variation": "Symmetrical Vienna — Fianchetto",
                                           "move": {
                                             "san": "Be3",
                                             "from": "c1",
@@ -378,7 +496,7 @@
                                             "id": "b11",
                                             "turn": "b",
                                             "moveNumber": 6,
-                                            "variation": "Symmetrical Vienna",
+                                            "variation": "Symmetrical Vienna — Fianchetto",
                                             "responses": [
                                               {
                                                 "san": "Nf6",
@@ -389,7 +507,7 @@
                                                   "id": "w12",
                                                   "turn": "w",
                                                   "moveNumber": 7,
-                                                  "variation": "Symmetrical Vienna",
+                                                  "variation": "Symmetrical Vienna — Fianchetto",
                                                   "move": {
                                                     "san": "Nge2",
                                                     "from": "g1",
@@ -399,7 +517,7 @@
                                                     "id": "b13",
                                                     "turn": "b",
                                                     "moveNumber": 7,
-                                                    "variation": "Symmetrical Vienna",
+                                                    "variation": "Symmetrical Vienna — Fianchetto",
                                                     "responses": [
                                                       {
                                                         "san": "O-O",
@@ -410,7 +528,7 @@
                                                           "id": "w14",
                                                           "turn": "w",
                                                           "moveNumber": 8,
-                                                          "variation": "Symmetrical Vienna",
+                                                          "variation": "Symmetrical Vienna — Fianchetto",
                                                           "move": {
                                                             "san": "O-O",
                                                             "from": "e1",
@@ -439,12 +557,12 @@
                         "san": "Nf6",
                         "from": "g8",
                         "to": "f6",
-                        "weight": 0.45,
+                        "weight": 0.38,
                         "next": {
                           "id": "w6",
                           "turn": "w",
                           "moveNumber": 4,
-                          "variation": "Symmetrical Vienna",
+                          "variation": "Symmetrical Vienna — ...Nf6",
                           "move": {
                             "san": "Bg2",
                             "from": "f1",
@@ -454,7 +572,7 @@
                             "id": "b7",
                             "turn": "b",
                             "moveNumber": 4,
-                            "variation": "Symmetrical Vienna",
+                            "variation": "Symmetrical Vienna — ...Nf6",
                             "responses": [
                               {
                                 "san": "Bc5",
@@ -465,7 +583,7 @@
                                   "id": "w8",
                                   "turn": "w",
                                   "moveNumber": 5,
-                                  "variation": "Symmetrical Vienna",
+                                  "variation": "Symmetrical Vienna — ...Nf6",
                                   "move": {
                                     "san": "Nge2",
                                     "from": "g1",
@@ -475,7 +593,7 @@
                                     "id": "b9",
                                     "turn": "b",
                                     "moveNumber": 5,
-                                    "variation": "Symmetrical Vienna",
+                                    "variation": "Symmetrical Vienna — ...Nf6",
                                     "responses": [
                                       {
                                         "san": "d6",
@@ -486,7 +604,7 @@
                                           "id": "w10",
                                           "turn": "w",
                                           "moveNumber": 6,
-                                          "variation": "Symmetrical Vienna",
+                                          "variation": "Symmetrical Vienna — ...Nf6",
                                           "move": {
                                             "san": "O-O",
                                             "from": "e1",
@@ -496,7 +614,7 @@
                                             "id": "b11",
                                             "turn": "b",
                                             "moveNumber": 6,
-                                            "variation": "Symmetrical Vienna",
+                                            "variation": "Symmetrical Vienna — ...Nf6",
                                             "responses": [
                                               {
                                                 "san": "O-O",
@@ -507,7 +625,7 @@
                                                   "id": "w12",
                                                   "turn": "w",
                                                   "moveNumber": 7,
-                                                  "variation": "Symmetrical Vienna",
+                                                  "variation": "Symmetrical Vienna — ...Nf6",
                                                   "move": {
                                                     "san": "d3",
                                                     "from": "d2",
@@ -517,7 +635,7 @@
                                                     "id": "b13",
                                                     "turn": "b",
                                                     "moveNumber": 7,
-                                                    "variation": "Symmetrical Vienna",
+                                                    "variation": "Symmetrical Vienna — ...Nf6",
                                                     "responses": [
                                                       {
                                                         "san": "a6",
@@ -528,11 +646,247 @@
                                                           "id": "w14",
                                                           "turn": "w",
                                                           "moveNumber": 8,
-                                                          "variation": "Symmetrical Vienna",
+                                                          "variation": "Symmetrical Vienna — ...Nf6",
                                                           "move": {
                                                             "san": "Be3",
                                                             "from": "c1",
                                                             "to": "e3"
+                                                          },
+                                                          "next": null
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "san": "Bc5",
+                        "from": "f8",
+                        "to": "c5",
+                        "weight": 0.08,
+                        "next": {
+                          "id": "w6",
+                          "turn": "w",
+                          "moveNumber": 4,
+                          "variation": "Symmetrical Vienna — ...Bc5",
+                          "move": {
+                            "san": "Bg2",
+                            "from": "f1",
+                            "to": "g2"
+                          },
+                          "next": {
+                            "id": "b7",
+                            "turn": "b",
+                            "moveNumber": 4,
+                            "variation": "Symmetrical Vienna — ...Bc5",
+                            "responses": [
+                              {
+                                "san": "d6",
+                                "from": "d7",
+                                "to": "d6",
+                                "weight": 1,
+                                "next": {
+                                  "id": "w8",
+                                  "turn": "w",
+                                  "moveNumber": 5,
+                                  "variation": "Symmetrical Vienna — ...Bc5",
+                                  "move": {
+                                    "san": "d3",
+                                    "from": "d2",
+                                    "to": "d3"
+                                  },
+                                  "next": {
+                                    "id": "b9",
+                                    "turn": "b",
+                                    "moveNumber": 5,
+                                    "variation": "Symmetrical Vienna — ...Bc5",
+                                    "responses": [
+                                      {
+                                        "san": "Nf6",
+                                        "from": "g8",
+                                        "to": "f6",
+                                        "weight": 1,
+                                        "next": {
+                                          "id": "w10",
+                                          "turn": "w",
+                                          "moveNumber": 6,
+                                          "variation": "Symmetrical Vienna — ...Bc5",
+                                          "move": {
+                                            "san": "Nge2",
+                                            "from": "g1",
+                                            "to": "e2"
+                                          },
+                                          "next": {
+                                            "id": "b11",
+                                            "turn": "b",
+                                            "moveNumber": 6,
+                                            "variation": "Symmetrical Vienna — ...Bc5",
+                                            "responses": [
+                                              {
+                                                "san": "O-O",
+                                                "from": "e8",
+                                                "to": "g8",
+                                                "weight": 1,
+                                                "next": {
+                                                  "id": "w12",
+                                                  "turn": "w",
+                                                  "moveNumber": 7,
+                                                  "variation": "Symmetrical Vienna — ...Bc5",
+                                                  "move": {
+                                                    "san": "O-O",
+                                                    "from": "e1",
+                                                    "to": "g1"
+                                                  },
+                                                  "next": {
+                                                    "id": "b13",
+                                                    "turn": "b",
+                                                    "moveNumber": 7,
+                                                    "variation": "Symmetrical Vienna — ...Bc5",
+                                                    "responses": [
+                                                      {
+                                                        "san": "Be6",
+                                                        "from": "c8",
+                                                        "to": "e6",
+                                                        "weight": 1,
+                                                        "next": {
+                                                          "id": "w14",
+                                                          "turn": "w",
+                                                          "moveNumber": 8,
+                                                          "variation": "Symmetrical Vienna — ...Bc5",
+                                                          "move": {
+                                                            "san": "h3",
+                                                            "from": "h2",
+                                                            "to": "h3"
+                                                          },
+                                                          "next": null
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "san": "d6",
+                        "from": "d7",
+                        "to": "d6",
+                        "weight": 0.04,
+                        "next": {
+                          "id": "w6",
+                          "turn": "w",
+                          "moveNumber": 4,
+                          "variation": "Symmetrical Vienna — ...d6",
+                          "move": {
+                            "san": "Bg2",
+                            "from": "f1",
+                            "to": "g2"
+                          },
+                          "next": {
+                            "id": "b7",
+                            "turn": "b",
+                            "moveNumber": 4,
+                            "variation": "Symmetrical Vienna — ...d6",
+                            "responses": [
+                              {
+                                "san": "Be6",
+                                "from": "c8",
+                                "to": "e6",
+                                "weight": 1,
+                                "next": {
+                                  "id": "w8",
+                                  "turn": "w",
+                                  "moveNumber": 5,
+                                  "variation": "Symmetrical Vienna — ...d6",
+                                  "move": {
+                                    "san": "d3",
+                                    "from": "d2",
+                                    "to": "d3"
+                                  },
+                                  "next": {
+                                    "id": "b9",
+                                    "turn": "b",
+                                    "moveNumber": 5,
+                                    "variation": "Symmetrical Vienna — ...d6",
+                                    "responses": [
+                                      {
+                                        "san": "g6",
+                                        "from": "g7",
+                                        "to": "g6",
+                                        "weight": 1,
+                                        "next": {
+                                          "id": "w10",
+                                          "turn": "w",
+                                          "moveNumber": 6,
+                                          "variation": "Symmetrical Vienna — ...d6",
+                                          "move": {
+                                            "san": "f4",
+                                            "from": "f2",
+                                            "to": "f4"
+                                          },
+                                          "next": {
+                                            "id": "b11",
+                                            "turn": "b",
+                                            "moveNumber": 6,
+                                            "variation": "Symmetrical Vienna — ...d6",
+                                            "responses": [
+                                              {
+                                                "san": "Nge7",
+                                                "from": "g8",
+                                                "to": "e7",
+                                                "weight": 1,
+                                                "next": {
+                                                  "id": "w12",
+                                                  "turn": "w",
+                                                  "moveNumber": 7,
+                                                  "variation": "Symmetrical Vienna — ...d6",
+                                                  "move": {
+                                                    "san": "Nf3",
+                                                    "from": "g1",
+                                                    "to": "f3"
+                                                  },
+                                                  "next": {
+                                                    "id": "b13",
+                                                    "turn": "b",
+                                                    "moveNumber": 7,
+                                                    "variation": "Symmetrical Vienna — ...d6",
+                                                    "responses": [
+                                                      {
+                                                        "san": "Bg7",
+                                                        "from": "f8",
+                                                        "to": "g7",
+                                                        "weight": 1,
+                                                        "next": {
+                                                          "id": "w14",
+                                                          "turn": "w",
+                                                          "moveNumber": 8,
+                                                          "variation": "Symmetrical Vienna — ...d6",
+                                                          "move": {
+                                                            "san": "O-O",
+                                                            "from": "e1",
+                                                            "to": "g1"
                                                           },
                                                           "next": null
                                                         }
@@ -582,12 +936,12 @@
                         "san": "Nf6",
                         "from": "g8",
                         "to": "f6",
-                        "weight": 1,
+                        "weight": 0.6,
                         "next": {
                           "id": "w6",
                           "turn": "w",
                           "moveNumber": 4,
-                          "variation": "Vienna with ...Bc5",
+                          "variation": "Vienna with ...Bc5 — Mainline",
                           "move": {
                             "san": "d3",
                             "from": "d2",
@@ -597,7 +951,7 @@
                             "id": "b7",
                             "turn": "b",
                             "moveNumber": 4,
-                            "variation": "Vienna with ...Bc5",
+                            "variation": "Vienna with ...Bc5 — Mainline",
                             "responses": [
                               {
                                 "san": "Nc6",
@@ -608,7 +962,7 @@
                                   "id": "w8",
                                   "turn": "w",
                                   "moveNumber": 5,
-                                  "variation": "Vienna with ...Bc5",
+                                  "variation": "Vienna with ...Bc5 — Mainline",
                                   "move": {
                                     "san": "Be3",
                                     "from": "c1",
@@ -618,7 +972,7 @@
                                     "id": "b9",
                                     "turn": "b",
                                     "moveNumber": 5,
-                                    "variation": "Vienna with ...Bc5",
+                                    "variation": "Vienna with ...Bc5 — Mainline",
                                     "responses": [
                                       {
                                         "san": "Bb6",
@@ -629,7 +983,7 @@
                                           "id": "w10",
                                           "turn": "w",
                                           "moveNumber": 6,
-                                          "variation": "Vienna with ...Bc5",
+                                          "variation": "Vienna with ...Bc5 — Mainline",
                                           "move": {
                                             "san": "Nf3",
                                             "from": "g1",
@@ -639,7 +993,7 @@
                                             "id": "b11",
                                             "turn": "b",
                                             "moveNumber": 6,
-                                            "variation": "Vienna with ...Bc5",
+                                            "variation": "Vienna with ...Bc5 — Mainline",
                                             "responses": [
                                               {
                                                 "san": "d6",
@@ -650,7 +1004,7 @@
                                                   "id": "w12",
                                                   "turn": "w",
                                                   "moveNumber": 7,
-                                                  "variation": "Vienna with ...Bc5",
+                                                  "variation": "Vienna with ...Bc5 — Mainline",
                                                   "move": {
                                                     "san": "O-O",
                                                     "from": "e1",
@@ -660,7 +1014,7 @@
                                                     "id": "b13",
                                                     "turn": "b",
                                                     "moveNumber": 7,
-                                                    "variation": "Vienna with ...Bc5",
+                                                    "variation": "Vienna with ...Bc5 — Mainline",
                                                     "responses": [
                                                       {
                                                         "san": "O-O",
@@ -671,7 +1025,243 @@
                                                           "id": "w14",
                                                           "turn": "w",
                                                           "moveNumber": 8,
-                                                          "variation": "Vienna with ...Bc5",
+                                                          "variation": "Vienna with ...Bc5 — Mainline",
+                                                          "move": {
+                                                            "san": "h3",
+                                                            "from": "h2",
+                                                            "to": "h3"
+                                                          },
+                                                          "next": null
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "san": "d6",
+                        "from": "d7",
+                        "to": "d6",
+                        "weight": 0.15,
+                        "next": {
+                          "id": "w6",
+                          "turn": "w",
+                          "moveNumber": 4,
+                          "variation": "Vienna with ...Bc5 — ...d6 System",
+                          "move": {
+                            "san": "Nf3",
+                            "from": "g1",
+                            "to": "f3"
+                          },
+                          "next": {
+                            "id": "b7",
+                            "turn": "b",
+                            "moveNumber": 4,
+                            "variation": "Vienna with ...Bc5 — ...d6 System",
+                            "responses": [
+                              {
+                                "san": "Nc6",
+                                "from": "b8",
+                                "to": "c6",
+                                "weight": 1,
+                                "next": {
+                                  "id": "w8",
+                                  "turn": "w",
+                                  "moveNumber": 5,
+                                  "variation": "Vienna with ...Bc5 — ...d6 System",
+                                  "move": {
+                                    "san": "d3",
+                                    "from": "d2",
+                                    "to": "d3"
+                                  },
+                                  "next": {
+                                    "id": "b9",
+                                    "turn": "b",
+                                    "moveNumber": 5,
+                                    "variation": "Vienna with ...Bc5 — ...d6 System",
+                                    "responses": [
+                                      {
+                                        "san": "Nf6",
+                                        "from": "g8",
+                                        "to": "f6",
+                                        "weight": 1,
+                                        "next": {
+                                          "id": "w10",
+                                          "turn": "w",
+                                          "moveNumber": 6,
+                                          "variation": "Vienna with ...Bc5 — ...d6 System",
+                                          "move": {
+                                            "san": "Be3",
+                                            "from": "c1",
+                                            "to": "e3"
+                                          },
+                                          "next": {
+                                            "id": "b11",
+                                            "turn": "b",
+                                            "moveNumber": 6,
+                                            "variation": "Vienna with ...Bc5 — ...d6 System",
+                                            "responses": [
+                                              {
+                                                "san": "Bb6",
+                                                "from": "c5",
+                                                "to": "b6",
+                                                "weight": 1,
+                                                "next": {
+                                                  "id": "w12",
+                                                  "turn": "w",
+                                                  "moveNumber": 7,
+                                                  "variation": "Vienna with ...Bc5 — ...d6 System",
+                                                  "move": {
+                                                    "san": "O-O",
+                                                    "from": "e1",
+                                                    "to": "g1"
+                                                  },
+                                                  "next": {
+                                                    "id": "b13",
+                                                    "turn": "b",
+                                                    "moveNumber": 7,
+                                                    "variation": "Vienna with ...Bc5 — ...d6 System",
+                                                    "responses": [
+                                                      {
+                                                        "san": "O-O",
+                                                        "from": "e8",
+                                                        "to": "g8",
+                                                        "weight": 1,
+                                                        "next": {
+                                                          "id": "w14",
+                                                          "turn": "w",
+                                                          "moveNumber": 8,
+                                                          "variation": "Vienna with ...Bc5 — ...d6 System",
+                                                          "move": {
+                                                            "san": "h3",
+                                                            "from": "h2",
+                                                            "to": "h3"
+                                                          },
+                                                          "next": null
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "san": "Nc6",
+                        "from": "b8",
+                        "to": "c6",
+                        "weight": 0.25,
+                        "next": {
+                          "id": "w6",
+                          "turn": "w",
+                          "moveNumber": 4,
+                          "variation": "Vienna with ...Bc5 — ...Nc6",
+                          "move": {
+                            "san": "d3",
+                            "from": "d2",
+                            "to": "d3"
+                          },
+                          "next": {
+                            "id": "b7",
+                            "turn": "b",
+                            "moveNumber": 4,
+                            "variation": "Vienna with ...Bc5 — ...Nc6",
+                            "responses": [
+                              {
+                                "san": "Nf6",
+                                "from": "g8",
+                                "to": "f6",
+                                "weight": 1,
+                                "next": {
+                                  "id": "w8",
+                                  "turn": "w",
+                                  "moveNumber": 5,
+                                  "variation": "Vienna with ...Bc5 — ...Nc6",
+                                  "move": {
+                                    "san": "Be3",
+                                    "from": "c1",
+                                    "to": "e3"
+                                  },
+                                  "next": {
+                                    "id": "b9",
+                                    "turn": "b",
+                                    "moveNumber": 5,
+                                    "variation": "Vienna with ...Bc5 — ...Nc6",
+                                    "responses": [
+                                      {
+                                        "san": "Bb6",
+                                        "from": "c5",
+                                        "to": "b6",
+                                        "weight": 1,
+                                        "next": {
+                                          "id": "w10",
+                                          "turn": "w",
+                                          "moveNumber": 6,
+                                          "variation": "Vienna with ...Bc5 — ...Nc6",
+                                          "move": {
+                                            "san": "Nf3",
+                                            "from": "g1",
+                                            "to": "f3"
+                                          },
+                                          "next": {
+                                            "id": "b11",
+                                            "turn": "b",
+                                            "moveNumber": 6,
+                                            "variation": "Vienna with ...Bc5 — ...Nc6",
+                                            "responses": [
+                                              {
+                                                "san": "d6",
+                                                "from": "d7",
+                                                "to": "d6",
+                                                "weight": 1,
+                                                "next": {
+                                                  "id": "w12",
+                                                  "turn": "w",
+                                                  "moveNumber": 7,
+                                                  "variation": "Vienna with ...Bc5 — ...Nc6",
+                                                  "move": {
+                                                    "san": "O-O",
+                                                    "from": "e1",
+                                                    "to": "g1"
+                                                  },
+                                                  "next": {
+                                                    "id": "b13",
+                                                    "turn": "b",
+                                                    "moveNumber": 7,
+                                                    "variation": "Vienna with ...Bc5 — ...Nc6",
+                                                    "responses": [
+                                                      {
+                                                        "san": "O-O",
+                                                        "from": "e8",
+                                                        "to": "g8",
+                                                        "weight": 1,
+                                                        "next": {
+                                                          "id": "w14",
+                                                          "turn": "w",
+                                                          "moveNumber": 8,
+                                                          "variation": "Vienna with ...Bc5 — ...Nc6",
                                                           "move": {
                                                             "san": "h3",
                                                             "from": "h2",
