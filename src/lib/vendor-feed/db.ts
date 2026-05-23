@@ -42,13 +42,14 @@ export interface RawPage {
   company: string;
   source_url: string;
   raw_content: string;
+  scraped_at: Date;
 }
 
 export async function getPendingRawPages(
   sql: NeonQueryFunction<false, false>
 ): Promise<RawPage[]> {
   const rows = await sql`
-    SELECT id, company, source_url, raw_content
+    SELECT id, company, source_url, raw_content, scraped_at
     FROM vf_raw_pages
     WHERE status = 'pending'
     ORDER BY scraped_at ASC

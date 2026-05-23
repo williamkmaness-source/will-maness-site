@@ -14,6 +14,7 @@ const fixtureRawPage: RawPage = {
     <p>Prefect 3.0 launches today with a redesigned scheduling engine. Pricing moves to usage-based.
     New partnership with Snowflake for native integration. Infrastructure migrated from Celery to Ray.</p>
   </body></html>`,
+  scraped_at: new Date("2025-02-01T00:00:00Z"),
 };
 
 const emptyEntities: ExtractedEntities = {
@@ -183,5 +184,60 @@ describe("extractFromPage", () => {
     expect(a.fromTechnology).toBe("Celery");
     expect(a.toTechnology).toBe("Ray");
     expect(a.announcedDate).toBeNull();
+  });
+
+  it("skips entities older than 90 days from scraped_at", async () => {
+    const { inserted, markedExtracted } = await setup();
+    const callFn = vi.fn().mockResolvedValue({
+      feature_launches: [
+        { product_name: "Old Product", description: "Old launch", release_date: "2024-01-01" }, // Stale
+        { product_name: "New Product", description: "New launch", release_date: "2025-01-20" }, // Not stale
+      ],
+      pricing_changes: [],
+      partnerships: [],
+      architectural_shifts: [],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, fixtureRawPage, callFn);
+
+    expect(inserted.launches).toHaveLength(1);
+    const l = inserted.launches[0] as { productName: string };
+    expect(l.productName).toBe("New Product");
+    expect(markedExtracted).toContain(42);
+  });
+
+  it("regression #101: correctly overrides LLM inference with canonical date and drops 2025 MetricFlow article scraped in 2026", async () => {
+    const { inserted, markedExtracted } = await setup();
+    
+    // Simulate issue #101: The scrape happens in 2026, and the LLM infers the scrape date (2026) 
+    // because it doesn't see the HTML metadata, but the article is actually from 2025.
+    const metricFlowPage = {
+      ...fixtureRawPage,
+      company: "dbt Labs",
+      scraped_at: new Date("2026-05-20T00:00:00Z"),
+      raw_content: `<html><head><meta property="article:published_time" content="2025-10-15T12:00:00Z"></head><body>MetricFlow open sourced.</body></html>`
+    };
+
+    const callFn = vi.fn().mockResolvedValue({
+      feature_launches: [
+        { 
+          product_name: "MetricFlow (Open Source)", 
+          description: "dbt Labs open-sourced MetricFlow.", 
+          release_date: "2026-05-20" // LLM hallucinates the 2026 scrape date or wrapper date
+        }, 
+      ],
+      pricing_changes: [],
+      partnerships: [],
+      architectural_shifts: [],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, metricFlowPage, callFn);
+
+    // The canonical date (2025-10-15) overrides the LLM date (2026-05-20).
+    // Because 2025-10-15 is > 90 days older than the scrape date (2026-05-20), it gets skipped.
+    expect(inserted.launches).toHaveLength(0);
+    expect(markedExtracted).toContain(42);
   });
 });
