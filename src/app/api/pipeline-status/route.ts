@@ -21,11 +21,12 @@ export async function GET() {
 
   const stream = new ReadableStream({
     async start(controller) {
+      const sql = connectionString ? neon(connectionString) : null;
+
       const send = async () => {
         try {
           let statuses;
-          if (connectionString) {
-            const sql = neon(connectionString);
+          if (sql) {
             statuses = await getPipelineStatuses(sql);
           } else {
             // No database configured — emit unknown for all pipelines.

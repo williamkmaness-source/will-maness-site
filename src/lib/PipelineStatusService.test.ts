@@ -111,6 +111,20 @@ describe("buildVendorFeedStatus", () => {
     expect(buildVendorFeedStatus(row).error).toBe("1 page failed");
   });
 
+  it("returns running when only pending pages exist", () => {
+    const row = {
+      extracted: "0",
+      pending: "5",
+      failed: "0",
+      last_success_at: null,
+      last_attempt_at: "2026-05-22T09:00:00Z",
+    };
+    const result = buildVendorFeedStatus(row);
+    expect(result.status).toBe("running");
+    expect(result.recordCount).toBeNull();
+    expect(result.error).toBeNull();
+  });
+
   it("returns unknown when all counts are zero", () => {
     const row = {
       extracted: "0",

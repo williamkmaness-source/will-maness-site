@@ -24,6 +24,12 @@ const DATA_SOURCE: Record<string, string> = {
   'vendor-feed': 'GitHub Actions → Neon',
 };
 
+const DISPLAY_NAMES: Record<string, string> = {
+  '311': 'Boston 311',
+  chess: 'Chess',
+  'vendor-feed': 'Vendor Feed',
+};
+
 const OUTPUT_LINK: Record<string, string> = {
   'vendor-feed': '/work/vendor_feed',
 };
@@ -42,11 +48,6 @@ export function PipelineCard({ status }: { status: PipelineStatus }) {
   const dotColor = STATUS_DOT_COLOR[status.status];
   const label = STATUS_LABELS[status.status];
   const source = DATA_SOURCE[status.pipeline] ?? status.pipeline;
-  const DISPLAY_NAMES: Record<string, string> = {
-    '311': 'Boston 311',
-    chess: 'Chess',
-    'vendor-feed': 'Vendor Feed',
-  };
   const displayName = DISPLAY_NAMES[status.pipeline] ?? status.pipeline;
   const outputLink = OUTPUT_LINK[status.pipeline];
 

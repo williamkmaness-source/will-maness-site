@@ -49,11 +49,13 @@ export function buildVendorFeedStatus(row: VfRow | null): PipelineStatus {
   if (!row) return unknown("vendor-feed");
 
   const extracted = Number(row.extracted);
+  const pending = Number(row.pending);
   const failed = Number(row.failed);
 
   let status: PipelineStatus["status"] = "unknown";
   if (extracted > 0) status = "success";
   else if (failed > 0) status = "failed";
+  else if (pending > 0) status = "running";
 
   return {
     pipeline: "vendor-feed",
