@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { PipelineStatus, PipelineStatusValue } from './types';
 
 const STATUS_LABELS: Record<PipelineStatusValue, string> = {
@@ -20,6 +21,17 @@ const STATUS_DOT_COLOR: Record<PipelineStatusValue, string> = {
 const DATA_SOURCE: Record<string, string> = {
   '311': 'Analyze Boston CKAN',
   chess:  'Lichess Broadcasts API',
+  'vendor-feed': 'GitHub Actions → Neon',
+};
+
+const DISPLAY_NAMES: Record<string, string> = {
+  '311': 'Boston 311',
+  chess: 'Chess',
+  'vendor-feed': 'Vendor Feed',
+};
+
+const OUTPUT_LINK: Record<string, string> = {
+  'vendor-feed': '/work/vendor_feed',
 };
 
 function formatTimestamp(iso: string | null): string {
@@ -36,7 +48,8 @@ export function PipelineCard({ status }: { status: PipelineStatus }) {
   const dotColor = STATUS_DOT_COLOR[status.status];
   const label = STATUS_LABELS[status.status];
   const source = DATA_SOURCE[status.pipeline] ?? status.pipeline;
-  const displayName = status.pipeline === '311' ? 'Boston 311' : 'Chess';
+  const displayName = DISPLAY_NAMES[status.pipeline] ?? status.pipeline;
+  const outputLink = OUTPUT_LINK[status.pipeline];
 
   return (
     <div className="bg-bg-soft border border-line rounded-lg p-[20px] flex flex-col gap-[12px]">
@@ -45,7 +58,17 @@ export function PipelineCard({ status }: { status: PipelineStatus }) {
           <span className="font-mono text-[12px] uppercase tracking-[0.06em] text-clay">
             {displayName}
           </span>
-          <p className="font-sans text-[13px] text-muted mt-[2px]">{source}</p>
+          <p className="font-sans text-[13px] text-muted mt-[2px]">
+            {source}
+            {outputLink && (
+              <>
+                {' · '}
+                <Link href={outputLink} className="underline underline-offset-2 hover:text-ink transition-colors">
+                  View output
+                </Link>
+              </>
+            )}
+          </p>
         </div>
         <span
           role="img"
