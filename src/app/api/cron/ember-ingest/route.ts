@@ -1,7 +1,7 @@
 // route.ts — EmberBrief skeleton cron handler (issue #93).
 // Inserts one hardcoded fire cluster and upserts county conditions.
 // Real NASA FIRMS ingest replaces the stub in issue #95.
-// Runs every 10 minutes via Vercel Cron (see vercel.json).
+// Runs daily at 09:00 UTC via Vercel Cron (see vercel.json).
 
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { NextRequest } from "next/server";
@@ -21,7 +21,7 @@ type IngestResult = {
 };
 
 export async function runIngest(sql: NeonQueryFunction<false, false>): Promise<IngestResult> {
-  // Delete previous stub rows to prevent unbounded accumulation (runs every 10 min).
+  // Delete previous stub rows to prevent unbounded accumulation.
   // Real ingest (#95) will remove this cleanup and use proper deduplication.
   await sql`
     DELETE FROM ember_fire_clusters

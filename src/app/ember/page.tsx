@@ -1,6 +1,6 @@
 // app/ember/page.tsx — EmberBrief fire monitoring dashboard (issue #93).
 // Server component. Reads directly from the DB using the shared ember-queries lib.
-// Renders county conditions and cluster cards. Revalidates every 10 minutes
+// Renders county conditions and cluster cards. Revalidates daily
 // to stay in sync with the cron cadence.
 
 import type { Metadata } from "next";
@@ -11,12 +11,12 @@ import { getEmberData, getSqlClient } from "@/lib/ember/ember-queries";
 import { CountyConditionsHeader } from "@/components/projects/ember/CountyConditionsHeader";
 import { ClusterCard } from "@/components/projects/ember/ClusterCard";
 
-export const revalidate = 600;
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "EmberBrief — Shasta County Fire Dashboard | Will Maness",
   description:
-    "Live satellite fire detection for Shasta County — clusters, risk scores, and current weather conditions updated every 10 minutes.",
+    "Live satellite fire detection for Shasta County — clusters, risk scores, and current weather conditions updated daily.",
 };
 
 export default async function EmberPage() {
@@ -57,7 +57,7 @@ export default async function EmberPage() {
           EmberBrief
         </h1>
         <p className="font-sans text-[16px] leading-[1.65] text-ink-soft max-w-[580px]">
-          Satellite fire detection for Shasta County — clusters updated every 10 minutes
+          Satellite fire detection for Shasta County — clusters updated daily
           from NASA FIRMS, with NOAA weather and AI-generated situation briefings for
           high-risk events.
         </p>
@@ -87,7 +87,7 @@ export default async function EmberPage() {
               No active detections.
             </p>
             <p className="font-sans text-[14px] text-hint">
-              The pipeline runs every 10 minutes. Check back shortly.
+              The pipeline runs daily. Check back after the next update.
             </p>
           </div>
         ) : (
