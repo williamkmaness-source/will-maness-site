@@ -26,7 +26,7 @@ function isPipelineStatus(v: unknown): v is PipelineStatus {
   );
 }
 
-// The static payload emitted by /api/pipeline-status (matches route.ts STATIC_STATUS).
+// A representative payload emitted by /api/pipeline-status (three pipelines).
 const STATIC_PAYLOAD = JSON.stringify([
   {
     pipeline: '311',
@@ -44,6 +44,14 @@ const STATIC_PAYLOAD = JSON.stringify([
     recordCount: null,
     error: null,
   },
+  {
+    pipeline: 'vendor-feed',
+    status: 'unknown',
+    lastSuccessAt: null,
+    lastAttemptAt: null,
+    recordCount: null,
+    error: null,
+  },
 ]);
 
 // ── Payload schema ────────────────────────────────────────────────────────────
@@ -53,10 +61,10 @@ describe('pipeline-status payload schema', () => {
     expect(() => JSON.parse(STATIC_PAYLOAD)).not.toThrow();
   });
 
-  it('static payload contains two pipeline entries', () => {
+  it('static payload contains three pipeline entries', () => {
     const parsed = JSON.parse(STATIC_PAYLOAD);
     expect(Array.isArray(parsed)).toBe(true);
-    expect(parsed).toHaveLength(2);
+    expect(parsed).toHaveLength(3);
   });
 
   it('every entry matches PipelineStatus schema', () => {
@@ -66,11 +74,12 @@ describe('pipeline-status payload schema', () => {
     }
   });
 
-  it('pipeline identifiers are 311 and chess', () => {
+  it('pipeline identifiers are 311, chess, and vendor-feed', () => {
     const parsed: PipelineStatus[] = JSON.parse(STATIC_PAYLOAD);
     const ids = parsed.map((p) => p.pipeline);
     expect(ids).toContain('311');
     expect(ids).toContain('chess');
+    expect(ids).toContain('vendor-feed');
   });
 
   it('unknown status has all nullable fields set to null', () => {
