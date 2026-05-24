@@ -11,7 +11,7 @@ import { getEmberData, getSqlClient } from "@/lib/ember/ember-queries";
 import { CountyConditionsHeader } from "@/components/projects/ember/CountyConditionsHeader";
 import { ClusterCard } from "@/components/projects/ember/ClusterCard";
 
-export const revalidate = 86400;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "EmberBrief — Shasta County Fire Dashboard | Will Maness",
