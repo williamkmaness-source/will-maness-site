@@ -1,4 +1,4 @@
-export type PipelineId = '311' | 'chess' | 'vendor-feed';
+export type PipelineId = '311' | 'vendor-feed';
 
 export type PipelineStatusValue = 'success' | 'failed' | 'running' | 'unknown';
 

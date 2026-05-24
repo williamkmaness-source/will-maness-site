@@ -32,7 +32,6 @@ export async function GET() {
             // No database configured — emit unknown for all pipelines.
             statuses = [
               { pipeline: "311", status: "unknown", lastSuccessAt: null, lastAttemptAt: null, recordCount: null, error: null },
-              { pipeline: "chess", status: "unknown", lastSuccessAt: null, lastAttemptAt: null, recordCount: null, error: null },
               { pipeline: "vendor-feed", status: "unknown", lastSuccessAt: null, lastAttemptAt: null, recordCount: null, error: null },
             ];
           }

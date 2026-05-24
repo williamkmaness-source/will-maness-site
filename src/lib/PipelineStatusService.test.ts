@@ -30,7 +30,7 @@ describe("buildRunStatus", () => {
 
   it("maps a failed row with error message", () => {
     const row = {
-      pipeline: "chess",
+      pipeline: "311",
       status: "failed",
       last_success_at: "2026-05-14T10:00:00Z",
       last_attempt_at: "2026-05-15T10:00:00Z",
@@ -140,7 +140,7 @@ describe("buildVendorFeedStatus", () => {
 // ── getPipelineStatuses ───────────────────────────────────────────────────────
 
 describe("getPipelineStatuses", () => {
-  it("maps pipeline_runs rows and vf_raw_pages into three status entries", async () => {
+  it("maps pipeline_runs rows and vf_raw_pages into two status entries", async () => {
     const runRows = [
       {
         pipeline: "311",
@@ -148,14 +148,6 @@ describe("getPipelineStatuses", () => {
         last_success_at: "2026-05-22T03:00:00Z",
         last_attempt_at: "2026-05-22T03:00:00Z",
         record_count: 95000,
-        error: null,
-      },
-      {
-        pipeline: "chess",
-        status: "success",
-        last_success_at: "2026-05-22T08:00:00Z",
-        last_attempt_at: "2026-05-22T08:00:00Z",
-        record_count: null,
         error: null,
       },
     ];
@@ -175,15 +167,14 @@ describe("getPipelineStatuses", () => {
 
     const result = await getPipelineStatuses(mockSql as never);
 
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(2);
     expect(result[0].pipeline).toBe("311");
     expect(result[0].status).toBe("success");
-    expect(result[1].pipeline).toBe("chess");
-    expect(result[2].pipeline).toBe("vendor-feed");
-    expect(result[2].recordCount).toBe(87);
+    expect(result[1].pipeline).toBe("vendor-feed");
+    expect(result[1].recordCount).toBe(87);
   });
 
-  it("returns unknown for 311 and chess when pipeline_runs is empty", async () => {
+  it("returns unknown for 311 when pipeline_runs is empty", async () => {
     const mockSql = vi.fn()
       .mockResolvedValueOnce([])        // empty pipeline_runs
       .mockResolvedValueOnce([{
@@ -204,14 +195,6 @@ describe("getPipelineStatuses", () => {
       recordCount: null,
       error: null,
     });
-    expect(result[1]).toEqual({
-      pipeline: "chess",
-      status: "unknown",
-      lastSuccessAt: null,
-      lastAttemptAt: null,
-      recordCount: null,
-      error: null,
-    });
   });
 
   it("handles empty vf_raw_pages gracefully", async () => {
@@ -220,7 +203,7 @@ describe("getPipelineStatuses", () => {
       .mockResolvedValueOnce([]);
 
     const result = await getPipelineStatuses(mockSql as never);
-    expect(result[2]).toEqual({
+    expect(result[1]).toEqual({
       pipeline: "vendor-feed",
       status: "unknown",
       lastSuccessAt: null,

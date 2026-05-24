@@ -26,18 +26,10 @@ function isPipelineStatus(v: unknown): v is PipelineStatus {
   );
 }
 
-// A representative payload emitted by /api/pipeline-status (three pipelines).
+// A representative payload emitted by /api/pipeline-status (two pipelines).
 const STATIC_PAYLOAD = JSON.stringify([
   {
     pipeline: '311',
-    status: 'unknown',
-    lastSuccessAt: null,
-    lastAttemptAt: null,
-    recordCount: null,
-    error: null,
-  },
-  {
-    pipeline: 'chess',
     status: 'unknown',
     lastSuccessAt: null,
     lastAttemptAt: null,
@@ -61,10 +53,10 @@ describe('pipeline-status payload schema', () => {
     expect(() => JSON.parse(STATIC_PAYLOAD)).not.toThrow();
   });
 
-  it('static payload contains three pipeline entries', () => {
+  it('static payload contains two pipeline entries', () => {
     const parsed = JSON.parse(STATIC_PAYLOAD);
     expect(Array.isArray(parsed)).toBe(true);
-    expect(parsed).toHaveLength(3);
+    expect(parsed).toHaveLength(2);
   });
 
   it('every entry matches PipelineStatus schema', () => {
@@ -74,11 +66,10 @@ describe('pipeline-status payload schema', () => {
     }
   });
 
-  it('pipeline identifiers are 311, chess, and vendor-feed', () => {
+  it('pipeline identifiers are 311 and vendor-feed', () => {
     const parsed: PipelineStatus[] = JSON.parse(STATIC_PAYLOAD);
     const ids = parsed.map((p) => p.pipeline);
     expect(ids).toContain('311');
-    expect(ids).toContain('chess');
     expect(ids).toContain('vendor-feed');
   });
 
@@ -118,7 +109,7 @@ describe('pipeline-status SSE data parsing', () => {
   it('parses a failed payload with error message', () => {
     const payload: PipelineStatus[] = [
       {
-        pipeline: 'chess',
+        pipeline: '311',
         status: 'failed',
         lastSuccessAt: '2026-05-14T10:00:00.000Z',
         lastAttemptAt: '2026-05-15T10:00:00.000Z',
