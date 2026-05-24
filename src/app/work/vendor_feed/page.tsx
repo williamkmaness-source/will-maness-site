@@ -9,7 +9,7 @@ import { getFeedEntities } from "@/lib/vendor-feed/feed-queries";
 import { FeedClient } from "./FeedClient";
 import type { Metadata } from "next";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Vendor Intelligence Feed — Will Maness",
