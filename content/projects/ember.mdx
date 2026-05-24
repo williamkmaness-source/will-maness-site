@@ -1,0 +1,57 @@
+---
+title: "EmberBrief"
+eyebrow: "Data · AI · Engineering"
+year: "2026"
+status: "in-progress"
+tags: ["data", "ai", "engineering"]
+summary: "When a wildfire ignites, the data exists within minutes — NASA satellites, NOAA weather stations. The bottleneck is synthesis. EmberBrief translates live fire and weather feeds into plain-language situation briefings, automatically."
+featured: true
+---
+
+When a wildfire ignites, the information to understand it appears almost immediately. NASA's FIRMS satellite network detects heat signatures within minutes. NOAA weather stations report wind speed, humidity, and temperature in real time. The data is public and continuously updated.
+
+The bottleneck is synthesis. Translating raw satellite detections and weather readings into an actionable situation brief takes an analyst. EmberBrief removes that step.
+
+> Can a deterministic rules engine and a tightly constrained AI layer replace the analyst — not by guessing, but by doing exactly what the analyst would do with the same inputs?
+
+That is the product question. The [live dashboard](/ember) shows current fire activity and conditions for Shasta County, CA, scored and briefed automatically on a daily cadence.
+
+## How it works
+
+A Vercel cron job orchestrates the full pipeline: fetch active fire detections from the NASA FIRMS NRT feed → fetch current weather from the nearest NOAA Synoptic station → cluster detections within 2km of each other into discrete fire events → score each cluster on a transparent risk index → for Action-tier events, generate a plain-language situation briefing via the Claude API.
+
+The risk score is a weighted composite:
+
+- **FRP intensity (40%)** — fire radiative power of the cluster, normalized
+- **Weather danger (40%)** — derived from relative humidity, wind speed, and Red Flag status (RH < 15% and wind > 25 mph)
+- **Trend (20%)** — change in cluster FRP over the prior 3 hours
+
+Clusters are assigned a tier: **Monitor** (score < 40), **Watch** (40–69), or **Action** (≥ 70). Red Flag conditions are surfaced separately as a county-level flag, not embedded in the cluster score — they matter regardless of active fire.
+
+Claude is called only for Action-tier events. This keeps AI costs proportional to actual risk activity. During most of the year, the cron run produces no Claude calls at all.
+
+## The AI layer boundary
+
+The hardest design decision was where to draw the line between rules and AI. The answer: rules handle everything that has a ground-truth answer. Clustering geometry, risk thresholds, Red Flag flags — all deterministic, all documented as named constants. Claude handles one thing: synthesizing a collection of structured data fields into a briefing paragraph a non-analyst can act on.
+
+The briefing prompt is constructed from the cluster's exact metrics. Claude cannot infer beyond what is supplied. The three output sections — current situation, weather context, 6-hour outlook — mirror what a trained analyst would produce from the same inputs.
+
+## Stack
+
+<StackList items={[
+  { name: "Next.js", role: "App Router — dashboard lives at /ember within this site", frequency: "daily" },
+  { name: "Neon Postgres", role: "ember_fire_clusters and ember_county_conditions tables; FRP trend history for scoring", frequency: "daily" },
+  { name: "Vercel Cron", role: "Daily pipeline — FIRMS ingest, scoring, briefing generation", frequency: "daily" },
+  { name: "NASA FIRMS", role: "NRT VIIRS and MODIS fire detection feeds for the Shasta County bounding box", frequency: "daily" },
+  { name: "NOAA Synoptic", role: "Current weather observations and 6-hour forecast for nearest station", frequency: "daily" },
+  { name: "Claude API", role: "Plain-language situation briefing generation for Action-tier events only", frequency: "occasional" },
+  { name: "Tailwind CSS", role: "Styling — uses this site's design tokens throughout", frequency: "daily" }
+]} />
+
+## What's next
+
+Phase 2 priorities: multi-county support with agency boundary routing, an interactive map layer (Mapbox), and push notification delivery via service worker. The insurance vertical is a natural reframe — parcel overlay and structure exposure estimates would make the same pipeline useful for underwriters, not just field commanders.
+
+The north star metric is time-to-brief: minutes from satellite fire detection to a user seeing an actionable briefing. Target is under 15 minutes. The manual analyst baseline is approximately 47 minutes.
+
+[Open the live dashboard →](/ember)
