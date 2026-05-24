@@ -1,7 +1,3 @@
-// app/ember/page.tsx — EmberBrief fire monitoring dashboard (issue #93).
-// Server component. Reads directly from the DB using the shared ember-queries lib.
-// Renders county conditions and cluster cards. Revalidates daily
-// to stay in sync with the cron cadence.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -19,24 +15,33 @@ export const metadata: Metadata = {
     "Live satellite fire detection for Shasta County — clusters, risk scores, and current weather conditions updated daily.",
 };
 
+function ErrorState({ reason }: { reason: string }) {
+  return (
+    <Container>
+      <div className="py-[80px] text-center mb-[96px]">
+        <p className="font-serif text-[20px] text-muted mb-[12px]">
+          Dashboard unavailable.
+        </p>
+        <p className="font-sans text-[14px] text-hint">{reason}</p>
+      </div>
+    </Container>
+  );
+}
+
 export default async function EmberPage() {
+  let sql;
+  try {
+    sql = getSqlClient();
+  } catch {
+    return <ErrorState reason="Database not configured. Check environment variables." />;
+  }
+
   let data;
   try {
-    const sql = getSqlClient();
     data = await getEmberData(sql);
-  } catch {
-    return (
-      <Container>
-        <div className="py-[80px] text-center mb-[96px]">
-          <p className="font-serif text-[20px] text-muted mb-[12px]">
-            Dashboard unavailable.
-          </p>
-          <p className="font-sans text-[14px] text-hint">
-            Database not configured. Check environment variables.
-          </p>
-        </div>
-      </Container>
-    );
+  } catch (err) {
+    console.error("[ember/page] getEmberData failed:", err);
+    return <ErrorState reason="Could not load fire data. The pipeline may still be initializing." />;
   }
 
   const { clusters, countyConditions } = data;
