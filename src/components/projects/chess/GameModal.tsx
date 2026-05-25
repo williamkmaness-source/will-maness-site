@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { fetchGamePgn, fetchGamePgnLive, DEFAULT_INTERVAL } from './BroadcastService';
 import { ChessBoard } from './ChessBoard';
 import { ReplayControls } from './ReplayControls';
+import { playPieceSound } from '@/lib/playPieceSound';
 import type { GameMoveData, SelectedGame } from './types';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -218,12 +219,20 @@ export function GameModal({ game, onClose }: Props) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const movesLenRef = useRef(0);
+  const prevMoveIndexRef = useRef(0);
 
   useEffect(() => {
     returnFocusRef.current = document.activeElement;
     closeButtonRef.current?.focus();
     return () => { (returnFocusRef.current as HTMLElement | null)?.focus(); };
   }, []);
+
+  useEffect(() => {
+    if (moveIndex > prevMoveIndexRef.current) {
+      playPieceSound();
+    }
+    prevMoveIndexRef.current = moveIndex;
+  }, [moveIndex]);
 
   useEffect(() => {
     const controller = new AbortController();
