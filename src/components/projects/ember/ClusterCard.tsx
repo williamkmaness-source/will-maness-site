@@ -62,8 +62,13 @@ export function ClusterCard({ cluster }: ClusterCardProps) {
       ? `${Math.round(weather.windSpeedMph)} mph${weather.windDirectionDeg != null ? ` ${degreesToCardinal(weather.windDirectionDeg)}` : ""}`
       : "—";
 
+  const isMonitor = tier === "Monitor";
+
   return (
-    <article className="border border-line rounded-sm p-[20px] bg-bg">
+    <article className={[
+      "border rounded-sm p-[20px]",
+      isMonitor ? "border-line bg-bg opacity-70" : "border-line bg-bg",
+    ].join(" ")}>
       <div className="flex items-start justify-between gap-[12px] mb-[14px] flex-wrap">
         <div className="flex items-center gap-[8px] flex-wrap">
           {tier && <TierBadge tier={tier} />}

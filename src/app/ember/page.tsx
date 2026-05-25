@@ -6,6 +6,7 @@ import { SectionLabel } from "@/components/ui/SectionLabel";
 import { getEmberData, getSqlClient } from "@/lib/ember/ember-queries";
 import { CountyConditionsHeader } from "@/components/projects/ember/CountyConditionsHeader";
 import { ClusterCard } from "@/components/projects/ember/ClusterCard";
+import { PipelineStatus } from "@/components/projects/ember/PipelineStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,32 @@ export const metadata: Metadata = {
   description:
     "Live satellite fire detection for Shasta County — clusters, risk scores, and current weather conditions updated daily.",
 };
+
+function ZeroDetectionState({ redFlag }: { redFlag: boolean }) {
+  return (
+    <div className={[
+      "py-[48px] px-[24px] text-center border rounded-sm",
+      redFlag ? "border-clay bg-clay-soft" : "border-line bg-bg-soft",
+    ].join(" ")}>
+      {redFlag && (
+        <div className="flex items-center justify-center gap-[8px] mb-[16px]">
+          <span className="inline-block w-[7px] h-[7px] rounded-full bg-clay shrink-0" />
+          <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-clay font-medium">
+            Fire weather conditions elevated — monitoring active
+          </span>
+        </div>
+      )}
+      <p className="font-serif text-[20px] text-muted mb-[10px]">
+        No active detections in Shasta County.
+      </p>
+      <p className="font-sans text-[14px] text-hint">
+        {redFlag
+          ? "Red Flag conditions are active. The pipeline is monitoring for new satellite detections."
+          : "The pipeline runs daily. Current conditions are within normal range."}
+      </p>
+    </div>
+  );
+}
 
 function ErrorState({ reason }: { reason: string }) {
   return (
@@ -68,6 +95,8 @@ export default async function EmberPage() {
         </p>
       </div>
 
+      <PipelineStatus lastCheckedAt={countyConditions?.observedAt ?? null} />
+
       {/* County conditions */}
       {countyConditions && (
         <CountyConditionsHeader conditions={countyConditions} />
@@ -87,14 +116,7 @@ export default async function EmberPage() {
         </div>
 
         {clusters.length === 0 ? (
-          <div className="py-[60px] text-center border border-line rounded-sm">
-            <p className="font-serif text-[20px] text-muted mb-[12px]">
-              No active detections.
-            </p>
-            <p className="font-sans text-[14px] text-hint">
-              The pipeline runs daily. Check back after the next update.
-            </p>
-          </div>
+          <ZeroDetectionState redFlag={countyConditions?.redFlag ?? false} />
         ) : (
           <div className="flex flex-col gap-[12px]">
             {clusters.map((cluster) => (
