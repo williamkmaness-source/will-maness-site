@@ -102,55 +102,81 @@ async function main() {
 
   const sql = neon(connectionString);
 
-  // Fetch the last 2 days to catch both newly-opened and recently-closed cases.
-  const windowEnd = new Date();
-  const windowStart = new Date(windowEnd.getTime() - 2 * 24 * 60 * 60 * 1000);
-  const startDate = toDateStr(windowStart);
-  const endDate = toDateStr(windowEnd);
+  let upserted = 0;
 
-  console.log(`Fetching cases for ${startDate} → ${endDate}...`);
+  try {
+    // Fetch the last 2 days to catch both newly-opened and recently-closed cases.
+    const windowEnd = new Date();
+    const windowStart = new Date(windowEnd.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const startDate = toDateStr(windowStart);
+    const endDate = toDateStr(windowEnd);
 
-  // Only fetch resources whose year overlaps the 2-day window.
-  const startYear = windowStart.getFullYear();
-  const endYear = windowEnd.getFullYear();
-  const relevant = YEAR_RESOURCES.filter(
-    ([year]) => year >= startYear && year <= endYear
-  );
+    console.log(`Fetching cases for ${startDate} → ${endDate}...`);
 
-  const allRows: RawCaseRow[] = [];
-  for (const [year, resourceId] of relevant) {
-    console.log(`  Fetching year ${year} resource...`);
-    const rows = await fetchCasesInWindow(resourceId, startDate, endDate);
-    allRows.push(...rows);
-    console.log(`  ${rows.length} cases from ${year}.`);
+    // Only fetch resources whose year overlaps the 2-day window.
+    const startYear = windowStart.getFullYear();
+    const endYear = windowEnd.getFullYear();
+    const relevant = YEAR_RESOURCES.filter(
+      ([year]) => year >= startYear && year <= endYear
+    );
+
+    const allRows: RawCaseRow[] = [];
+    for (const [year, resourceId] of relevant) {
+      console.log(`  Fetching year ${year} resource...`);
+      const rows = await fetchCasesInWindow(resourceId, startDate, endDate);
+      allRows.push(...rows);
+      console.log(`  ${rows.length} cases from ${year}.`);
+    }
+
+    const records = allRows
+      .map(prepareCaseEvent)
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    console.log(`Batch upserting ${records.length} cases to case_events...`);
+    upserted = await batchUpsertCaseEvents(sql as any, records);
+    console.log(`case_events upsert complete: ${upserted} rows.`);
+
+    // Rebuild request_type_meta from the full case_events table.
+    // MODE() picks the most common department; PERCENTILE_CONT gives median SLA.
+    console.log("Rebuilding request_type_meta...");
+    await sql`
+      INSERT INTO request_type_meta (request_type, department, sla_days, last_updated)
+      SELECT
+        request_type,
+        MODE() WITHIN GROUP (ORDER BY department)                    AS department,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY sla_days)        AS sla_days,
+        CURRENT_DATE
+      FROM case_events
+      WHERE department IS NOT NULL
+        AND sla_days IS NOT NULL
+      GROUP BY request_type
+      ON CONFLICT (request_type) DO UPDATE SET
+        department   = EXCLUDED.department,
+        sla_days     = EXCLUDED.sla_days,
+        last_updated = EXCLUDED.last_updated
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await sql`
+      INSERT INTO pipeline_runs (pipeline, status, last_attempt_at, error)
+      VALUES ('311', 'failed', now(), ${message})
+      ON CONFLICT (pipeline) DO UPDATE SET
+        status           = 'failed',
+        last_attempt_at  = now(),
+        error            = EXCLUDED.error
+    `;
+    throw err;
   }
 
-  const records = allRows
-    .map(prepareCaseEvent)
-    .filter((r): r is NonNullable<typeof r> => r !== null);
-
-  console.log(`Batch upserting ${records.length} cases to case_events...`);
-  const upserted = await batchUpsertCaseEvents(sql as any, records);
-  console.log(`case_events upsert complete: ${upserted} rows.`);
-
-  // Rebuild request_type_meta from the full case_events table.
-  // MODE() picks the most common department; PERCENTILE_CONT gives median SLA.
-  console.log("Rebuilding request_type_meta...");
   await sql`
-    INSERT INTO request_type_meta (request_type, department, sla_days, last_updated)
-    SELECT
-      request_type,
-      MODE() WITHIN GROUP (ORDER BY department)                    AS department,
-      PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY sla_days)        AS sla_days,
-      CURRENT_DATE
-    FROM case_events
-    WHERE department IS NOT NULL
-      AND sla_days IS NOT NULL
-    GROUP BY request_type
-    ON CONFLICT (request_type) DO UPDATE SET
-      department   = EXCLUDED.department,
-      sla_days     = EXCLUDED.sla_days,
-      last_updated = EXCLUDED.last_updated
+    INSERT INTO pipeline_runs (pipeline, status, last_success_at, last_attempt_at, record_count, error)
+    VALUES ('311', 'success', now(), now(), ${upserted}, null)
+    ON CONFLICT (pipeline) DO UPDATE SET
+      status           = 'success',
+      last_success_at  = now(),
+      last_attempt_at  = now(),
+      record_count     = EXCLUDED.record_count,
+      error            = null
   `;
 
   console.log("Pipeline complete.");
