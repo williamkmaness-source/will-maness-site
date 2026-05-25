@@ -27,32 +27,24 @@ function TournamentDropdown({
 }) {
   return (
     <div className="mb-[16px]">
-      <p className="font-mono text-[11px] text-hint tracking-[0.04em] uppercase mb-[8px]">
+      <label
+        htmlFor="tournament-select"
+        className="font-mono text-[11px] text-hint tracking-[0.04em] uppercase mb-[8px] block"
+      >
         Select tournament
-      </p>
-      <div className="flex flex-wrap gap-[8px]">
-        {tournaments.map((t) => {
-          const isActive = t.id === selectedId;
-          return (
-            <button
-              key={t.id}
-              onClick={() => onSelect(t.id)}
-              aria-pressed={isActive}
-              className={[
-                'font-mono text-[12px] px-[12px] py-[5px] rounded-sm border transition-colors duration-[120ms] cursor-pointer',
-                isActive
-                  ? 'bg-ink text-bg border-ink'
-                  : 'bg-bg text-muted border-line hover:border-ink hover:text-ink',
-              ].join(' ')}
-            >
-              {t.isLive && (
-                <span className="inline-block w-[6px] h-[6px] rounded-full bg-accent mr-[6px] align-middle" />
-              )}
-              {t.name}
-            </button>
-          );
-        })}
-      </div>
+      </label>
+      <select
+        id="tournament-select"
+        value={selectedId ?? ''}
+        onChange={(e) => onSelect(e.target.value)}
+        className="font-mono text-[12px] px-[12px] py-[6px] rounded-sm border border-line bg-bg text-ink cursor-pointer hover:border-ink focus:outline-none focus:border-ink transition-colors duration-[120ms]"
+      >
+        {tournaments.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.isLive ? '● ' : ''}{t.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
