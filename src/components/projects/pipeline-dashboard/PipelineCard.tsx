@@ -22,16 +22,19 @@ const DATA_SOURCE: Record<string, string> = {
   '311': 'Analyze Boston CKAN',
   chess:  'Lichess Broadcasts API',
   'vendor-feed': 'GitHub Actions → Neon',
+  'ember': 'FIRMS + Synoptic API',
 };
 
 const DISPLAY_NAMES: Record<string, string> = {
   '311': 'Boston 311',
   chess: 'Chess',
   'vendor-feed': 'Vendor Feed',
+  'ember': 'EmberBrief',
 };
 
 const OUTPUT_LINK: Record<string, string> = {
   'vendor-feed': '/work/vendor_feed',
+  'ember': '/work/ember',
 };
 
 function formatTimestamp(iso: string | null): string {

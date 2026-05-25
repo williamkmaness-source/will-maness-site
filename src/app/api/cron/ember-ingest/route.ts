@@ -149,17 +149,51 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const sql = neon(connectionString);
 
+  // Best-effort: mark running before ingest starts. Errors here don't abort the ingest.
+  try {
+    await sql`
+      INSERT INTO pipeline_runs (pipeline, status, last_attempt_at)
+      VALUES ('ember', 'running', NOW())
+      ON CONFLICT (pipeline) DO UPDATE SET
+        status = 'running',
+        last_attempt_at = NOW()
+    `;
+  } catch (e) { console.warn("[ember-ingest] pipeline_runs running upsert failed:", e); }
+
   try {
     const result = await runIngest(sql, firmsApiKey, synopticToken);
     console.log(
       `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather`
     );
+    try {
+      await sql`
+        INSERT INTO pipeline_runs (pipeline, status, last_success_at, last_attempt_at, record_count, error)
+        VALUES ('ember', 'success', NOW(), NOW(), ${result.clusterCount}, NULL)
+        ON CONFLICT (pipeline) DO UPDATE SET
+          status = 'success',
+          last_success_at = NOW(),
+          last_attempt_at = NOW(),
+          record_count = ${result.clusterCount},
+          error = NULL
+      `;
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs success upsert failed:", e); }
     return new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("[ember-ingest] error:", err);
+    const message = err instanceof Error ? err.message : "Ingest failed";
+    try {
+      await sql`
+        INSERT INTO pipeline_runs (pipeline, status, last_attempt_at, error)
+        VALUES ('ember', 'failed', NOW(), ${message})
+        ON CONFLICT (pipeline) DO UPDATE SET
+          status = 'failed',
+          last_attempt_at = NOW(),
+          error = ${message}
+      `;
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs failed upsert failed:", e); }
     return new Response(JSON.stringify({ ok: false, error: "Ingest failed" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
