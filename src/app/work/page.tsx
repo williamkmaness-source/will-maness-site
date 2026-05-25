@@ -26,8 +26,7 @@ export default function WorkPage() {
       </div>
 
       <div
-        className="grid gap-y-[56px] gap-x-[64px] mb-[96px]"
-        style={{ gridTemplateColumns: "1fr 1fr" }}
+        className="grid grid-cols-1 sm:grid-cols-2 gap-y-[56px] gap-x-[64px] mb-[96px]"
       >
         {projects.map((project) => (
           <WorkCard key={project.slug} slug={project.slug} project={project} />

@@ -91,8 +91,7 @@ export default async function WritingPostPage({ params }: Props) {
         {/* ── Prev / next navigation ────────────────────────────────── */}
         {(prev || next) && (
           <div
-            className="grid gap-[24px] mt-[96px] border-t border-line pt-[32px]"
-            style={{ gridTemplateColumns: "1fr 1fr" }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-[24px] mt-[96px] border-t border-line pt-[32px]"
           >
             {prev ? (
               <Link href={`/writing/${prev.slug}`} className="no-underline text-ink group">
