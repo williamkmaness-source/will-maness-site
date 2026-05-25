@@ -1,0 +1,23 @@
+---
+title: "S&P 500 Technical Analysis Dashboard"
+eyebrow: "Engineering · Finance"
+year: "2025"
+status: "complete"
+tags: ["engineering", "data", "finance"]
+summary: "A full technical analysis dashboard for the S&P 500 — candlestick chart with moving average overlays, RSI and MACD indicator panels, and a plain-English signal summary built from end-of-day market data."
+featured: true
+---
+
+<SpxDashboard />
+
+Technical analysis is the practice of reading price charts and statistical indicators to understand market conditions — not to predict the future, but to characterize the present. Is the market trending or choppy? Is momentum building or fading? Are traders fearful or complacent?
+
+This dashboard tracks the S&P 500 through the lens of the indicators that professional and retail traders actually use. The **moving averages** (20, 50, and 200-day) smooth out daily noise and reveal the underlying trend — when the faster 50-day crosses above the slower 200-day, it's called a Golden Cross, historically a bullish signal. The **RSI** measures whether recent price moves have been unusually strong (overbought, above 70) or weak (oversold, below 30). **MACD** captures momentum: when the MACD line crosses its signal line, direction may be shifting. The **VIX** is the market's "fear gauge" — it rises when investors are buying protection against a crash and falls when everyone is calm.
+
+## How it's built
+
+Data comes from Yahoo Finance via the `yahoo-finance2` package — no API key required. The API route fetches ~14 months of SPY daily OHLC data and the current VIX level, then computes all indicators server-side using the `technicalindicators` library. The client receives pre-computed series; there's no math in the browser.
+
+Charts are rendered with [Lightweight Charts](https://tradingview.github.io/lightweight-charts/) by TradingView — the same charting engine used by professional trading platforms. The stacked RSI and MACD sub-panels share a synchronized time axis with the price chart. Responses are cached for 24 hours so repeated visits are instant.
+
+The signal summary strip at the top derives four status chips deterministically from the indicator values — no model, no inference, just thresholds. The logic lives in a pure function with full unit test coverage.
