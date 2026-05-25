@@ -158,7 +158,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         status = 'running',
         last_attempt_at = NOW()
     `;
-  } catch { /* non-fatal */ }
+  } catch (e) { console.warn("[ember-ingest] pipeline_runs running upsert failed:", e); }
 
   try {
     const result = await runIngest(sql, firmsApiKey, synopticToken);
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest): Promise<Response> {
           record_count = ${result.clusterCount},
           error = NULL
       `;
-    } catch { /* non-fatal */ }
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs success upsert failed:", e); }
     return new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest): Promise<Response> {
           last_attempt_at = NOW(),
           error = ${message}
       `;
-    } catch { /* non-fatal */ }
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs failed upsert failed:", e); }
     return new Response(JSON.stringify({ ok: false, error: "Ingest failed" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
