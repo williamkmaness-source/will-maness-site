@@ -75,7 +75,7 @@ export async function getPipelineStatuses(
       SELECT DISTINCT ON (pipeline)
         pipeline, status, last_success_at, last_attempt_at, record_count, error
       FROM pipeline_runs
-      WHERE pipeline IN ('311')
+      WHERE pipeline IN ('311', 'ember')
       ORDER BY pipeline, last_attempt_at DESC
     `,
     sql`
@@ -97,5 +97,6 @@ export async function getPipelineStatuses(
   return [
     byPipeline.get("311") ?? unknown("311"),
     buildVendorFeedStatus((vfRows as VfRow[])[0] ?? null),
+    byPipeline.get("ember") ?? unknown("ember"),
   ];
 }

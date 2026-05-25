@@ -249,10 +249,12 @@ describe("GET /api/cron/ember-ingest", () => {
     mockFetchFirms.mockResolvedValue([]);
     mockCluster.mockReturnValue([makeCluster()]);
     mockSql
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: 5 }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([])           // UPSERT pipeline_runs running
+      .mockResolvedValueOnce([])           // DELETE clusters
+      .mockResolvedValueOnce([{ id: 5 }]) // INSERT cluster RETURNING id
+      .mockResolvedValueOnce([])           // UPDATE weather
+      .mockResolvedValueOnce([])           // UPSERT county conditions
+      .mockResolvedValueOnce([]);          // UPSERT pipeline_runs success
     mockFetchWeather.mockResolvedValue(makeWeather());
 
     const { GET } = await import("./route");

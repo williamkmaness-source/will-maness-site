@@ -140,7 +140,7 @@ describe("buildVendorFeedStatus", () => {
 // ── getPipelineStatuses ───────────────────────────────────────────────────────
 
 describe("getPipelineStatuses", () => {
-  it("maps pipeline_runs rows and vf_raw_pages into two status entries", async () => {
+  it("maps pipeline_runs rows and vf_raw_pages into three status entries", async () => {
     const runRows = [
       {
         pipeline: "311",
@@ -148,6 +148,14 @@ describe("getPipelineStatuses", () => {
         last_success_at: "2026-05-22T03:00:00Z",
         last_attempt_at: "2026-05-22T03:00:00Z",
         record_count: 95000,
+        error: null,
+      },
+      {
+        pipeline: "ember",
+        status: "success",
+        last_success_at: "2026-05-25T09:00:00Z",
+        last_attempt_at: "2026-05-25T09:00:00Z",
+        record_count: 3,
         error: null,
       },
     ];
@@ -167,14 +175,17 @@ describe("getPipelineStatuses", () => {
 
     const result = await getPipelineStatuses(mockSql as never);
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(3);
     expect(result[0].pipeline).toBe("311");
     expect(result[0].status).toBe("success");
     expect(result[1].pipeline).toBe("vendor-feed");
     expect(result[1].recordCount).toBe(87);
+    expect(result[2].pipeline).toBe("ember");
+    expect(result[2].status).toBe("success");
+    expect(result[2].recordCount).toBe(3);
   });
 
-  it("returns unknown for 311 when pipeline_runs is empty", async () => {
+  it("returns unknown for 311 and ember when pipeline_runs is empty", async () => {
     const mockSql = vi.fn()
       .mockResolvedValueOnce([])        // empty pipeline_runs
       .mockResolvedValueOnce([{
@@ -189,6 +200,14 @@ describe("getPipelineStatuses", () => {
 
     expect(result[0]).toEqual({
       pipeline: "311",
+      status: "unknown",
+      lastSuccessAt: null,
+      lastAttemptAt: null,
+      recordCount: null,
+      error: null,
+    });
+    expect(result[2]).toEqual({
+      pipeline: "ember",
       status: "unknown",
       lastSuccessAt: null,
       lastAttemptAt: null,
