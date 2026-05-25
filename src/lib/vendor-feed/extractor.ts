@@ -33,7 +33,8 @@ export function extractCanonicalDate(html: string): string | null {
     const d = normalizeDate(jsonLdMatch[1].slice(0, 10));
     if (d) return d;
   }
-  const metaMatch = html.match(/<meta\s+property="article:published_time"\s+content="([^"]+)"/i);
+  const metaMatch = html.match(/<meta\s+[^>]*property="article:published_time"[^>]*content="([^"]+)"/i)
+    ?? html.match(/<meta\s+[^>]*content="([^"]+)"[^>]*property="article:published_time"/i);
   if (metaMatch) {
     const d = normalizeDate(metaMatch[1].slice(0, 10));
     if (d) return d;
