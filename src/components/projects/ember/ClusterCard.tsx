@@ -43,8 +43,10 @@ function parseWeather(raw: Record<string, unknown> | null): WeatherObservation |
     stationId: typeof raw.stationId === "string" ? raw.stationId : "unknown",
     windSpeedMph: typeof raw.windSpeedMph === "number" ? raw.windSpeedMph : null,
     windDirectionDeg: typeof raw.windDirectionDeg === "number" ? raw.windDirectionDeg : null,
+    windGustMph: typeof raw.windGustMph === "number" ? raw.windGustMph : null,
     humidityPct: typeof raw.humidityPct === "number" ? raw.humidityPct : null,
     temperatureF: typeof raw.temperatureF === "number" ? raw.temperatureF : null,
+    precip24hIn: typeof raw.precip24hIn === "number" ? raw.precip24hIn : null,
     observedAt: typeof raw.observedAt === "string" ? raw.observedAt : "",
   };
 }
