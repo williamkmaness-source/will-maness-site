@@ -5,7 +5,13 @@
 
 export const dynamic = "force-dynamic";
 
-import yahooFinance from "yahoo-finance2";
+// yahoo-finance2 v3: default export is the class, not a singleton instance.
+// suppressNotices silences the survey prompt and the historical() deprecation
+// warning (historical is auto-remapped to chart() internally — still works).
+import YahooFinance from "yahoo-finance2";
+const yahooFinance = new YahooFinance({
+  suppressNotices: ["yahooSurvey", "ripHistorical"],
+});
 import { SMA, RSI, MACD } from "technicalindicators";
 import { deriveSignals } from "@/lib/spx-signals";
 import type { SpxData, SpxCandle, SpxSeries } from "@/lib/spx-types";
