@@ -5,13 +5,15 @@ export interface WeatherObservation {
   stationId: string;
   windSpeedMph: number | null;
   windDirectionDeg: number | null;
+  windGustMph: number | null;
   humidityPct: number | null;
   temperatureF: number | null;
+  precip24hIn: number | null;
   observedAt: string;
 }
 
-// Shasta County centroid — used for county-level weather lookup.
-export const SHASTA_COUNTY_CENTROID = { lat: 40.783, lng: -122.493 };
+// Lake Tahoe Basin centroid — used for county-level weather lookup.
+export const LAKE_TAHOE_BASIN_CENTROID = { lat: 39.05, lng: -120.05 };
 
 const SYNOPTIC_BASE_URL = "https://api.synopticdata.com/v2/stations/latest";
 const FETCH_TIMEOUT_MS = 20_000;
@@ -66,15 +68,17 @@ function parseStationResponse(json: unknown): WeatherObservation | null {
 
   const windSpeedMph = extractValue(obs, "wind_speed_value_1");
   const windDirectionDeg = extractValue(obs, "wind_direction_value_1");
+  const windGustMph = extractValue(obs, "wind_gust_value_1");
   const humidityPct = extractValue(obs, "relative_humidity_value_1");
   const temperatureF = extractValue(obs, "air_temp_value_1");
+  const precip24hIn = extractValue(obs, "precip_accum_24h_value_1");
 
   const observedAt =
     extractDateTime(obs, "air_temp_value_1") ??
     extractDateTime(obs, "wind_speed_value_1") ??
     new Date().toISOString();
 
-  return { stationId: stid, windSpeedMph, windDirectionDeg, humidityPct, temperatureF, observedAt };
+  return { stationId: stid, windSpeedMph, windDirectionDeg, windGustMph, humidityPct, temperatureF, precip24hIn, observedAt };
 }
 
 export async function fetchWeatherForLocation(
@@ -87,7 +91,7 @@ export async function fetchWeatherForLocation(
     token: apiToken,
     radius: `${lat},${lng},${radiusMiles}`,
     limit: "1",
-    vars: "wind_speed,wind_direction,relative_humidity,air_temp",
+    vars: "wind_speed,wind_direction,wind_gust,relative_humidity,air_temp,precip_accum_24h",
     units: "english",
     obtimezone: "UTC",
   });

@@ -24,8 +24,10 @@ export interface CountyConditions {
   county: string;
   windSpeed: number | null;
   windDirection: string | null;
+  windGust: number | null;
   humidity: number | null;
   temperature: number | null;
+  precip24h: number | null;
   redFlag: boolean;
   forecast: Record<string, unknown> | null;
   observedAt: string;
@@ -47,10 +49,10 @@ export async function getEmberData(sql: NeonQueryFunction<false, false>): Promis
       LIMIT ${MAX_CLUSTERS}
     `,
     sql`
-      SELECT county, wind_speed, wind_direction, humidity, temperature,
-             red_flag, forecast, observed_at
+      SELECT county, wind_speed, wind_direction, wind_gust_mph, humidity, temperature,
+             precip_24h_in, red_flag, forecast, observed_at
       FROM ember_county_conditions
-      WHERE county = 'Shasta County'
+      WHERE county = 'Lake Tahoe Basin'
       LIMIT 1
     `,
   ]);
@@ -75,8 +77,10 @@ export async function getEmberData(sql: NeonQueryFunction<false, false>): Promis
         county: String(cond.county),
         windSpeed: cond.wind_speed != null ? Number(cond.wind_speed) : null,
         windDirection: (cond.wind_direction as string) ?? null,
+        windGust: cond.wind_gust_mph != null ? Number(cond.wind_gust_mph) : null,
         humidity: cond.humidity != null ? Number(cond.humidity) : null,
         temperature: cond.temperature != null ? Number(cond.temperature) : null,
+        precip24h: cond.precip_24h_in != null ? Number(cond.precip_24h_in) : null,
         redFlag: Boolean(cond.red_flag),
         forecast: cond.forecast as Record<string, unknown> | null,
         observedAt: String(cond.observed_at),

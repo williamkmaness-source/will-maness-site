@@ -32,11 +32,25 @@ export function CountyConditionsHeader({ conditions }: CountyConditionsHeaderPro
     county,
     windSpeed,
     windDirection,
+    windGust,
     humidity,
     temperature,
+    precip24h,
     redFlag,
     observedAt,
   } = conditions;
+
+  function windValue(): string {
+    if (windSpeed == null) return "—";
+    const dir = windDirection ? ` ${windDirection}` : "";
+    const gust = windGust != null ? `, gusts ${windGust}` : "";
+    return `${windSpeed} mph${dir}${gust}`;
+  }
+
+  function precipValue(): string {
+    if (precip24h == null) return "—";
+    return `${precip24h.toFixed(2)} in`;
+  }
 
   return (
     <div
@@ -61,24 +75,15 @@ export function CountyConditionsHeader({ conditions }: CountyConditionsHeaderPro
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-[16px] sm:grid-cols-4">
-        <Stat
-          label="Wind"
-          value={
-            windSpeed != null
-              ? `${windSpeed} mph ${windDirection ?? ""}`.trim()
-              : "—"
-          }
-        />
+      <div className="grid grid-cols-2 gap-[16px] sm:grid-cols-5">
+        <Stat label="Wind" value={windValue()} />
         <Stat label="Humidity" value={humidity != null ? `${humidity}%` : "—"} />
         <Stat
           label="Temperature"
           value={temperature != null ? `${temperature}°F` : "—"}
         />
-        <Stat
-          label="Red Flag"
-          value={redFlag ? "Active" : "None"}
-        />
+        <Stat label="Precip 24h" value={precipValue()} />
+        <Stat label="Red Flag" value={redFlag ? "Active" : "None"} />
       </div>
     </div>
   );

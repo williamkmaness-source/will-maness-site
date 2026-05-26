@@ -8,12 +8,12 @@ export interface BoundingBox {
   north: number;
 }
 
-// Shasta County, CA hardcoded bounding box (named constant per spec).
-export const SHASTA_COUNTY_BBOX: BoundingBox = {
-  west: -123.0,
-  south: 40.2,
-  east: -121.3,
-  north: 41.2,
+// Lake Tahoe Basin and surrounding Sierra Nevada foothills (El Dorado, Placer, Washoe, Douglas counties).
+export const LAKE_TAHOE_BASIN_BBOX: BoundingBox = {
+  west: -120.5,
+  south: 38.7,
+  east: -119.5,
+  north: 39.4,
 };
 
 export interface FirmsDetection {
@@ -90,7 +90,7 @@ export function isWithinBbox(det: FirmsDetection, bbox: BoundingBox): boolean {
 
 export async function fetchFirmsDetections(
   apiKey: string,
-  bbox: BoundingBox = SHASTA_COUNTY_BBOX
+  bbox: BoundingBox = LAKE_TAHOE_BASIN_BBOX
 ): Promise<FirmsDetection[]> {
   const area = `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`;
   const url = `${FIRMS_BASE_URL}/${apiKey}/${SOURCE}/${area}/${DAY_RANGE}`;

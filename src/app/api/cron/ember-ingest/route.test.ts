@@ -18,7 +18,7 @@ const mockFetchWeather = vi.fn<
 vi.mock("@/lib/ember/firms-client", () => ({
   fetchFirmsDetections: (...args: Parameters<typeof mockFetchFirms>) =>
     mockFetchFirms(...args),
-  SHASTA_COUNTY_BBOX: { west: -123, south: 40.2, east: -121.3, north: 41.2 },
+  LAKE_TAHOE_BASIN_BBOX: { west: -120.5, south: 38.7, east: -119.5, north: 39.4 },
   meetsConfidenceThreshold: vi.fn(),
   isWithinBbox: vi.fn(),
 }));
@@ -32,7 +32,7 @@ vi.mock("@/lib/ember/weather-client", () => ({
     mockFetchWeather(lat, lng, token, r),
   evaluateRedFlag: vi.fn().mockReturnValue(false),
   degreesToCardinal: vi.fn().mockReturnValue("SW"),
-  SHASTA_COUNTY_CENTROID: { lat: 40.783, lng: -122.493 },
+  LAKE_TAHOE_BASIN_CENTROID: { lat: 39.05, lng: -120.05 },
 }));
 
 const mockSql = vi.fn();
@@ -65,8 +65,10 @@ function makeWeather(): WeatherObservation {
     stationId: "KCOR",
     windSpeedMph: 12.5,
     windDirectionDeg: 225,
+    windGustMph: 18.0,
     humidityPct: 28,
     temperatureF: 78,
+    precip24hIn: 0.0,
     observedAt: "2026-05-23T10:00:00Z",
   };
 }

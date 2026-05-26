@@ -9,7 +9,7 @@ import {
   fetchWeatherForLocation,
   evaluateRedFlag,
   degreesToCardinal,
-  SHASTA_COUNTY_CENTROID,
+  LAKE_TAHOE_BASIN_CENTROID,
 } from "@/lib/ember/weather-client";
 
 export const dynamic = "force-dynamic";
@@ -82,8 +82,8 @@ export async function runIngest(
   // ── County conditions ───────────────────────────────────────────────────────
   try {
     const countyWeather = await fetchWeatherForLocation(
-      SHASTA_COUNTY_CENTROID.lat,
-      SHASTA_COUNTY_CENTROID.lng,
+      LAKE_TAHOE_BASIN_CENTROID.lat,
+      LAKE_TAHOE_BASIN_CENTROID.lng,
       synopticToken
     );
 
@@ -96,16 +96,19 @@ export async function runIngest(
 
       await sql`
         INSERT INTO ember_county_conditions
-          (county, wind_speed, wind_direction, humidity, temperature, red_flag, observed_at)
+          (county, wind_speed, wind_direction, wind_gust_mph, humidity, temperature,
+           precip_24h_in, red_flag, observed_at)
         VALUES
-          ('Shasta County', ${countyWeather.windSpeedMph}, ${windDirCardinal},
-           ${countyWeather.humidityPct}, ${countyWeather.temperatureF},
-           ${redFlag}, ${countyWeather.observedAt})
+          ('Lake Tahoe Basin', ${countyWeather.windSpeedMph}, ${windDirCardinal},
+           ${countyWeather.windGustMph}, ${countyWeather.humidityPct}, ${countyWeather.temperatureF},
+           ${countyWeather.precip24hIn}, ${redFlag}, ${countyWeather.observedAt})
         ON CONFLICT (county) DO UPDATE SET
           wind_speed     = EXCLUDED.wind_speed,
           wind_direction = EXCLUDED.wind_direction,
+          wind_gust_mph  = EXCLUDED.wind_gust_mph,
           humidity       = EXCLUDED.humidity,
           temperature    = EXCLUDED.temperature,
+          precip_24h_in  = EXCLUDED.precip_24h_in,
           red_flag       = EXCLUDED.red_flag,
           observed_at    = EXCLUDED.observed_at
       `;
