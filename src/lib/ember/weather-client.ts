@@ -71,7 +71,7 @@ function parseStationResponse(json: unknown): WeatherObservation | null {
   const windGustMph = extractValue(obs, "wind_gust_value_1");
   const humidityPct = extractValue(obs, "relative_humidity_value_1");
   const temperatureF = extractValue(obs, "air_temp_value_1");
-  const precip24hIn = extractValue(obs, "precip_accum_24h_value_1");
+  const precip24hIn = extractValue(obs, "precip_accum_value_1");
 
   const observedAt =
     extractDateTime(obs, "air_temp_value_1") ??
@@ -91,7 +91,7 @@ export async function fetchWeatherForLocation(
     token: apiToken,
     radius: `${lat},${lng},${radiusMiles}`,
     limit: "1",
-    vars: "wind_speed,wind_direction,wind_gust,relative_humidity,air_temp,precip_accum_24h",
+    vars: "wind_speed,wind_direction,wind_gust,relative_humidity,air_temp,precip_accum",
     units: "english",
     obtimezone: "UTC",
   });

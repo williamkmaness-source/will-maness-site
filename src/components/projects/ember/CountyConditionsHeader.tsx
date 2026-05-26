@@ -82,7 +82,7 @@ export function CountyConditionsHeader({ conditions }: CountyConditionsHeaderPro
           label="Temperature"
           value={temperature != null ? `${temperature}°F` : "—"}
         />
-        <Stat label="Precip 24h" value={precipValue()} />
+        <Stat label="Precip" value={precipValue()} />
         <Stat label="Red Flag" value={redFlag ? "Active" : "None"} />
       </div>
     </div>

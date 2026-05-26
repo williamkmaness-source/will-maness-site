@@ -43,7 +43,7 @@ function makeSynopticResponse(overrides?: {
   if (temp != null)
     observations["air_temp_value_1"] = { value: temp, date_time: "2026-05-23T10:00:00Z" };
   if (precip24h != null)
-    observations["precip_accum_24h_value_1"] = { value: precip24h, date_time: "2026-05-23T10:00:00Z" };
+    observations["precip_accum_value_1"] = { value: precip24h, date_time: "2026-05-23T10:00:00Z" };
 
   return {
     SUMMARY: { RESPONSE_CODE: responseCode, NUMBER_OF_OBJECTS: stationCount },
