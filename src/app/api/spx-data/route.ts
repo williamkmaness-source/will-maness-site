@@ -6,11 +6,9 @@
 export const dynamic = "force-dynamic";
 
 // yahoo-finance2 v3: default export is the class, not a singleton instance.
-// suppressNotices silences the survey prompt and the historical() deprecation
-// warning (historical is auto-remapped to chart() internally — still works).
 import YahooFinance from "yahoo-finance2";
 const yahooFinance = new YahooFinance({
-  suppressNotices: ["yahooSurvey", "ripHistorical"],
+  suppressNotices: ["yahooSurvey"],
 });
 import { SMA, RSI, MACD } from "technicalindicators";
 import { deriveSignals } from "@/lib/spx-signals";
@@ -22,7 +20,7 @@ const CACHE_HEADER = "s-maxage=86400, stale-while-revalidate";
 // The package's exports map omits a `types` condition so TypeScript resolves
 // the default import as `never` under moduleResolution:"bundler". Casting
 // through these interfaces is safer than `as any`.
-type YfHistoricalRow = {
+type YfChartRow = {
   date: Date;
   open: number | null;
   high: number | null;
@@ -30,6 +28,7 @@ type YfHistoricalRow = {
   close: number | null;
   volume: number | null;
 };
+type YfChartResult = { quotes: YfChartRow[] };
 type YfQuote = { regularMarketPrice?: number | null };
 
 function toIsoDate(date: Date): string {
@@ -49,12 +48,15 @@ export async function GET() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const yf = yahooFinance as any;
-    const [quotesRaw, vixQuoteRaw]: [YfHistoricalRow[], YfQuote] = await Promise.all([
-      yf.historical("SPY", { period1, period2, interval: "1d" }),
+    const [chartRaw, vixQuoteRaw]: [YfChartResult, YfQuote] = await Promise.all([
+      yf.chart("SPY", { period1, period2, interval: "1d" }),
       yf.quote("^VIX"),
     ]);
+    const quotesRaw = chartRaw.quotes;
 
-    type ValidQuote = { date: Date; open: number; high: number; low: number; close: number; volume: number };
+    type ValidQuote = Omit<YfChartRow, "open" | "high" | "low" | "close" | "volume"> & {
+      open: number; high: number; low: number; close: number; volume: number;
+    };
     const sorted: ValidQuote[] = quotesRaw
       .filter(
         (q): q is ValidQuote =>
