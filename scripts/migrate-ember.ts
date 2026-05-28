@@ -60,8 +60,8 @@ async function main() {
   await sql`ALTER TABLE ember_county_conditions ADD COLUMN IF NOT EXISTS wind_gust_mph numeric`;
   await sql`ALTER TABLE ember_county_conditions ADD COLUMN IF NOT EXISTS precip_24h_in numeric`;
 
-  // Rename any existing Shasta County row to Lake Tahoe Basin.
-  await sql`UPDATE ember_county_conditions SET county = 'Lake Tahoe Basin' WHERE county = 'Shasta County'`;
+  // Clean up any stale Shasta County row (safe if it doesn't exist).
+  await sql`DELETE FROM ember_county_conditions WHERE county = 'Shasta County'`;
 
   console.log("✓ ember schema up to date");
 }
