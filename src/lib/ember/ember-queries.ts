@@ -1,8 +1,9 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import type { ClusterTier } from "@/lib/ember/ember-scoring";
 
 const MAX_CLUSTERS = 50;
 
-export type ClusterTier = "Monitor" | "Watch" | "Action";
+export type { ClusterTier };
 
 const VALID_TIERS = new Set<string>(["Monitor", "Watch", "Action"]);
 

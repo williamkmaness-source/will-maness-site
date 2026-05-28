@@ -131,19 +131,23 @@ export async function runIngest(
   let scored = 0;
 
   for (const cluster of insertedClusters) {
-    const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
-    const humidityPct = cluster.weather?.humidityPct ?? null;
-    const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
-    const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
-    const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
-    const tier = assignTier(riskScore);
+    try {
+      const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
+      const humidityPct = cluster.weather?.humidityPct ?? null;
+      const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
+      const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
+      const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
+      const tier = assignTier(riskScore);
 
-    await sql`
-      UPDATE ember_fire_clusters
-      SET risk_score = ${riskScore}, tier = ${tier}
-      WHERE id = ${cluster.id}
-    `;
-    scored++;
+      await sql`
+        UPDATE ember_fire_clusters
+        SET risk_score = ${riskScore}, tier = ${tier}
+        WHERE id = ${cluster.id}
+      `;
+      scored++;
+    } catch (err) {
+      console.error(`[ember-ingest] scoring failed for cluster id=${cluster.id}:`, err);
+    }
   }
 
   // ── County conditions ───────────────────────────────────────────────────────
