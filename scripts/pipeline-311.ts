@@ -138,6 +138,8 @@ async function main() {
 
     // Rebuild request_type_meta from the full case_events table.
     // MODE() picks the most common department; PERCENTILE_CONT gives median SLA.
+    // On conflict: update sla_days and last_updated only — never overwrite department,
+    // which preserves manual reclassifications (e.g. Needle Program → BPHC).
     console.log("Rebuilding request_type_meta...");
     await sql`
       INSERT INTO request_type_meta (request_type, department, sla_days, last_updated)
@@ -151,7 +153,6 @@ async function main() {
         AND sla_days IS NOT NULL
       GROUP BY request_type
       ON CONFLICT (request_type) DO UPDATE SET
-        department   = EXCLUDED.department,
         sla_days     = EXCLUDED.sla_days,
         last_updated = EXCLUDED.last_updated
     `;
