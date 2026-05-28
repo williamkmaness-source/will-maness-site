@@ -42,7 +42,7 @@ async function main() {
   await sql`
     CREATE TABLE IF NOT EXISTS ember_county_conditions (
       id              SERIAL      PRIMARY KEY,
-      county          text        NOT NULL DEFAULT 'Shasta County',
+      county          text        NOT NULL DEFAULT 'Lake Tahoe Basin',
       wind_speed      numeric,
       wind_direction  text,
       humidity        numeric,
@@ -54,6 +54,14 @@ async function main() {
       UNIQUE (county)
     )
   `;
+
+  // Add wind gust and 24-hour precipitation columns (issues #121, #118).
+  // IF NOT EXISTS guards make these safe to re-run.
+  await sql`ALTER TABLE ember_county_conditions ADD COLUMN IF NOT EXISTS wind_gust_mph numeric`;
+  await sql`ALTER TABLE ember_county_conditions ADD COLUMN IF NOT EXISTS precip_24h_in numeric`;
+
+  // Clean up any stale Shasta County row (safe if it doesn't exist).
+  await sql`DELETE FROM ember_county_conditions WHERE county = 'Shasta County'`;
 
   console.log("✓ ember schema up to date");
 }

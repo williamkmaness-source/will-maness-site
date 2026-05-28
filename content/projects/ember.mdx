@@ -14,7 +14,7 @@ The bottleneck is synthesis. Translating raw satellite detections and weather re
 
 > Can a deterministic rules engine and a tightly constrained AI layer replace the analyst — not by guessing, but by doing exactly what the analyst would do with the same inputs?
 
-That is the product question. The [live dashboard](/ember) shows current fire activity and conditions for Shasta County, CA, scored and briefed automatically on a daily cadence.
+That is the product question. The [live dashboard](/ember) shows current fire activity and conditions for the Lake Tahoe Basin, scored and briefed automatically on a daily cadence.
 
 ## How it works
 
@@ -42,7 +42,7 @@ The briefing prompt is constructed from the cluster's exact metrics. Claude cann
   { name: "Next.js", role: "App Router — dashboard lives at /ember within this site", frequency: "daily" },
   { name: "Neon Postgres", role: "ember_fire_clusters and ember_county_conditions tables; FRP trend history for scoring", frequency: "daily" },
   { name: "Vercel Cron", role: "Daily pipeline — FIRMS ingest, scoring, briefing generation", frequency: "daily" },
-  { name: "NASA FIRMS", role: "NRT VIIRS and MODIS fire detection feeds for the Shasta County bounding box", frequency: "daily" },
+  { name: "NASA FIRMS", role: "NRT VIIRS and MODIS fire detection feeds for the Lake Tahoe Basin bounding box", frequency: "daily" },
   { name: "NOAA Synoptic", role: "Current weather observations and 6-hour forecast for nearest station", frequency: "daily" },
   { name: "Claude API", role: "Plain-language situation briefing generation for Action-tier events only", frequency: "occasional" },
   { name: "Tailwind CSS", role: "Styling — uses this site's design tokens throughout", frequency: "daily" }

@@ -13,16 +13,20 @@ import {
 function makeSynopticResponse(overrides?: {
   windSpeed?: number | null;
   windDir?: number | null;
+  windGust?: number | null;
   humidity?: number | null;
   temp?: number | null;
+  precip24h?: number | null;
   responseCode?: number;
   stationCount?: number;
 }) {
   const {
     windSpeed = 12.5,
     windDir = 225,
+    windGust = 18.0,
     humidity = 28,
     temp = 78,
+    precip24h = 0.0,
     responseCode = 1,
     stationCount = 1,
   } = overrides ?? {};
@@ -32,16 +36,20 @@ function makeSynopticResponse(overrides?: {
     observations["wind_speed_value_1"] = { value: windSpeed, date_time: "2026-05-23T10:00:00Z" };
   if (windDir != null)
     observations["wind_direction_value_1"] = { value: windDir, date_time: "2026-05-23T10:00:00Z" };
+  if (windGust != null)
+    observations["wind_gust_value_1"] = { value: windGust, date_time: "2026-05-23T10:00:00Z" };
   if (humidity != null)
     observations["relative_humidity_value_1"] = { value: humidity, date_time: "2026-05-23T10:00:00Z" };
   if (temp != null)
     observations["air_temp_value_1"] = { value: temp, date_time: "2026-05-23T10:00:00Z" };
+  if (precip24h != null)
+    observations["precip_accum_value_1"] = { value: precip24h, date_time: "2026-05-23T10:00:00Z" };
 
   return {
     SUMMARY: { RESPONSE_CODE: responseCode, NUMBER_OF_OBJECTS: stationCount },
     STATION:
       stationCount > 0
-        ? [{ STID: "KCOR", NAME: "Corning Airport", OBSERVATIONS: observations }]
+        ? [{ STID: "KCOR", NAME: "South Lake Tahoe Airport", OBSERVATIONS: observations }]
         : [],
   };
 }
@@ -113,29 +121,40 @@ describe("fetchWeatherForLocation", () => {
   });
 
   it("returns a parsed observation on a successful response", async () => {
-    mockFetch(makeSynopticResponse({ windSpeed: 12.5, windDir: 225, humidity: 28, temp: 78 }));
+    mockFetch(makeSynopticResponse({ windSpeed: 12.5, windDir: 225, windGust: 18.0, humidity: 28, temp: 78, precip24h: 0.12 }));
 
-    const result = await fetchWeatherForLocation(40.7, -122.5, "dummy-token");
+    const result = await fetchWeatherForLocation(39.05, -120.05, "dummy-token");
 
     expect(result).not.toBeNull();
     expect(result!.stationId).toBe("KCOR");
     expect(result!.windSpeedMph).toBe(12.5);
     expect(result!.windDirectionDeg).toBe(225);
+    expect(result!.windGustMph).toBe(18.0);
     expect(result!.humidityPct).toBe(28);
     expect(result!.temperatureF).toBe(78);
+    expect(result!.precip24hIn).toBe(0.12);
+  });
+
+  it("returns null windGustMph and null precip24hIn when those sensors are absent", async () => {
+    mockFetch(makeSynopticResponse({ windGust: null, precip24h: null }));
+
+    const result = await fetchWeatherForLocation(39.05, -120.05, "dummy-token");
+    expect(result).not.toBeNull();
+    expect(result!.windGustMph).toBeNull();
+    expect(result!.precip24hIn).toBeNull();
   });
 
   it("returns null when no stations are found within the radius", async () => {
     mockFetch(makeSynopticResponse({ stationCount: 0 }));
 
-    const result = await fetchWeatherForLocation(40.7, -122.5, "dummy-token");
+    const result = await fetchWeatherForLocation(39.05, -120.05, "dummy-token");
     expect(result).toBeNull();
   });
 
   it("returns null when RESPONSE_CODE is not 1", async () => {
     mockFetch({ SUMMARY: { RESPONSE_CODE: 2 }, STATION: [] });
 
-    const result = await fetchWeatherForLocation(40.7, -122.5, "dummy-token");
+    const result = await fetchWeatherForLocation(39.05, -120.05, "dummy-token");
     expect(result).toBeNull();
   });
 
@@ -144,7 +163,7 @@ describe("fetchWeatherForLocation", () => {
       makeSynopticResponse({ windSpeed: null, windDir: null, humidity: null, temp: 65 })
     );
 
-    const result = await fetchWeatherForLocation(40.7, -122.5, "dummy-token");
+    const result = await fetchWeatherForLocation(39.05, -120.05, "dummy-token");
     expect(result).not.toBeNull();
     expect(result!.windSpeedMph).toBeNull();
     expect(result!.temperatureF).toBe(65);
@@ -153,7 +172,7 @@ describe("fetchWeatherForLocation", () => {
   it("throws when Synoptic API returns a non-OK HTTP status", async () => {
     mockFetch(null, false, 503);
 
-    await expect(fetchWeatherForLocation(40.7, -122.5, "dummy-token")).rejects.toThrow(
+    await expect(fetchWeatherForLocation(39.05, -120.05, "dummy-token")).rejects.toThrow(
       "Synoptic API returned HTTP 503"
     );
   });
@@ -164,6 +183,6 @@ describe("fetchWeatherForLocation", () => {
       vi.fn().mockRejectedValue(Object.assign(new Error("AbortError"), { name: "AbortError" }))
     );
 
-    await expect(fetchWeatherForLocation(40.7, -122.5, "dummy-token")).rejects.toThrow();
+    await expect(fetchWeatherForLocation(39.05, -120.05, "dummy-token")).rejects.toThrow();
   });
 });

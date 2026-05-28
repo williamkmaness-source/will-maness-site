@@ -1,5 +1,5 @@
-// Tests for the ember-ingest cron handler (issues #93, #95, #96).
-// Mocks Neon driver, firms-client, cluster-engine, and weather-client — no real I/O.
+// Tests for the ember-ingest cron handler (issues #93, #95, #96, #97).
+// Mocks Neon driver, firms-client, cluster-engine, weather-client, and ember-scoring.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runIngest } from "./route";
@@ -18,7 +18,7 @@ const mockFetchWeather = vi.fn<
 vi.mock("@/lib/ember/firms-client", () => ({
   fetchFirmsDetections: (...args: Parameters<typeof mockFetchFirms>) =>
     mockFetchFirms(...args),
-  SHASTA_COUNTY_BBOX: { west: -123, south: 40.2, east: -121.3, north: 41.2 },
+  LAKE_TAHOE_BASIN_BBOX: { west: -120.5, south: 38.7, east: -119.5, north: 39.4 },
   meetsConfidenceThreshold: vi.fn(),
   isWithinBbox: vi.fn(),
 }));
@@ -32,7 +32,13 @@ vi.mock("@/lib/ember/weather-client", () => ({
     mockFetchWeather(lat, lng, token, r),
   evaluateRedFlag: vi.fn().mockReturnValue(false),
   degreesToCardinal: vi.fn().mockReturnValue("SW"),
-  SHASTA_COUNTY_CENTROID: { lat: 40.783, lng: -122.493 },
+  LAKE_TAHOE_BASIN_CENTROID: { lat: 39.05, lng: -120.05 },
+}));
+
+vi.mock("@/lib/ember/ember-scoring", () => ({
+  computeRiskScore: vi.fn().mockReturnValue(55),
+  assignTier: vi.fn().mockReturnValue("Watch"),
+  TREND_MATCH_RADIUS_KM: 10,
 }));
 
 const mockSql = vi.fn();
@@ -51,8 +57,8 @@ function makeRequest(authHeader?: string) {
 
 function makeCluster(overrides: Partial<FireClusterInput> = {}): FireClusterInput {
   return {
-    lat: 40.7,
-    lng: -122.5,
+    lat: 39.1,
+    lng: -120.1,
     frp: 250,
     detectionCount: 3,
     detectedAt: new Date("2026-05-23T10:00:00Z"),
@@ -65,8 +71,10 @@ function makeWeather(): WeatherObservation {
     stationId: "KCOR",
     windSpeedMph: 12.5,
     windDirectionDeg: 225,
+    windGustMph: 18.0,
     humidityPct: 28,
     temperatureF: 78,
+    precip24hIn: 0.0,
     observedAt: "2026-05-23T10:00:00Z",
   };
 }
@@ -79,18 +87,18 @@ describe("runIngest", () => {
     mockFetchFirms.mockReset();
     mockCluster.mockReset();
     mockFetchWeather.mockReset();
-    // Default: sql returns empty rows for all calls except INSERT (which needs an id).
     mockSql.mockResolvedValue([]);
   });
 
-  it("inserts one cluster and updates its weather when weather is available", async () => {
+  it("inserts one cluster, updates weather, scores it, and upserts county conditions", async () => {
     mockFetchFirms.mockResolvedValue([]);
     mockCluster.mockReturnValue([makeCluster()]);
-    // INSERT RETURNING id → DELETE → INSERT → weather UPDATE → county UPSERT
     mockSql
+      .mockResolvedValueOnce([])           // SELECT prior clusters
       .mockResolvedValueOnce([])           // DELETE
       .mockResolvedValueOnce([{ id: 1 }]) // INSERT cluster RETURNING id
       .mockResolvedValueOnce([])           // UPDATE weather
+      .mockResolvedValueOnce([])           // UPDATE risk_score/tier
       .mockResolvedValueOnce([]);          // UPSERT county conditions
     mockFetchWeather.mockResolvedValue(makeWeather());
 
@@ -101,6 +109,7 @@ describe("runIngest", () => {
 
     expect(result.clusterCount).toBe(1);
     expect(result.weatherUpdated).toBe(1);
+    expect(result.scored).toBe(1);
     expect(result.firmsError).toBeUndefined();
   });
 
@@ -108,6 +117,7 @@ describe("runIngest", () => {
     mockFetchFirms.mockResolvedValue([]);
     mockCluster.mockReturnValue([]);
     mockSql
+      .mockResolvedValueOnce([]) // SELECT prior clusters
       .mockResolvedValueOnce([]) // DELETE
       .mockResolvedValueOnce([]); // UPSERT county conditions
     mockFetchWeather.mockResolvedValue(makeWeather());
@@ -119,19 +129,21 @@ describe("runIngest", () => {
 
     expect(result.clusterCount).toBe(0);
     expect(result.weatherUpdated).toBe(0);
-    // DELETE + county UPSERT
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    expect(result.scored).toBe(0);
+    expect(mockSql).toHaveBeenCalledTimes(3);
   });
 
-  it("skips weather UPDATE when weather returns null", async () => {
+  it("scores cluster even when weather returns null", async () => {
     mockFetchFirms.mockResolvedValue([]);
     mockCluster.mockReturnValue([makeCluster()]);
     mockSql
+      .mockResolvedValueOnce([])           // SELECT prior clusters
       .mockResolvedValueOnce([])           // DELETE
       .mockResolvedValueOnce([{ id: 2 }]) // INSERT
-      .mockResolvedValueOnce([]);          // county UPSERT (no weather UPDATE since null)
+      .mockResolvedValueOnce([])           // UPDATE risk_score/tier (no weather UPDATE)
+      .mockResolvedValueOnce([]);          // UPSERT county conditions
     mockFetchWeather
-      .mockResolvedValueOnce(null)   // cluster weather → null
+      .mockResolvedValueOnce(null)          // cluster weather → null
       .mockResolvedValueOnce(makeWeather()); // county weather → ok
 
     const { neon } = await import("@neondatabase/serverless");
@@ -140,19 +152,22 @@ describe("runIngest", () => {
     const result = await runIngest(sql, "firms-key", "synoptic-key");
 
     expect(result.weatherUpdated).toBe(0);
-    // DELETE + INSERT + county UPSERT (no weather UPDATE)
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    expect(result.scored).toBe(1); // scored with null weather (neutral defaults)
   });
 
-  it("catches a per-cluster weather error and continues ingest", async () => {
+  it("catches a per-cluster weather error and still scores that cluster", async () => {
     mockFetchFirms.mockResolvedValue([]);
-    mockCluster.mockReturnValue([makeCluster(), makeCluster({ lat: 40.9 })]);
+    mockCluster.mockReturnValue([makeCluster(), makeCluster({ lat: 39.2 })]);
     mockSql
+      .mockResolvedValueOnce([])           // SELECT prior clusters
       .mockResolvedValueOnce([])           // DELETE
       .mockResolvedValueOnce([{ id: 3 }]) // INSERT cluster 1
       .mockResolvedValueOnce([{ id: 4 }]) // INSERT cluster 2
-      .mockResolvedValueOnce([])           // UPDATE weather cluster 2 (cluster 1 threw)
-      .mockResolvedValueOnce([]);          // county UPSERT
+      // weather: cluster 1 throws, cluster 2 succeeds (parallel — consumed in resolve order)
+      .mockResolvedValueOnce([])           // UPDATE weather cluster 2
+      .mockResolvedValueOnce([])           // UPDATE risk_score/tier cluster 1
+      .mockResolvedValueOnce([])           // UPDATE risk_score/tier cluster 2
+      .mockResolvedValueOnce([]);          // UPSERT county conditions
     mockFetchWeather
       .mockRejectedValueOnce(new Error("timeout")) // cluster 1 weather fails
       .mockResolvedValueOnce(makeWeather())         // cluster 2 weather ok
@@ -165,14 +180,16 @@ describe("runIngest", () => {
 
     expect(result.clusterCount).toBe(2);
     expect(result.weatherUpdated).toBe(1);
+    expect(result.scored).toBe(2);
   });
 
   it("catches a FIRMS fetch error and returns firmsError in result", async () => {
     mockFetchFirms.mockRejectedValue(new Error("FIRMS timeout"));
     mockCluster.mockReturnValue([]);
     mockSql
+      .mockResolvedValueOnce([]) // SELECT prior clusters
       .mockResolvedValueOnce([]) // DELETE
-      .mockResolvedValueOnce([]); // county UPSERT
+      .mockResolvedValueOnce([]); // UPSERT county conditions
     mockFetchWeather.mockResolvedValue(makeWeather());
 
     const { neon } = await import("@neondatabase/serverless");
@@ -182,6 +199,37 @@ describe("runIngest", () => {
 
     expect(result.clusterCount).toBe(0);
     expect(result.firmsError).toBe("FIRMS timeout");
+  });
+
+  it("passes prior cluster data to scoring for trend computation", async () => {
+    const { computeRiskScore } = await import("@/lib/ember/ember-scoring");
+    const mockComputeScore = vi.mocked(computeRiskScore);
+
+    // Prior cluster at same location as the new one
+    mockFetchFirms.mockResolvedValue([]);
+    mockCluster.mockReturnValue([makeCluster({ lat: 39.1, lng: -120.1, frp: 300 })]);
+    mockSql
+      .mockResolvedValueOnce([{ lat: 39.1, lng: -120.1, frp: 150 }]) // prior cluster
+      .mockResolvedValueOnce([])                                       // DELETE
+      .mockResolvedValueOnce([{ id: 10 }])                            // INSERT
+      .mockResolvedValueOnce([])                                       // UPDATE weather
+      .mockResolvedValueOnce([])                                       // UPDATE score
+      .mockResolvedValueOnce([]);                                      // county UPSERT
+    mockFetchWeather.mockResolvedValue(makeWeather());
+
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon("dummy");
+
+    await runIngest(sql, "firms-key", "synoptic-key");
+
+    // priorFrp should be 150 (the nearby prior cluster's FRP)
+    expect(mockComputeScore).toHaveBeenCalledWith(
+      300,
+      expect.anything(),
+      expect.anything(),
+      expect.any(Boolean),
+      150
+    );
   });
 });
 
@@ -241,7 +289,7 @@ describe("GET /api/cron/ember-ingest", () => {
     expect(res.status).toBe(500);
   });
 
-  it("returns ok:true with clusterCount and weatherUpdated on success", async () => {
+  it("returns ok:true with clusterCount, weatherUpdated, and scored on success", async () => {
     vi.stubEnv("POSTGRES_URL", "postgres://dummy");
     vi.stubEnv("FIRMS_API_KEY", "firms-key");
     vi.stubEnv("SYNOPTIC_API_KEY", "synoptic-key");
@@ -249,12 +297,12 @@ describe("GET /api/cron/ember-ingest", () => {
     mockFetchFirms.mockResolvedValue([]);
     mockCluster.mockReturnValue([makeCluster()]);
     mockSql
-      .mockResolvedValueOnce([])           // UPSERT pipeline_runs running
-      .mockResolvedValueOnce([])           // DELETE clusters
-      .mockResolvedValueOnce([{ id: 5 }]) // INSERT cluster RETURNING id
-      .mockResolvedValueOnce([])           // UPDATE weather
-      .mockResolvedValueOnce([])           // UPSERT county conditions
-      .mockResolvedValueOnce([]);          // UPSERT pipeline_runs success
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
     mockFetchWeather.mockResolvedValue(makeWeather());
 
     const { GET } = await import("./route");
@@ -265,6 +313,7 @@ describe("GET /api/cron/ember-ingest", () => {
     expect(body.ok).toBe(true);
     expect(body.clusterCount).toBe(1);
     expect(body.weatherUpdated).toBe(1);
+    expect(body.scored).toBe(1);
   });
 
   it("returns ok:false with error message when SQL throws", async () => {
