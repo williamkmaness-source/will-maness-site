@@ -1,4 +1,4 @@
-// route.ts — EmberBrief cron handler: FIRMS ingest + Synoptic weather layer (issues #95, #96).
+// route.ts — EmberBrief cron handler: FIRMS ingest + weather + risk scoring (issues #95, #96, #97).
 // Runs daily at 09:00 UTC via Vercel Cron (see vercel.json).
 
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
@@ -10,7 +10,13 @@ import {
   evaluateRedFlag,
   degreesToCardinal,
   LAKE_TAHOE_BASIN_CENTROID,
+  type WeatherObservation,
 } from "@/lib/ember/weather-client";
+import {
+  computeRiskScore,
+  assignTier,
+  TREND_MATCH_RADIUS_KM,
+} from "@/lib/ember/ember-scoring";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,14 +25,52 @@ type IngestResult = {
   clusterCount: number;
   detectionCount: number;
   weatherUpdated: number;
+  scored: number;
   firmsError?: string;
 };
+
+type PriorCluster = { lat: number; lng: number; frp: number };
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function findNearestPriorFrp(
+  priors: PriorCluster[],
+  lat: number,
+  lng: number
+): number | null {
+  let nearest: { frp: number; dist: number } | null = null;
+  for (const p of priors) {
+    const dist = haversineKm(lat, lng, Number(p.lat), Number(p.lng));
+    if (dist <= TREND_MATCH_RADIUS_KM && (nearest === null || dist < nearest.dist)) {
+      nearest = { frp: Number(p.frp), dist };
+    }
+  }
+  return nearest?.frp ?? null;
+}
 
 export async function runIngest(
   sql: NeonQueryFunction<false, false>,
   firmsApiKey: string,
   synopticToken: string
 ): Promise<IngestResult> {
+  // ── Snapshot prior clusters for trend analysis ──────────────────────────────
+  // Query before DELETE so scoring can compare new FRP to the previous run.
+  const priorRows = await sql`SELECT lat, lng, frp FROM ember_fire_clusters`;
+  const priorClusters: PriorCluster[] = priorRows.map((r) => ({
+    lat: Number(r.lat),
+    lng: Number(r.lng),
+    frp: Number(r.frp),
+  }));
+
   // ── FIRMS ingest ────────────────────────────────────────────────────────────
   let detections: FirmsDetection[];
   let firmsError: string | undefined;
@@ -41,43 +85,66 @@ export async function runIngest(
 
   const clusters = clusterDetections(detections);
 
-  // Clear all clusters and replace with the current ingest.
-  // History for trend analysis (issue #97) will add per-run tracking.
   await sql`DELETE FROM ember_fire_clusters`;
 
-  // Insert clusters, collecting IDs for the weather update pass.
-  const insertedClusters: { id: number; lat: number; lng: number }[] = [];
+  // Insert clusters, collecting IDs + in-memory data for scoring pass.
+  const insertedClusters: {
+    id: number;
+    lat: number;
+    lng: number;
+    frp: number;
+    weather: WeatherObservation | null;
+  }[] = [];
+
   for (const c of clusters) {
     const rows = await sql`
       INSERT INTO ember_fire_clusters (lat, lng, frp, detection_count, detected_at)
       VALUES (${c.lat}, ${c.lng}, ${c.frp}, ${c.detectionCount}, ${c.detectedAt.toISOString()})
       RETURNING id
     `;
-    insertedClusters.push({ id: Number(rows[0].id), lat: c.lat, lng: c.lng });
+    insertedClusters.push({ id: Number(rows[0].id), lat: c.lat, lng: c.lng, frp: c.frp, weather: null });
   }
 
   // ── Weather layer ───────────────────────────────────────────────────────────
-  // Fetch weather in parallel for each cluster. Errors per cluster are caught
-  // and logged without aborting the rest of the ingest.
   let weatherUpdated = 0;
 
   await Promise.all(
-    insertedClusters.map(async ({ id, lat, lng }) => {
+    insertedClusters.map(async (cluster) => {
       try {
-        const weather = await fetchWeatherForLocation(lat, lng, synopticToken);
+        const weather = await fetchWeatherForLocation(cluster.lat, cluster.lng, synopticToken);
         if (weather) {
           await sql`
             UPDATE ember_fire_clusters
             SET weather = ${JSON.stringify(weather)}::jsonb
-            WHERE id = ${id}
+            WHERE id = ${cluster.id}
           `;
+          cluster.weather = weather;
           weatherUpdated++;
         }
       } catch (err) {
-        console.error(`[ember-ingest] weather fetch failed for cluster id=${id}:`, err);
+        console.error(`[ember-ingest] weather fetch failed for cluster id=${cluster.id}:`, err);
       }
     })
   );
+
+  // ── Risk scoring ────────────────────────────────────────────────────────────
+  let scored = 0;
+
+  for (const cluster of insertedClusters) {
+    const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
+    const humidityPct = cluster.weather?.humidityPct ?? null;
+    const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
+    const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
+    const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
+    const tier = assignTier(riskScore);
+
+    await sql`
+      UPDATE ember_fire_clusters
+      SET risk_score = ${riskScore}, tier = ${tier}
+      WHERE id = ${cluster.id}
+    `;
+    scored++;
+  }
 
   // ── County conditions ───────────────────────────────────────────────────────
   try {
@@ -121,6 +188,7 @@ export async function runIngest(
     clusterCount: clusters.length,
     detectionCount: detections.length,
     weatherUpdated,
+    scored,
     ...(firmsError !== undefined && { firmsError }),
   };
 }
@@ -155,7 +223,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   try {
     const result = await runIngest(sql, firmsApiKey, synopticToken);
     console.log(
-      `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather`
+      `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather, ${result.scored} scored`
     );
     return new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,

@@ -45,7 +45,7 @@ export async function getEmberData(sql: NeonQueryFunction<false, false>): Promis
         id, lat, lng, frp, detection_count, detected_at,
         risk_score, tier, weather, briefing, briefing_generated_at
       FROM ember_fire_clusters
-      ORDER BY detected_at DESC
+      ORDER BY risk_score DESC NULLS LAST, detected_at DESC
       LIMIT ${MAX_CLUSTERS}
     `,
     sql`
