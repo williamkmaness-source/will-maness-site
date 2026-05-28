@@ -225,12 +225,35 @@ export async function GET(req: NextRequest): Promise<Response> {
     console.log(
       `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather, ${result.scored} scored`
     );
+    try {
+      await sql`
+        INSERT INTO pipeline_runs (pipeline, status, last_success_at, last_attempt_at, record_count, error)
+        VALUES ('ember', 'success', NOW(), NOW(), ${result.clusterCount}, NULL)
+        ON CONFLICT (pipeline) DO UPDATE SET
+          status = 'success',
+          last_success_at = NOW(),
+          last_attempt_at = NOW(),
+          record_count = ${result.clusterCount},
+          error = NULL
+      `;
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs upsert failed:", e); }
     return new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("[ember-ingest] error:", err);
+    const message = err instanceof Error ? err.message : "Ingest failed";
+    try {
+      await sql`
+        INSERT INTO pipeline_runs (pipeline, status, last_attempt_at, error)
+        VALUES ('ember', 'failed', NOW(), ${message})
+        ON CONFLICT (pipeline) DO UPDATE SET
+          status = 'failed',
+          last_attempt_at = NOW(),
+          error = ${message}
+      `;
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs upsert failed:", e); }
     return new Response(JSON.stringify({ ok: false, error: "Ingest failed" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
