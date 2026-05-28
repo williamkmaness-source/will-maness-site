@@ -6,7 +6,7 @@ import {
   fetchFirmsDetections,
   meetsConfidenceThreshold,
   isWithinBbox,
-  SHASTA_COUNTY_BBOX,
+  LAKE_TAHOE_BASIN_BBOX,
   type FirmsDetection,
 } from "./firms-client";
 
@@ -28,8 +28,8 @@ function csvRow(
 
 function makeDet(overrides: Partial<FirmsDetection> = {}): FirmsDetection {
   return {
-    lat: 40.7,
-    lng: -122.5,
+    lat: 39.0,
+    lng: -120.0,
     frp: 100,
     confidence: "h",
     detectedAt: new Date(),
@@ -63,24 +63,24 @@ describe("meetsConfidenceThreshold", () => {
 // ── isWithinBbox ─────────────────────────────────────────────────────────────
 
 describe("isWithinBbox", () => {
-  it("accepts coordinates inside Shasta County bbox", () => {
-    expect(isWithinBbox(makeDet({ lat: 40.7, lng: -122.5 }), SHASTA_COUNTY_BBOX)).toBe(true);
+  it("accepts coordinates inside Lake Tahoe Basin bbox", () => {
+    expect(isWithinBbox(makeDet({ lat: 39.0, lng: -120.0 }), LAKE_TAHOE_BASIN_BBOX)).toBe(true);
   });
 
   it("rejects coordinates south of the bbox", () => {
-    expect(isWithinBbox(makeDet({ lat: 37.0, lng: -122.5 }), SHASTA_COUNTY_BBOX)).toBe(false);
+    expect(isWithinBbox(makeDet({ lat: 38.0, lng: -120.0 }), LAKE_TAHOE_BASIN_BBOX)).toBe(false);
   });
 
   it("rejects coordinates east of the bbox", () => {
-    expect(isWithinBbox(makeDet({ lat: 40.7, lng: -120.0 }), SHASTA_COUNTY_BBOX)).toBe(false);
+    expect(isWithinBbox(makeDet({ lat: 39.0, lng: -118.5 }), LAKE_TAHOE_BASIN_BBOX)).toBe(false);
   });
 
   it("rejects coordinates north of the bbox", () => {
-    expect(isWithinBbox(makeDet({ lat: 41.5, lng: -122.5 }), SHASTA_COUNTY_BBOX)).toBe(false);
+    expect(isWithinBbox(makeDet({ lat: 40.0, lng: -120.0 }), LAKE_TAHOE_BASIN_BBOX)).toBe(false);
   });
 
   it("rejects coordinates west of the bbox", () => {
-    expect(isWithinBbox(makeDet({ lat: 40.7, lng: -124.0 }), SHASTA_COUNTY_BBOX)).toBe(false);
+    expect(isWithinBbox(makeDet({ lat: 39.0, lng: -121.0 }), LAKE_TAHOE_BASIN_BBOX)).toBe(false);
   });
 });
 
@@ -94,8 +94,8 @@ describe("fetchFirmsDetections", () => {
   it("filters out low-confidence detections", async () => {
     const csv = [
       HEADER,
-      csvRow(40.7, -122.5, 100, "l"),
-      csvRow(40.6, -122.4, 150, "n"),
+      csvRow(39.0, -120.0, 100, "l"),
+      csvRow(39.1, -120.1, 150, "n"),
     ].join("\n");
     mockFetch(csv);
 
@@ -108,9 +108,9 @@ describe("fetchFirmsDetections", () => {
   it("keeps both nominal and high confidence detections", async () => {
     const csv = [
       HEADER,
-      csvRow(40.7, -122.5, 100, "h"),
-      csvRow(40.6, -122.4, 80, "n"),
-      csvRow(40.5, -122.3, 50, "l"),
+      csvRow(39.0, -120.0, 100, "h"),
+      csvRow(39.1, -120.1, 80, "n"),
+      csvRow(39.2, -120.2, 50, "l"),
     ].join("\n");
     mockFetch(csv);
 
@@ -121,14 +121,14 @@ describe("fetchFirmsDetections", () => {
   it("filters out detections outside the bounding box", async () => {
     const csv = [
       HEADER,
-      csvRow(40.7, -122.5, 100, "h"),  // inside Shasta County
-      csvRow(37.0, -120.0, 200, "h"),  // outside (LA area)
+      csvRow(39.0, -120.0, 100, "h"),  // inside Lake Tahoe Basin
+      csvRow(37.0, -120.0, 200, "h"),  // outside (too far south)
     ].join("\n");
     mockFetch(csv);
 
     const result = await fetchFirmsDetections("dummy");
     expect(result).toHaveLength(1);
-    expect(result[0].lat).toBeCloseTo(40.7);
+    expect(result[0].lat).toBeCloseTo(39.0);
   });
 
   it("returns empty array when FIRMS returns only a header", async () => {
@@ -157,7 +157,7 @@ describe("fetchFirmsDetections", () => {
   });
 
   it("parses acq_date and acq_time into detectedAt", async () => {
-    const csv = [HEADER, csvRow(40.7, -122.5, 100, "h", "2026-05-23", "1430")].join("\n");
+    const csv = [HEADER, csvRow(39.0, -120.0, 100, "h", "2026-05-23", "1430")].join("\n");
     mockFetch(csv);
 
     const result = await fetchFirmsDetections("dummy");

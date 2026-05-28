@@ -11,9 +11,9 @@ import { PipelineStatus } from "@/components/projects/ember/PipelineStatus";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "EmberBrief — Shasta County Fire Dashboard | Will Maness",
+  title: "EmberBrief — Lake Tahoe Basin Fire Dashboard | Will Maness",
   description:
-    "Live satellite fire detection for Shasta County — clusters, risk scores, and current weather conditions updated daily.",
+    "Live satellite fire detection for the Lake Tahoe Basin — clusters, risk scores, and current weather conditions updated daily.",
 };
 
 function ZeroDetectionState({ redFlag }: { redFlag: boolean }) {
@@ -31,7 +31,7 @@ function ZeroDetectionState({ redFlag }: { redFlag: boolean }) {
         </div>
       )}
       <p className="font-serif text-[20px] text-muted mb-[10px]">
-        No active detections in Shasta County.
+        No active detections in the Lake Tahoe Basin.
       </p>
       <p className="font-sans text-[14px] text-hint">
         {redFlag
@@ -89,7 +89,7 @@ export default async function EmberPage() {
           EmberBrief
         </h1>
         <p className="font-sans text-[16px] leading-[1.65] text-ink-soft max-w-[580px]">
-          Satellite fire detection for Shasta County — clusters updated daily
+          Satellite fire detection for the Lake Tahoe Basin — clusters updated daily
           from NASA FIRMS, with NOAA weather and AI-generated situation briefings for
           high-risk events.
         </p>
