@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import {
   getPendingRawPages,
+  deleteEntitiesForPage,
   insertFeatureLaunch,
   insertPricingChange,
   insertPartnership,
@@ -16,6 +17,9 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizeDate(val: unknown): string | null {
   if (typeof val !== "string" || !ISO_DATE_RE.test(val)) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  if (d > new Date()) return null;
   return val;
 }
 
@@ -238,6 +242,7 @@ export async function extractFromPage(
     const canonicalDate = extractCanonicalDate(rawPage.raw_content);
     const entities = await callFn(rawPage.raw_content, rawPage.company, rawPage.source_url);
 
+    await deleteEntitiesForPage(sql, rawPage.id);
     let insertedCount = 0;
 
     for (const e of entities.feature_launches) {

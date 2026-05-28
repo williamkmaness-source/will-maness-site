@@ -155,6 +155,20 @@ export async function insertArchitecturalShift(
   `;
 }
 
+// ── Entity cleanup ───────────────────────────────────────────────────────────
+
+export async function deleteEntitiesForPage(
+  sql: NeonQueryFunction<false, false>,
+  rawPageId: number
+): Promise<void> {
+  await Promise.all([
+    sql`DELETE FROM vf_feature_launches WHERE raw_page_id = ${rawPageId}`,
+    sql`DELETE FROM vf_pricing_changes WHERE raw_page_id = ${rawPageId}`,
+    sql`DELETE FROM vf_partnerships WHERE raw_page_id = ${rawPageId}`,
+    sql`DELETE FROM vf_architectural_shifts WHERE raw_page_id = ${rawPageId}`,
+  ]);
+}
+
 // ── Status updates ───────────────────────────────────────────────────────────
 
 export async function markExtracted(

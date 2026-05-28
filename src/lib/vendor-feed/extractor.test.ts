@@ -80,6 +80,7 @@ describe("extractFromPage", () => {
     const markedExtracted: number[] = [];
     const markedFailed: { id: number; msg: string }[] = [];
 
+    vi.spyOn(db, "deleteEntitiesForPage").mockResolvedValue(undefined);
     vi.spyOn(db, "insertFeatureLaunch").mockImplementation(async (_, d) => { inserted.launches.push(d); });
     vi.spyOn(db, "insertPricingChange").mockImplementation(async (_, d) => { inserted.pricing.push(d); });
     vi.spyOn(db, "insertPartnership").mockImplementation(async (_, d) => { inserted.partnerships.push(d); });
