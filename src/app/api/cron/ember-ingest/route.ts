@@ -131,19 +131,23 @@ export async function runIngest(
   let scored = 0;
 
   for (const cluster of insertedClusters) {
-    const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
-    const humidityPct = cluster.weather?.humidityPct ?? null;
-    const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
-    const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
-    const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
-    const tier = assignTier(riskScore);
+    try {
+      const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
+      const humidityPct = cluster.weather?.humidityPct ?? null;
+      const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
+      const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
+      const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
+      const tier = assignTier(riskScore);
 
-    await sql`
-      UPDATE ember_fire_clusters
-      SET risk_score = ${riskScore}, tier = ${tier}
-      WHERE id = ${cluster.id}
-    `;
-    scored++;
+      await sql`
+        UPDATE ember_fire_clusters
+        SET risk_score = ${riskScore}, tier = ${tier}
+        WHERE id = ${cluster.id}
+      `;
+      scored++;
+    } catch (err) {
+      console.error(`[ember-ingest] scoring failed for cluster id=${cluster.id}:`, err);
+    }
   }
 
   // ── County conditions ───────────────────────────────────────────────────────
@@ -225,12 +229,35 @@ export async function GET(req: NextRequest): Promise<Response> {
     console.log(
       `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather, ${result.scored} scored`
     );
+    try {
+      await sql`
+        INSERT INTO pipeline_runs (pipeline, status, last_success_at, last_attempt_at, record_count, error)
+        VALUES ('ember', 'success', NOW(), NOW(), ${result.clusterCount}, NULL)
+        ON CONFLICT (pipeline) DO UPDATE SET
+          status = 'success',
+          last_success_at = NOW(),
+          last_attempt_at = NOW(),
+          record_count = ${result.clusterCount},
+          error = NULL
+      `;
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs upsert failed:", e); }
     return new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("[ember-ingest] error:", err);
+    const message = err instanceof Error ? err.message : "Ingest failed";
+    try {
+      await sql`
+        INSERT INTO pipeline_runs (pipeline, status, last_attempt_at, error)
+        VALUES ('ember', 'failed', NOW(), ${message})
+        ON CONFLICT (pipeline) DO UPDATE SET
+          status = 'failed',
+          last_attempt_at = NOW(),
+          error = ${message}
+      `;
+    } catch (e) { console.warn("[ember-ingest] pipeline_runs upsert failed:", e); }
     return new Response(JSON.stringify({ ok: false, error: "Ingest failed" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },

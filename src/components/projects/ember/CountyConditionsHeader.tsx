@@ -43,7 +43,7 @@ export function CountyConditionsHeader({ conditions }: CountyConditionsHeaderPro
   function windValue(): string {
     if (windSpeed == null) return "—";
     const dir = windDirection ? ` ${windDirection}` : "";
-    const gust = windGust != null ? `, gusts ${windGust}` : "";
+    const gust = windGust != null ? `, gusts ${windGust} mph` : "";
     return `${windSpeed} mph${dir}${gust}`;
   }
 
