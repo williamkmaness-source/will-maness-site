@@ -4,42 +4,40 @@ eyebrow: "Data · Engineering"
 year: "2026"
 status: "in-progress"
 tags: ["data", "engineering"]
-summary: "Does Boston respond to 311 requests equally across neighborhoods? This tracker assesses responsiveness from public city data by neighborhood."
+summary: "Which city departments are falling behind on 311 requests — and is the problem getting worse? A staffing intelligence dashboard built from public data."
 featured: true
 ---
 
 <BostonCivicTracker />
 
-Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset goes back to 2011 and updates continuously. What it doesn't do is tell you how fast the city is responding to those requests.
+Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset updates continuously and goes back years. What it doesn't do is tell you which departments are falling behind.
 
-> Can the city of Boston keep up with the volume of requests that are coming in every month? Is the rate of closing these requests meaningfully different across neighborhoods? The data is public, but not clearly summarized - until now.
+> Is the city keeping up with the volume of requests coming in every week? Which departments are showing signs of staffing stress — and is the pressure building or easing? The data is public, but the signal isn't obvious until you aggregate it.
 
-That's the project. The [Boston 311 Equity Tracker](/work/boston-civic-data) computes a series of visualizations representing how expeditiously the city is closing down 311 tickets. It ranks every neighborhood by the net change in requests and the speed to close those requests with filters by request type to specify certain activities.
+The [staffing dashboard](/work/boston-civic-data) answers that question. It tracks weekly open vs. closed ticket counts and median closure time for each of the nine city departments that handle 311 work. When both metrics worsen for two or more consecutive weeks, the department is flagged — giving an operations manager a clear signal before a backlog becomes a crisis.
 
 ## How it works
 
-The city's data lives on the Analyze Boston CKAN platform, split into per-year CSV resources. A GitHub Actions job runs every night, queries the API for new cases, and upserts them into a `case_events` table in Neon Postgres — one row per 311 case, keyed on the city's case ID. The Next.js route handler then computes all metrics live using Postgres window functions (`PERCENTILE_CONT`), reading directly from `case_events` on every request.
+The city's data lives on the Analyze Boston CKAN platform, split into per-year CSV resources. A nightly pipeline fetches new cases and upserts them into a `case_events` table in Neon Postgres — one row per 311 case, keyed on the city's case ID. A second pass aggregates case data into ISO-week buckets per department, which the API route serves to the dashboard.
 
 A few deliberate choices in the methodology:
 
-- **Median, not mean.** A single outlier case open for two years drags the mean. Median gives a better read on what a typical resident actually experiences — and `PERCENTILE_CONT` computes it exactly over the raw case data, with no preaggregation artifacts.
-- **`reason` field, not `type`.** More stable across years and produces cleaner groupings for filtering.
-- **Per-request retry with backoff.** The nightly pipeline retries each CKAN call up to three times with exponential backoff before failing — CKAN can be slow, and a transient hiccup shouldn't abort the run.
+- **Median, not mean.** A single outlier case open for two years drags the mean. Median gives a better read on what a typical resident actually experiences.
+- **Both conditions must hold.** A department is only flagged when backlog is growing (opened > closed) AND median closure time is increasing — a single bad metric in isolation is noise, not signal.
+- **Two-week minimum for red.** A single stressed week earns a yellow watch flag. It takes two consecutive stressed weeks to turn red. A calm week resets the counter entirely.
 
 ## Stack
 
 <StackList items={[
-  { name: "Next.js", role: "App Router — tracker lives as a page within this site", frequency: "daily" },
-  { name: "Neon Postgres", role: "case_events table — one row per 311 case; API computes PERCENTILE_CONT metrics at query time", frequency: "daily" },
-  { name: "GitHub Actions", role: "Nightly pipeline cron — fetches, aggregates, upserts to Postgres", frequency: "daily" },
-  { name: "Recharts", role: "Horizontal bar chart and flow chart, both responsive", frequency: "occasional" },
+  { name: "Next.js", role: "App Router — dashboard lives as a page within this site", frequency: "daily" },
+  { name: "Neon Postgres", role: "case_events + department_weekly_metrics tables; pipeline rebuilds weekly aggregates nightly", frequency: "daily" },
+  { name: "GitHub Actions", role: "Nightly pipeline cron — fetches from CKAN, upserts cases, rebuilds weekly metrics", frequency: "daily" },
+  { name: "Recharts", role: "Net backlog bar charts and closure time sparklines per department", frequency: "occasional" },
   { name: "CKAN API", role: "Analyze Boston data source — SQL queries over public CSVs", frequency: "occasional" },
   { name: "Tailwind CSS", role: "Styling — uses this site's design tokens throughout", frequency: "daily" },
-  { name: "Vercel CDN", role: "24-hour edge cache on the route handler response", frequency: "daily" }
+  { name: "Vercel CDN", role: "24-hour edge cache on the department API response", frequency: "daily" }
 ]} />
 
 ## What's next
 
-The `case_events` table now holds ~95,000 historical cases going back to 2024, with the nightly pipeline keeping it current. The next phase is adding department and SLA context — which city department handles each request type, and what the official response target is. That data is already being tracked in a `request_type_meta` table; wiring it into the UI will let the tracker answer a harder question: is a neighborhood's slow response time a city-wide problem for that request type, or is it specific to that neighborhood?
-
-[Open the tracker →](/work/boston-civic-data)
+The flagging engine is deterministic and transparent — every flag comes with a one-line explanation of what triggered it. Phase 2 will add AI-generated narrative summaries for flagged departments, giving an ops manager a paragraph they can bring directly into a staffing conversation.
