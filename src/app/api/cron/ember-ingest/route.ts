@@ -1,8 +1,9 @@
-// route.ts — EmberBrief cron handler: FIRMS ingest + weather + risk scoring (issues #95, #96, #97).
-// Runs daily at 09:00 UTC via Vercel Cron (see vercel.json).
+// route.ts — EmberBrief cron handler: FIRMS ingest + weather + risk scoring + AI briefings
+// (issues #95, #96, #97, #98). Runs daily at 09:00 UTC via Vercel Cron (see vercel.json).
 
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { NextRequest } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 import { fetchFirmsDetections, type FirmsDetection } from "@/lib/ember/firms-client";
 import { clusterDetections } from "@/lib/ember/cluster-engine";
 import {
@@ -17,6 +18,7 @@ import {
   assignTier,
   TREND_MATCH_RADIUS_KM,
 } from "@/lib/ember/ember-scoring";
+import { generateBriefing, type BriefingInput } from "@/lib/ember/ember-briefing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +28,7 @@ type IngestResult = {
   detectionCount: number;
   weatherUpdated: number;
   scored: number;
+  briefed: number;
   firmsError?: string;
 };
 
@@ -87,13 +90,17 @@ export async function runIngest(
 
   await sql`DELETE FROM ember_fire_clusters`;
 
-  // Insert clusters, collecting IDs + in-memory data for scoring pass.
+  // Insert clusters, collecting IDs + in-memory data for scoring and briefing passes.
   const insertedClusters: {
     id: number;
     lat: number;
     lng: number;
     frp: number;
+    detectionCount: number;
     weather: WeatherObservation | null;
+    riskScore: number | null;
+    tier: string | null;
+    redFlag: boolean;
   }[] = [];
 
   for (const c of clusters) {
@@ -102,7 +109,11 @@ export async function runIngest(
       VALUES (${c.lat}, ${c.lng}, ${c.frp}, ${c.detectionCount}, ${c.detectedAt.toISOString()})
       RETURNING id
     `;
-    insertedClusters.push({ id: Number(rows[0].id), lat: c.lat, lng: c.lng, frp: c.frp, weather: null });
+    insertedClusters.push({
+      id: Number(rows[0].id),
+      lat: c.lat, lng: c.lng, frp: c.frp, detectionCount: c.detectionCount,
+      weather: null, riskScore: null, tier: null, redFlag: false,
+    });
   }
 
   // ── Weather layer ───────────────────────────────────────────────────────────
@@ -131,19 +142,65 @@ export async function runIngest(
   let scored = 0;
 
   for (const cluster of insertedClusters) {
-    const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
-    const humidityPct = cluster.weather?.humidityPct ?? null;
-    const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
-    const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
-    const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
-    const tier = assignTier(riskScore);
+    try {
+      const windSpeedMph = cluster.weather?.windSpeedMph ?? null;
+      const humidityPct = cluster.weather?.humidityPct ?? null;
+      const redFlag = evaluateRedFlag(windSpeedMph, humidityPct);
+      const priorFrp = findNearestPriorFrp(priorClusters, cluster.lat, cluster.lng);
+      const riskScore = computeRiskScore(cluster.frp, windSpeedMph, humidityPct, redFlag, priorFrp);
+      const tier = assignTier(riskScore);
 
-    await sql`
-      UPDATE ember_fire_clusters
-      SET risk_score = ${riskScore}, tier = ${tier}
-      WHERE id = ${cluster.id}
-    `;
-    scored++;
+      await sql`
+        UPDATE ember_fire_clusters
+        SET risk_score = ${riskScore}, tier = ${tier}
+        WHERE id = ${cluster.id}
+      `;
+      cluster.riskScore = riskScore;
+      cluster.tier = tier;
+      cluster.redFlag = redFlag;
+      scored++;
+    } catch (err) {
+      console.error(`[ember-ingest] scoring failed for cluster id=${cluster.id}:`, err);
+    }
+  }
+
+  // ── AI briefings (Action-tier only) ────────────────────────────────────────
+  let briefed = 0;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (anthropicKey) {
+    const anthropicClient = new Anthropic({ apiKey: anthropicKey });
+
+    for (const cluster of insertedClusters) {
+      if (cluster.tier !== "Action" || cluster.riskScore == null) continue;
+      try {
+        const briefingInput: BriefingInput = {
+          frp: cluster.frp,
+          detectionCount: cluster.detectionCount,
+          lat: cluster.lat,
+          lng: cluster.lng,
+          riskScore: cluster.riskScore,
+          windSpeedMph: cluster.weather?.windSpeedMph ?? null,
+          humidityPct: cluster.weather?.humidityPct ?? null,
+          temperatureF: cluster.weather?.temperatureF ?? null,
+          redFlag: cluster.redFlag,
+        };
+        const result = await generateBriefing(anthropicClient, briefingInput);
+        if (result) {
+          const briefingJson = JSON.stringify(result);
+          await sql`
+            UPDATE ember_fire_clusters
+            SET briefing = ${briefingJson}, briefing_generated_at = NOW()
+            WHERE id = ${cluster.id}
+          `;
+          briefed++;
+        }
+      } catch (err) {
+        console.error(`[ember-ingest] briefing failed for cluster id=${cluster.id}:`, err);
+      }
+    }
+  } else {
+    console.log("[ember-ingest] ANTHROPIC_API_KEY not set — skipping briefing pass");
   }
 
   // ── County conditions ───────────────────────────────────────────────────────
@@ -189,6 +246,7 @@ export async function runIngest(
     detectionCount: detections.length,
     weatherUpdated,
     scored,
+    briefed,
     ...(firmsError !== undefined && { firmsError }),
   };
 }
@@ -223,7 +281,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   try {
     const result = await runIngest(sql, firmsApiKey, synopticToken);
     console.log(
-      `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather, ${result.scored} scored`
+      `[ember-ingest] OK — ${result.clusterCount} clusters, ${result.weatherUpdated} with weather, ${result.scored} scored, ${result.briefed} briefed`
     );
     return new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,
