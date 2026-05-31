@@ -241,4 +241,93 @@ describe("extractFromPage", () => {
     expect(inserted.launches).toHaveLength(0);
     expect(markedExtracted).toContain(42);
   });
+
+  it("regression #89: deduplicates feature launches with the same product_name within one extraction pass", async () => {
+    const { inserted, markedExtracted } = await setup();
+    const callFn = vi.fn().mockResolvedValue({
+      feature_launches: [
+        { product_name: "dbt Agent Skills", description: "GA release.", release_date: "2025-03-01" },
+        { product_name: "dbt Agent Skills", description: "Public beta earlier.", release_date: "2025-02-01" },
+        { product_name: "dbt Agent Skills", description: "Same name, different case.", release_date: "2025-04-01" },
+      ],
+      pricing_changes: [],
+      partnerships: [],
+      architectural_shifts: [],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, fixtureRawPage, callFn);
+
+    expect(inserted.launches).toHaveLength(1);
+    const l = inserted.launches[0] as { productName: string };
+    expect(l.productName).toBe("dbt Agent Skills");
+    expect(markedExtracted).toContain(42);
+  });
+
+  it("deduplicates partnerships with the same partner company within one extraction pass", async () => {
+    const { inserted } = await setup();
+    const callFn = vi.fn().mockResolvedValue({
+      ...emptyEntities,
+      partnerships: [
+        { partner_company: "Snowflake", integration_type: "native connector", description: "First mention.", announced_date: "2025-03-01" },
+        { partner_company: "Snowflake", integration_type: "marketplace listing", description: "Second mention.", announced_date: "2025-03-01" },
+      ],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, fixtureRawPage, callFn);
+
+    expect(inserted.partnerships).toHaveLength(1);
+  });
+
+  it("deduplicates architectural shifts with the same from→to pair within one extraction pass", async () => {
+    const { inserted } = await setup();
+    const callFn = vi.fn().mockResolvedValue({
+      ...emptyEntities,
+      architectural_shifts: [
+        { from_technology: "Celery", to_technology: "Ray", description: "First mention.", announced_date: "2025-03-01" },
+        { from_technology: "Celery", to_technology: "Ray", description: "Second mention.", announced_date: "2025-03-01" },
+      ],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, fixtureRawPage, callFn);
+
+    expect(inserted.arch).toHaveLength(1);
+  });
+
+  it("deduplicates pricing changes with the same description prefix within one extraction pass", async () => {
+    const { inserted } = await setup();
+    const desc = "Moved to usage-based pricing effective Q2.";
+    const callFn = vi.fn().mockResolvedValue({
+      ...emptyEntities,
+      pricing_changes: [
+        { description: desc, direction: "restructure", effective_date: "2025-04-01" },
+        { description: desc, direction: "restructure", effective_date: "2025-04-01" },
+      ],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, fixtureRawPage, callFn);
+
+    expect(inserted.pricing).toHaveLength(1);
+  });
+
+  it("does NOT deduplicate genuinely distinct entities with different names", async () => {
+    const { inserted } = await setup();
+    const callFn = vi.fn().mockResolvedValue({
+      feature_launches: [
+        { product_name: "dbt Agent Skills — Public Beta", description: "Beta.", release_date: "2025-02-01" },
+        { product_name: "dbt Agent Skills — General Availability", description: "GA.", release_date: "2025-03-01" },
+      ],
+      pricing_changes: [],
+      partnerships: [],
+      architectural_shifts: [],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, fixtureRawPage, callFn);
+
+    expect(inserted.launches).toHaveLength(2);
+  });
 });
