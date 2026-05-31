@@ -245,7 +245,20 @@ export async function extractFromPage(
     await deleteEntitiesForPage(sql, rawPage.id);
     let insertedCount = 0;
 
+    // Dedup sets: prevent Claude from inserting the same entity twice in one extraction pass.
+    // Duplicate product names from the same blog post are a known failure mode (#89).
+    const seenLaunchKeys = new Set<string>();
+    const seenPricingKeys = new Set<string>();
+    const seenPartnershipKeys = new Set<string>();
+    const seenShiftKeys = new Set<string>();
+
     for (const e of entities.feature_launches) {
+      const dedupKey = e.product_name.toLowerCase();
+      if (seenLaunchKeys.has(dedupKey)) {
+        console.log(`[extractor] skipped intra-page duplicate feature launch from ${rawPage.company}: ${e.product_name}`);
+        continue;
+      }
+      seenLaunchKeys.add(dedupKey);
       const releaseDate = validateEntityDate(e.release_date, canonicalDate);
       if (isStale(releaseDate, rawPage.scraped_at)) {
         console.log(`[extractor] skipped stale feature launch from ${rawPage.company}: ${e.product_name} (${releaseDate})`);
@@ -263,6 +276,12 @@ export async function extractFromPage(
     }
 
     for (const e of entities.pricing_changes) {
+      const dedupKey = e.description.toLowerCase().slice(0, 80);
+      if (seenPricingKeys.has(dedupKey)) {
+        console.log(`[extractor] skipped intra-page duplicate pricing change from ${rawPage.company}`);
+        continue;
+      }
+      seenPricingKeys.add(dedupKey);
       const effectiveDate = validateEntityDate(e.effective_date, canonicalDate);
       if (isStale(effectiveDate, rawPage.scraped_at)) {
         console.log(`[extractor] skipped stale pricing change from ${rawPage.company}: (${effectiveDate})`);
@@ -280,6 +299,12 @@ export async function extractFromPage(
     }
 
     for (const e of entities.partnerships) {
+      const dedupKey = e.partner_company.toLowerCase();
+      if (seenPartnershipKeys.has(dedupKey)) {
+        console.log(`[extractor] skipped intra-page duplicate partnership from ${rawPage.company}: ${e.partner_company}`);
+        continue;
+      }
+      seenPartnershipKeys.add(dedupKey);
       const announcedDate = validateEntityDate(e.announced_date, canonicalDate);
       if (isStale(announcedDate, rawPage.scraped_at)) {
         console.log(`[extractor] skipped stale partnership from ${rawPage.company}: ${e.partner_company} (${announcedDate})`);
@@ -298,6 +323,12 @@ export async function extractFromPage(
     }
 
     for (const e of entities.architectural_shifts) {
+      const dedupKey = `${(e.from_technology ?? '').toLowerCase()}->${(e.to_technology ?? '').toLowerCase()}`;
+      if (seenShiftKeys.has(dedupKey)) {
+        console.log(`[extractor] skipped intra-page duplicate architectural shift from ${rawPage.company}`);
+        continue;
+      }
+      seenShiftKeys.add(dedupKey);
       const announcedDate = validateEntityDate(e.announced_date, canonicalDate);
       if (isStale(announcedDate, rawPage.scraped_at)) {
         console.log(`[extractor] skipped stale architecture shift from ${rawPage.company}: (${announcedDate})`);
