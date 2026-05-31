@@ -3,6 +3,7 @@
 import type { FireCluster, ClusterTier } from "@/lib/ember/ember-queries";
 import type { WeatherObservation } from "@/lib/ember/weather-client";
 import { degreesToCardinal } from "@/lib/ember/weather-client";
+import type { BriefingResult } from "@/lib/ember/ember-briefing";
 
 const TIER_STYLES: Record<ClusterTier, { bg: string; text: string; dot: string }> = {
   Monitor: { bg: "bg-accent-soft", text: "text-accent", dot: "bg-accent" },
@@ -37,6 +38,22 @@ function formatDetectedAt(iso: string): string {
   });
 }
 
+function parseBriefing(raw: string | null): BriefingResult | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const { currentSituation, weatherContext, outlook } = parsed;
+    if (
+      typeof currentSituation !== "string" ||
+      typeof weatherContext !== "string" ||
+      typeof outlook !== "string"
+    ) return null;
+    return { currentSituation, weatherContext, outlook };
+  } catch {
+    return null;
+  }
+}
+
 function parseWeather(raw: Record<string, unknown> | null): WeatherObservation | null {
   if (!raw) return null;
   return {
@@ -56,8 +73,9 @@ interface ClusterCardProps {
 }
 
 export function ClusterCard({ cluster }: ClusterCardProps) {
-  const { lat, lng, frp, detectionCount, detectedAt, tier, riskScore, weather: weatherRaw } = cluster;
+  const { lat, lng, frp, detectionCount, detectedAt, tier, riskScore, weather: weatherRaw, briefing: briefingRaw, briefingGeneratedAt } = cluster;
   const weather = parseWeather(weatherRaw);
+  const briefing = parseBriefing(briefingRaw);
 
   const windLabel =
     weather?.windSpeedMph != null
@@ -124,6 +142,30 @@ export function ClusterCard({ cluster }: ClusterCardProps) {
               {weather.temperatureF != null ? `${Math.round(weather.temperatureF)}°F` : "—"}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* AI briefing — only rendered for Action-tier clusters when a briefing is available */}
+      {tier === "Action" && briefing && (
+        <div className="mt-[16px] pt-[16px] border-t border-line space-y-[12px]">
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.06em] uppercase text-hint mb-[4px]">Current Situation</p>
+            <p className="font-sans text-[13px] leading-[1.6] text-ink-soft">{briefing.currentSituation}</p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.06em] uppercase text-hint mb-[4px]">Weather Context</p>
+            <p className="font-sans text-[13px] leading-[1.6] text-ink-soft">{briefing.weatherContext}</p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.06em] uppercase text-hint mb-[4px]">6-Hour Outlook</p>
+            <p className="font-sans text-[13px] leading-[1.6] text-ink-soft">{briefing.outlook}</p>
+          </div>
+          <p className="font-mono text-[10px] text-hint">
+            AI-generated from satellite and weather data
+            {briefingGeneratedAt && (
+              <> · Generated {new Date(briefingGeneratedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</>
+            )}
+          </p>
         </div>
       )}
     </article>
