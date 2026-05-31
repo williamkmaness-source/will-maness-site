@@ -112,7 +112,8 @@ export async function generateBriefing(
     const block = message.content[0];
     if (!block || block.type !== "text") return null;
     rawText = block.text;
-  } catch {
+  } catch (err) {
+    console.error("[ember-briefing] API call failed:", err instanceof Error ? err.message : err);
     return null;
   }
 
