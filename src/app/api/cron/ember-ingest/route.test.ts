@@ -1,5 +1,5 @@
-// Tests for the ember-ingest cron handler (issues #93, #95, #96, #97).
-// Mocks Neon driver, firms-client, cluster-engine, weather-client, and ember-scoring.
+// Tests for the ember-ingest cron handler (issues #93, #95, #96, #97, #98).
+// Mocks Neon driver, firms-client, cluster-engine, weather-client, ember-scoring, and ember-briefing.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runIngest } from "./route";
@@ -39,6 +39,16 @@ vi.mock("@/lib/ember/ember-scoring", () => ({
   computeRiskScore: vi.fn().mockReturnValue(55),
   assignTier: vi.fn().mockReturnValue("Watch"),
   TREND_MATCH_RADIUS_KM: 10,
+}));
+
+const mockGenerateBriefing = vi.fn<() => Promise<{ currentSituation: string; weatherContext: string; outlook: string } | null>>();
+
+vi.mock("@/lib/ember/ember-briefing", () => ({
+  generateBriefing: (...args: unknown[]) => mockGenerateBriefing(),
+}));
+
+vi.mock("@anthropic-ai/sdk", () => ({
+  default: vi.fn(),
 }));
 
 const mockSql = vi.fn();
@@ -87,6 +97,8 @@ describe("runIngest", () => {
     mockFetchFirms.mockReset();
     mockCluster.mockReset();
     mockFetchWeather.mockReset();
+    mockGenerateBriefing.mockReset();
+    mockGenerateBriefing.mockResolvedValue(null);
     mockSql.mockResolvedValue([]);
   });
 
@@ -110,6 +122,7 @@ describe("runIngest", () => {
     expect(result.clusterCount).toBe(1);
     expect(result.weatherUpdated).toBe(1);
     expect(result.scored).toBe(1);
+    expect(result.briefed).toBe(0);
     expect(result.firmsError).toBeUndefined();
   });
 
@@ -130,6 +143,7 @@ describe("runIngest", () => {
     expect(result.clusterCount).toBe(0);
     expect(result.weatherUpdated).toBe(0);
     expect(result.scored).toBe(0);
+    expect(result.briefed).toBe(0);
     expect(mockSql).toHaveBeenCalledTimes(3);
   });
 
@@ -201,6 +215,66 @@ describe("runIngest", () => {
     expect(result.firmsError).toBe("FIRMS timeout");
   });
 
+  it("generates a briefing for Action-tier clusters when ANTHROPIC_API_KEY is set", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    const { assignTier } = await import("@/lib/ember/ember-scoring");
+    vi.mocked(assignTier).mockReturnValue("Action");
+
+    mockFetchFirms.mockResolvedValue([]);
+    mockCluster.mockReturnValue([makeCluster()]);
+    mockSql
+      .mockResolvedValueOnce([])           // SELECT prior clusters
+      .mockResolvedValueOnce([])           // DELETE
+      .mockResolvedValueOnce([{ id: 7 }]) // INSERT cluster RETURNING id
+      .mockResolvedValueOnce([])           // UPDATE weather
+      .mockResolvedValueOnce([])           // UPDATE risk_score/tier
+      .mockResolvedValueOnce([])           // UPDATE briefing
+      .mockResolvedValueOnce([]);          // UPSERT county conditions
+    mockFetchWeather.mockResolvedValue(makeWeather());
+    mockGenerateBriefing.mockResolvedValue({
+      currentSituation: "Active burning detected.",
+      weatherContext: "Dry and windy conditions.",
+      outlook: "Risk remains elevated.",
+    });
+
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon("dummy");
+
+    const result = await runIngest(sql, "firms-key", "synoptic-key");
+
+    expect(result.briefed).toBe(1);
+    expect(mockGenerateBriefing).toHaveBeenCalledOnce();
+
+    vi.mocked(assignTier).mockReturnValue("Watch");
+    vi.unstubAllEnvs();
+  });
+
+  it("skips briefing when ANTHROPIC_API_KEY is not set", async () => {
+    const { assignTier } = await import("@/lib/ember/ember-scoring");
+    vi.mocked(assignTier).mockReturnValue("Action");
+
+    mockFetchFirms.mockResolvedValue([]);
+    mockCluster.mockReturnValue([makeCluster()]);
+    mockSql
+      .mockResolvedValueOnce([])           // SELECT prior clusters
+      .mockResolvedValueOnce([])           // DELETE
+      .mockResolvedValueOnce([{ id: 8 }]) // INSERT
+      .mockResolvedValueOnce([])           // UPDATE weather
+      .mockResolvedValueOnce([])           // UPDATE risk_score/tier
+      .mockResolvedValueOnce([]);          // UPSERT county conditions
+    mockFetchWeather.mockResolvedValue(makeWeather());
+
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon("dummy");
+
+    const result = await runIngest(sql, "firms-key", "synoptic-key");
+
+    expect(result.briefed).toBe(0);
+    expect(mockGenerateBriefing).not.toHaveBeenCalled();
+
+    vi.mocked(assignTier).mockReturnValue("Watch");
+  });
+
   it("passes prior cluster data to scoring for trend computation", async () => {
     const { computeRiskScore } = await import("@/lib/ember/ember-scoring");
     const mockComputeScore = vi.mocked(computeRiskScore);
@@ -241,6 +315,8 @@ describe("GET /api/cron/ember-ingest", () => {
     mockFetchFirms.mockReset();
     mockCluster.mockReset();
     mockFetchWeather.mockReset();
+    mockGenerateBriefing.mockReset();
+    mockGenerateBriefing.mockResolvedValue(null);
     vi.unstubAllEnvs();
   });
 
@@ -289,7 +365,7 @@ describe("GET /api/cron/ember-ingest", () => {
     expect(res.status).toBe(500);
   });
 
-  it("returns ok:true with clusterCount, weatherUpdated, and scored on success", async () => {
+  it("returns ok:true with clusterCount, weatherUpdated, scored, and briefed on success", async () => {
     vi.stubEnv("POSTGRES_URL", "postgres://dummy");
     vi.stubEnv("FIRMS_API_KEY", "firms-key");
     vi.stubEnv("SYNOPTIC_API_KEY", "synoptic-key");
@@ -314,6 +390,7 @@ describe("GET /api/cron/ember-ingest", () => {
     expect(body.clusterCount).toBe(1);
     expect(body.weatherUpdated).toBe(1);
     expect(body.scored).toBe(1);
+    expect(body.briefed).toBe(0);
   });
 
   it("returns ok:false with error message when SQL throws", async () => {
