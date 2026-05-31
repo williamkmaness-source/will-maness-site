@@ -8,13 +8,11 @@ summary: "Which city departments are falling behind on 311 requests — and is t
 featured: true
 ---
 
-<BostonCivicTracker />
+The weekly operations review surfaces the same question week after week: is this department struggling, or is it just noise? Boston's 311 data is public and continuously updated — but raw case counts don't tell you whether a backlog is building or easing. By the time the signal is obvious, a council office has usually gotten there first.
 
-Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset updates continuously and goes back years. What it doesn't do is tell you which departments are falling behind.
+<StaffingDashboard />
 
-> Is the city keeping up with the volume of requests coming in every week? Which departments are showing signs of staffing stress — and is the pressure building or easing? The data is public, but the signal isn't obvious until you aggregate it.
-
-The [staffing dashboard](/work/boston-civic-data) answers that question. It tracks weekly open vs. closed ticket counts and median closure time for each of the nine city departments that handle 311 work. When both metrics worsen for two or more consecutive weeks, the department is flagged — giving an operations manager a clear signal before a backlog becomes a crisis.
+Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset updates continuously and goes back years. This dashboard tracks weekly open vs. closed ticket counts and median closure time for each of the nine city departments that handle 311 work. When both metrics worsen for two or more consecutive weeks, the department is flagged — giving an operations manager a clear signal before a backlog becomes a crisis.
 
 ## How it works
 
@@ -40,4 +38,12 @@ A few deliberate choices in the methodology:
 
 ## What's next
 
-The flagging engine is deterministic and transparent — every flag comes with a one-line explanation of what triggered it. Phase 2 will add AI-generated narrative summaries for flagged departments, giving an ops manager a paragraph they can bring directly into a staffing conversation.
+The current dashboard serves one decision well: an operations manager needs a signal, before a weekly review, about which departments are showing signs of stress. Extending it to serve adjacent decisions requires a few specific additions.
+
+**AI narrative summaries** are already in progress. When a department is flagged, the next version will generate a plain-English paragraph — what changed, over how many weeks, how severe — that an ops manager can bring directly into a staffing conversation without reformatting the data.
+
+**Per-district breakdowns** would unlock a different user: a district chief who needs to know whether a backlog is concentrated in their geography or spread citywide. Department flags give you the *what*; district-level data gives you the *where*.
+
+**Seasonality-adjusted flagging** would separate staffing problems from volume spikes. More pothole reports in April isn't a PWD failure — it's spring. Accounting for year-over-year volume patterns would make red flags meaningfully rarer and more credible.
+
+**A cost-per-case layer** would make this useful in a budget conversation. Right now the dashboard shows operational stress; it doesn't translate that into dollars. Adding median cost-per-case by department turns a backlog trend into the beginning of a headcount justification.
