@@ -2,13 +2,27 @@
 // Extracted from the API route so the nightly pipeline script can reuse it.
 // fetchFromResource retries up to 3 times with exponential backoff (2s, 4s, 8s).
 
-import {
-  ALL_CATEGORIES,
-  type NeighborhoodStat,
-  type RequestTypeMetrics,
-} from "@/components/projects/boston-civic-data/types";
+export type NeighborhoodStat = {
+  neighborhood: string;
+  medianDays: number;
+  onTimeRate: number;
+  count: number;
+  openedCount: number;
+  closedCount: number;
+};
 
-export { ALL_CATEGORIES };
+export const ALL_CATEGORIES = "All categories" as const;
+
+export type RequestTypeMetrics = {
+  requestType: string;
+  department: string | null;
+  slaTarget: number | null;
+  equityGap: number | null;
+  cityMedian: number | null;
+  totalCases: number;
+  neighborhoods: NeighborhoodStat[];
+  yoyEquityGap: number | null;
+};
 
 export const CKAN_SQL_URL =
   "https://data.boston.gov/api/3/action/datastore_search_sql";

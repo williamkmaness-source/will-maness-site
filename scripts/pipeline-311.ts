@@ -138,6 +138,8 @@ async function main() {
 
     // Rebuild request_type_meta from the full case_events table.
     // MODE() picks the most common department; PERCENTILE_CONT gives median SLA.
+    // On conflict: update sla_days and last_updated only — never overwrite department,
+    // which preserves manual reclassifications (e.g. Needle Program → BPHC).
     console.log("Rebuilding request_type_meta...");
     await sql`
       INSERT INTO request_type_meta (request_type, department, sla_days, last_updated)
@@ -151,9 +153,31 @@ async function main() {
         AND sla_days IS NOT NULL
       GROUP BY request_type
       ON CONFLICT (request_type) DO UPDATE SET
-        department   = EXCLUDED.department,
         sla_days     = EXCLUDED.sla_days,
         last_updated = EXCLUDED.last_updated
+    `;
+    // Rebuild department_weekly_metrics for the 12-week staffing dashboard window.
+    // Full rebuild from case_events — idempotent via ON CONFLICT.
+    console.log("Rebuilding department_weekly_metrics...");
+    await sql`
+      INSERT INTO department_weekly_metrics (week, department, opened, closed, median_days)
+      SELECT
+        DATE_TRUNC('week', ce.open_date)::date                           AS week,
+        rtm.department,
+        COUNT(*) FILTER (WHERE ce.open_date IS NOT NULL)                 AS opened,
+        COUNT(*) FILTER (WHERE ce.close_date IS NOT NULL)                AS closed,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ce.days_to_close)
+          FILTER (WHERE ce.days_to_close IS NOT NULL)                    AS median_days
+      FROM case_events ce
+      JOIN request_type_meta rtm
+        ON rtm.request_type = ce.request_type
+        AND rtm.include_in_dashboard = true
+      WHERE ce.open_date >= (CURRENT_DATE - INTERVAL '14 weeks')
+      GROUP BY DATE_TRUNC('week', ce.open_date)::date, rtm.department
+      ON CONFLICT (week, department) DO UPDATE SET
+        opened      = EXCLUDED.opened,
+        closed      = EXCLUDED.closed,
+        median_days = EXCLUDED.median_days
     `;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
