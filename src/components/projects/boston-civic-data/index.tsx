@@ -1,5 +1,6 @@
 "use client";
 
+export { StaffingDashboard } from "./StaffingDashboard";
 import { StaffingDashboard } from "./StaffingDashboard";
 
 export function BostonCivicTracker() {

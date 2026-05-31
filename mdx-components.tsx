@@ -7,7 +7,7 @@
 import type { MDXComponents } from "mdx/types";
 import { StackList } from "@/components/ui/StackList";
 import { ViennaTrainer } from "@/components/projects/vienna-trainer";
-import { BostonCivicTracker } from "@/components/projects/boston-civic-data";
+import { StaffingDashboard } from "@/components/projects/boston-civic-data";
 import { ChessTracker } from "@/components/projects/chess";
 import { PipelineDashboard } from "@/components/projects/pipeline-dashboard";
 import { VendorFeedPreview } from "@/components/projects/vendor-feed/VendorFeedPreview";
@@ -53,7 +53,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     // Custom project components — register each here as they ship.
     StackList,
     ViennaTrainer,
-    BostonCivicTracker,
+    StaffingDashboard,
     ChessTracker,
     PipelineDashboard,
     VendorFeedPreview,
