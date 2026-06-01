@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viktor (Local AI Stack) — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Viktor / Project Sovereign</h1>
+        <p class="desc">Local AI orchestration stack on a dedicated home server — personal intelligence layer, automation pipelines, morning briefings</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>Viktor is a local AI stack running on a dedicated home machine also named "Viktor" — Will's personal intelligence layer that handles inbox classification, calendar summaries, newsletter extraction, morning briefings, and other automation tasks. Project Sovereign is the broader initiative encompassing Viktor and related infrastructure.</p>
+  <p>The stack is separate from willmaness.com — it does not share Vercel, Neon, or GitHub Actions. It runs on-device or via home server with Tailscale for remote access. The site project page (<code>content/projects/local-ai-stack.mdx</code>) contains a placeholder writeup; the full technical story is in the Claude OS workstation.</p>
+  <p>Issues for this project are tracked as markdown files in <code>Projects/project_viktor/_issues/</code> — NOT as GitHub issues. This is the only project in the ecosystem that uses local markdown issue tracking.</p>
+
+  <h2>Capabilities (known active)</h2>
+  <table>
+    <thead><tr><th>Capability</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Inbox classification</td><td>In progress (#002)</td><td>Classify incoming Gmail by priority/type</td></tr>
+      <tr><td>Calendar summary</td><td>In progress (#003)</td><td>Daily calendar digest</td></tr>
+      <tr><td>Newsletter story extraction</td><td>In progress (#004)</td><td>Extract key stories from newsletter emails</td></tr>
+      <tr><td>Morning briefing</td><td>In progress (#005)</td><td>Assembled briefing from inbox + calendar + news</td></tr>
+      <tr><td>Self-email delivery</td><td>In progress (#006)</td><td>Deliver briefing to will@... address</td></tr>
+      <tr><td>Google OAuth token renewal</td><td>In progress (#012)</td><td>Token management for Gmail/Calendar access</td></tr>
+      <tr><td>Tailscale MagicDNS</td><td>In progress (#014)</td><td>Remote access to Viktor stack</td></tr>
+      <tr><td>Web search (Tavily)</td><td>In progress (#017)</td><td>External search capability for briefing enrichment</td></tr>
+      <tr><td>Multi-model routing</td><td>In progress (#015)</td><td>Route tasks to appropriate Claude model by complexity</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Tech Stack (known)</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>AI orchestration</td><td>Claude API (Anthropic)</td><td>Multi-model routing — Opus for complex, Haiku for fast tasks</td></tr>
+      <tr><td>Email access</td><td>Gmail API (Google OAuth)</td><td>Token-based; renewal tracked in issue #012</td></tr>
+      <tr><td>Calendar access</td><td>Google Calendar API</td><td>Same OAuth flow as Gmail</td></tr>
+      <tr><td>Web search</td><td>Tavily API</td><td>Issue #017; enriches briefings with current events</td></tr>
+      <tr><td>Remote access</td><td>Tailscale MagicDNS</td><td>Issue #014; access Viktor from any network</td></tr>
+      <tr><td>Scheduling</td><td>launchd (macOS)</td><td>Issue #008; morning briefing on schedule</td></tr>
+      <tr><td>Persistent logs</td><td>Viktor web UI (in progress)</td><td>Issue #016; view run history in browser</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files (Claude OS workstation)</h2>
+  <table>
+    <thead><tr><th>Location</th><th>Contains</th></tr></thead>
+    <tbody>
+      <tr><td><code>Projects/project_viktor/</code></td><td>Main workstation; CLAUDE.md, MEMORY.md, source code</td></tr>
+      <tr><td><code>Projects/project_viktor/_issues/</code></td><td>Markdown issue files (#002–#018); track all open work items</td></tr>
+      <tr><td><code>content/projects/local-ai-stack.mdx</code></td><td>Placeholder project page on willmaness.com (full writeup pending)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>Issues for project_viktor are markdown files, NOT GitHub issues.</strong> All other projects in the ecosystem use GitHub issues via <code>gh</code>. Viktor uses local markdown files at <code>Projects/project_viktor/_issues/</code>. Do not file GitHub issues for Viktor work.</div>
+  <div class="agent-note">⚠️ <strong>The machine name is "Viktor" and the user's name is "Will."</strong> Do not conflate them. Will is the person; Viktor is the machine and project name.</div>
+  <div class="agent-note">⚠️ <strong>Google OAuth requires an API token, not just a key.</strong> Issue #011 (revoke OAuth client secret) and #012 (token renewal) are active. If Gmail or Calendar integrations fail, check OAuth token validity first.</div>
+  <div class="agent-note">💡 <strong>The site project page is a placeholder.</strong> <code>local-ai-stack.mdx</code> contains <code>{/* Full content coming in Phase 1 */}</code>. The actual technical writeup has not been written yet.</div>
+  <div class="agent-note">💡 <strong>Multi-model routing (#015):</strong> The goal is to route different task types to the right Claude model automatically — complex reasoning to Opus, fast/cheap tasks to Haiku. This is intentional cost optimization, not a limitation.</div>
+</div>
+</body>
+</html>

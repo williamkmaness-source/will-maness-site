@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vienna Opening Trainer — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.complete{background:#DBEAFE;color:#1E40AF}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Vienna Opening Trainer</h1>
+        <p class="desc">Interactive chess opening trainer — static theory tree, pure state machine, progressive hints, zero runtime API calls</p>
+      </div>
+      <span class="badge complete">Complete</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>An interactive chess opening trainer embedded at <code>/work/vienna</code> that covers the three principal Vienna Opening lines eight moves deep. The trainer nudges the player when they go off-book and provides progressive hints rather than immediately giving away the answer.</p>
+  <p>The key design decision: the theory tree is static (pre-computed at build time) rather than fetched from the Lichess Masters database at runtime. Lichess requires OAuth for that endpoint, which adds auth infrastructure for a static artifact that never changes. Five lines are encoded as arrays of UCI move strings, validated by chess.js at build time, and committed as <code>theory.json</code>.</p>
+  <p>This project is complete — no open issues or planned extensions. It serves as the reference pattern for the chess component architecture: pure state machine, dynamic import for board library, SSR-safe skeleton.</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Page at <code>/work/vienna</code>; embedded in willmaness.com project pages</td></tr>
+      <tr><td>Chess rendering</td><td>react-chessboard</td><td>Dynamically imported (<code>ssr: false</code>); skeleton prevents layout shift</td></tr>
+      <tr><td>Chess logic</td><td>chess.js</td><td>Move validation; legal move generation; FEN manipulation</td></tr>
+      <tr><td>Theory tree</td><td>Static JSON (<code>theory.json</code>)</td><td>Pre-computed at build time; validated by chess.js; committed to repo</td></tr>
+      <tr><td>State</td><td>React <code>useReducer</code></td><td>Pure <code>(state, action) → state</code>; typed discriminated union</td></tr>
+      <tr><td>Sound</td><td>Web Audio API</td><td><code>playPieceSound.ts</code>; synthesized wood-thud shared with Chess Tracker</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+Build time:
+  scripts/generate-theory.ts
+  └── Encodes 5 Vienna Opening lines as UCI move arrays
+  └── Validates with chess.js (legal move check, pin detection)
+  └── Outputs: src/data/theory.json (committed to repo)
+
+Runtime (no API calls):
+  ViennaTrainer (client component, dynamic import)
+  └── useReducer (ViennaState)
+       ├── theory.json (static import)
+       ├── Position: chess.js FEN manipulation
+       ├── Black response: weighted-probability selection from theory
+       ├── Hint level: 0 → 1 (source sq) → 2 (src+dest) → 3 (auto-move)
+       └── Phase: playing | complete
+            ↓
+       react-chessboard (renders FEN)
+       playPieceSound (on each move)
+  </pre>
+
+  <h2>Hint System</h2>
+  <table>
+    <thead><tr><th>Attempts</th><th>Hint Level</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td>1–2</td><td>0 — none</td><td>No hint; player must recall independently</td></tr>
+      <tr><td>3</td><td>1 — source square</td><td>Source square highlighted</td></tr>
+      <tr><td>4</td><td>2 — src + destination</td><td>Both squares highlighted</td></tr>
+      <tr><td>5+</td><td>3 — auto-move</td><td>Correct move played automatically; session advances</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/components/projects/vienna-trainer/ViennaTrainer.tsx</code></td><td>Top-level client component; dynamic import of board</td></tr>
+      <tr><td><code>src/components/projects/vienna-trainer/reducer.ts</code></td><td>Pure state machine; all trainer logic</td></tr>
+      <tr><td><code>src/data/theory.json</code></td><td>Pre-computed theory tree; not regenerated at runtime</td></tr>
+      <tr><td><code>src/lib/playPieceSound.ts</code></td><td>Shared Web Audio sound utility; also used by Chess Tracker</td></tr>
+      <tr><td><code>scripts/generate-theory.ts</code></td><td>Build-time theory tree generator (run once; output committed)</td></tr>
+      <tr><td><code>content/projects/vienna-trainer.mdx</code></td><td>Project page content and technical writeup</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>This project is complete — do not add features without explicit request.</strong> The trainer covers its intended scope. No open issues.</div>
+  <div class="agent-note">⚠️ <strong>react-chessboard MUST be dynamically imported with <code>ssr: false</code>.</strong> The library is browser-only. An SSR-safe skeleton with matching <code>aspect-ratio: 1/1</code> prevents layout shift while the chunk hydrates.</div>
+  <div class="agent-note">⚠️ <strong>Theory tree is pre-committed — do not re-generate unless lines change.</strong> The <code>theory.json</code> file is generated once and committed. Re-running the generator should only happen if the theory lines need to be extended or corrected.</div>
+  <div class="agent-note">💡 <strong>This is the reference pattern for chess components.</strong> The Vienna trainer predates the Chess Tracker. When in doubt about how to structure a chess UI component (dynamic import, state machine, sound), treat Vienna as the established pattern.</div>
+  <div class="agent-note">💡 <strong>Two lines in the theory required fixes during generation:</strong> a pinned pawn (Bc5 covers f2-g1 diagonal) and illegal castling (king lands on attacked square). chess.js <code>attackers()</code> API was used to detect these. Any future theory expansion should re-validate with chess.js.</div>
+</div>
+</body>
+</html>

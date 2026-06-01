@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chess Tournament Tracker — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Chess Tournament Tracker</h1>
+        <p class="desc">Live grandmaster tournament tracker — Lichess Broadcasts API, standings, pairings, game replay, move quality, player profiles</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>A Chess Tournament Tracker embedded at <code>/work/chess</code> that auto-discovers the current top Lichess Broadcast, displays round-robin standings and pairings, and lets visitors replay completed games move-by-move on an interactive board. No sign-in, no config, no staleness.</p>
+  <p>The tracker is entirely client-side — no server intermediary. It polls the Lichess Broadcasts API every 60 seconds and backs off to 5-minute intervals when the rate limit gets tight. All state lives in a single <code>useReducer</code> at the top of the component tree.</p>
+  <p>As of June 2026, the tracker also supports player profile panels (Lichess user data + recent tournament results) and move quality classification via the Lichess Cloud Eval endpoint (Brilliant / Excellent / Good / Mistake / Miss).</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 16 (App Router, client component)</td><td>No DB; pure client-side polling</td></tr>
+      <tr><td>Chess rendering</td><td>react-chessboard</td><td>Board UI; dynamically imported (<code>ssr: false</code>) to keep off server bundle</td></tr>
+      <tr><td>Chess logic</td><td>chess.js v1</td><td>PGN parsing, move validation, FEN generation, sacrifice detection</td></tr>
+      <tr><td>Data source</td><td>Lichess Broadcasts API</td><td>Public; no API key. Rate-limit headers: <code>X-RateLimit-Remaining</code></td></tr>
+      <tr><td>Move quality</td><td>Lichess Cloud Eval API</td><td><code>/api/cloud-eval?fen={fen}&amp;multiPv=5</code>; session cache by FEN</td></tr>
+      <tr><td>Player profiles</td><td>Lichess User API</td><td><code>/api/user/{username}</code>; tournament results via NDJSON stream</td></tr>
+      <tr><td>Sound</td><td>Web Audio API</td><td>Synthesized wood-thud via <code>playPieceSound.ts</code>; shared with Vienna trainer</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+Lichess Broadcasts API (public, no auth)
+├── GET /api/broadcast?nb=30  (NDJSON — one JSON per line)
+│    └── BroadcastService.fetchTopBroadcast()
+│         ├── Filter: tier ≥ 4 (ELITE_TIER), prefer tier-5 marquee events
+│         ├── Select active round (ongoing &gt; last-finished &gt; last)
+│         └── Build availableTournaments list for dropdown
+│
+├── GET /api/study/{roundId}.pgn  (PGN text)
+│    └── BroadcastService.fetchRoundData() → parsePairings() + computeStandings()
+│
+├── GET /api/study/{roundId}.pgn  (lazy, per game)
+│    └── BroadcastService.fetchGamePgn() → extractGameMoves()
+│
+├── GET /api/cloud-eval?fen={}&multiPv=5  (per move, session-cached)
+│    └── BroadcastService.fetchCloudEval() → classifyMoveQuality()
+│
+└── GET /api/user/{username}  (per player, session-cached)
+     └── PlayerService.fetchPlayerProfile()
+          └── GET /api/user/{username}/tournament/results  (NDJSON)
+
+State: useReducer (TournamentState) in useTournament.ts
+  → ChessTrackerInner.tsx → TournamentStandings + PairingsTable + GameModal + PlayerProfile
+  </pre>
+
+  <h2>Component Tree</h2>
+  <table>
+    <thead><tr><th>Component</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><code>ChessTrackerInner.tsx</code></td><td>Top-level orchestrator; owns selectedPlayer state; renders all sub-components</td></tr>
+      <tr><td><code>TournamentStandings.tsx</code></td><td>Round-robin / knockout standings table; player names are clickable for profile</td></tr>
+      <tr><td><code>PairingsTable.tsx</code></td><td>Round pairings; row click opens GameModal; player name click opens PlayerProfile</td></tr>
+      <tr><td><code>GameModal.tsx</code></td><td>Centered overlay with board, move list, eval bar, capture display, clocks, quality dot</td></tr>
+      <tr><td><code>ChessBoard.tsx</code></td><td>Thin wrapper around react-chessboard; accepts optional moveQuality dot overlay</td></tr>
+      <tr><td><code>ReplayControls.tsx</code></td><td>Prev/Next/Start/End buttons; keyboard arrow key handling</td></tr>
+      <tr><td><code>PlayerProfile.tsx</code></td><td>Modal overlay showing Lichess user title, ratings by variant, recent tournament results</td></tr>
+      <tr><td><code>BroadcastService.ts</code></td><td>All Lichess API calls; rate-limit back-off; PGN parsing; cloud eval; move quality classification</td></tr>
+      <tr><td><code>PlayerService.ts</code></td><td>Player profile + tournament results fetching; session-level Map cache</td></tr>
+      <tr><td><code>reducer.ts</code></td><td>Pure <code>(state, action) → state</code> function; fully unit-tested</td></tr>
+      <tr><td><code>useTournament.ts</code></td><td>Polling loop; rate-limit back-off; wraps reducer + BroadcastService</td></tr>
+      <tr><td><code>types.ts</code></td><td>All shared types: TournamentState, GameMoveData (includes uci field), MoveQuality, PlayerProfile</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Move Quality Classification</h2>
+  <table>
+    <thead><tr><th>Label</th><th>CP Loss</th><th>Color</th><th>Additional condition</th></tr></thead>
+    <tbody>
+      <tr><td>Brilliant</td><td>≤ 15 cp</td><td>Teal</td><td>Not engine's first choice AND piece is en prise after move</td></tr>
+      <tr><td>Excellent</td><td>0–10 cp</td><td>Green</td><td>—</td></tr>
+      <tr><td>Good</td><td>11–25 cp</td><td>Light green</td><td>—</td></tr>
+      <tr><td>Mistake</td><td>26–100 cp</td><td>Orange</td><td>—</td></tr>
+      <tr><td>Miss</td><td>&gt; 100 cp</td><td>Red</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p>Cloud eval is fetched for the FEN <em>before</em> the move; <code>multiPv=5</code> requested. If the played move is not in the top 5 lines, no quality indicator is shown. If the endpoint returns no result, no indicator shown. Only fires on forward steps (not backward navigation).</p>
+
+  <h2>Broadcast Selection Logic</h2>
+  <p>Tier filter: <code>ELITE_TIER = 4</code> (minimum). Prefers tier-5 marquee events when active. Selection priority: ongoing round → last finished round → last round by date. Multi-tournament dropdown shown when multiple elite events are active simultaneously.</p>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/components/projects/chess/BroadcastService.ts</code></td><td>All Lichess API calls; PGN parsing; rate-limit management; cloud eval; move quality logic</td></tr>
+      <tr><td><code>src/components/projects/chess/BroadcastService.test.ts</code></td><td>Unit tests for BroadcastService with mocked fetch</td></tr>
+      <tr><td><code>src/components/projects/chess/PlayerService.ts</code></td><td>Player profile + tournament results; module-level session cache</td></tr>
+      <tr><td><code>src/components/projects/chess/types.ts</code></td><td>All TypeScript interfaces; <code>GameMoveData</code> includes <code>uci: string</code> field</td></tr>
+      <tr><td><code>src/components/projects/chess/reducer.ts</code></td><td>Pure state reducer; <code>reducer.test.ts</code> covers all transitions</td></tr>
+      <tr><td><code>src/lib/playPieceSound.ts</code></td><td>Shared Web Audio wood-thud; used by Vienna trainer and Chess tracker</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Open Issues</h2>
+  <ul>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/38">#38</a> — Player profiles — PR #153 open (includes #39)</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/39">#39</a> — Move quality classification — PR #153 open</li>
+  </ul>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>No server intermediary — all API calls are client-side.</strong> The Lichess API is called directly from the browser. There are no Next.js route handlers for chess data. Do not add server-side caching or database writes for chess tracker state.</div>
+  <div class="agent-note">⚠️ <strong>Rate limit back-off is critical.</strong> The Lichess API is rate-limited. When <code>X-RateLimit-Remaining &lt; 10</code>, polling switches from 60s to 5 minutes. Never bypass this check; violating rate limits will get the site blocked.</div>
+  <div class="agent-note">⚠️ <strong>react-chessboard must be dynamically imported with <code>ssr: false</code>.</strong> The library is browser-only and heavy. Static import will break the build and add unnecessary weight to the server bundle.</div>
+  <div class="agent-note">⚠️ <strong>chess.js v1 PGN normalization is required.</strong> Chess.js fails on multiple consecutive <code>{ }</code> comment blocks per move (Lichess includes eval + text + clock as separate blocks). <code>normalizePgn()</code> strips all comments before parsing. Also normalizes <code>0-0</code> (zeros) to <code>O-O</code> (letters).</div>
+  <div class="agent-note">⚠️ <strong><code>GameMoveData.uci</code> is required for move quality.</strong> The <code>uci</code> field (e.g., <code>"e2e4"</code>) was added in PR #153 to <code>extractGameMoves()</code> via chess.js verbose history (<code>move.from + move.to + promotion</code>). Cloud eval uses UCI format for identifying the played move in PV lines.</div>
+  <div class="agent-note">💡 <strong>Player name → Lichess username mapping.</strong> Broadcast PGN headers use Lichess usernames. <code>PlayerService</code> lowercases and strips spaces as a first attempt. A 404 from the user API means the name isn't a valid Lichess ID — show a graceful "Profile unavailable" state, never throw.</div>
+  <div class="agent-note">💡 <strong>BroadcastService NDJSON parsing:</strong> The broadcast list endpoint returns one JSON object per line, not a JSON array. Parse with <code>text.split('\n').filter(Boolean).map(JSON.parse)</code>. Tournament results endpoint is also NDJSON.</div>
+</div>
+</body>
+</html>

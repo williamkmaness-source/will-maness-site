@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>willmaness.com — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}.complete{background:#DBEAFE;color:#1E40AF}.paused{background:#FEF3C7;color:#92400E}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>willmaness.com</h1>
+        <p class="desc">Personal site demonstrating technical fluency — project showcase, writing, and embedded live apps</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>willmaness.com is a Next.js 16 personal site built to demonstrate technical fluency to VP-of-Product hiring managers at AI-infrastructure and data-tooling companies. The site is the primary artifact proving technical chops; it must feel considered, current, and human — not templated.</p>
+  <p>All human-readable text lives in MDX files under <code>content/</code>, never in component code. Publishing a new post or project page is creating one file and pushing — no CMS, no dashboard. Frontmatter is validated at build time against Zod schemas so content bugs fail loudly before shipping.</p>
+  <p>The site hosts several fully-embedded interactive applications: EmberBrief wildfire dashboard, Boston 311 equity tracker, Chess Tournament Tracker, Vienna Opening Trainer, Vendor Intelligence Feed, and SPX Technical Analysis. Each lives at a route under <code>/work/</code> or <code>/ember</code>.</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Server components by default; <code>"use client"</code> only where browser state is needed</td></tr>
+      <tr><td>Language</td><td>TypeScript</td><td>Strict mode throughout</td></tr>
+      <tr><td>Styling</td><td>Tailwind v4</td><td>CSS-native <code>@theme{}</code> block; design tokens in <code>src/lib/tokens.ts</code></td></tr>
+      <tr><td>Content</td><td>MDX + Zod</td><td>Posts and projects in <code>content/</code>; frontmatter validated at build time</td></tr>
+      <tr><td>Typography</td><td>Newsreader (serif) + system-ui</td><td>Self-hosted via <code>next/font</code> — zero Google requests at runtime</td></tr>
+      <tr><td>Database</td><td>Neon Postgres (serverless)</td><td><code>@neondatabase/serverless</code> v1.1; use <code>sql.query()</code> for raw parameterized queries</td></tr>
+      <tr><td>Deployment</td><td>Vercel (project: "website")</td><td>Push to main triggers production deploy; branch previews automatic</td></tr>
+      <tr><td>Testing</td><td>Vitest</td><td>~354 tests as of June 2026; run with <code>pnpm test</code></td></tr>
+      <tr><td>Package manager</td><td>pnpm</td><td>Use <code>pnpm add</code>; npm crashes with arborist null error on this project</td></tr>
+      <tr><td>Charts</td><td>Recharts</td><td>Used by 311 dashboard; Lightweight Charts used by SPX dashboard</td></tr>
+      <tr><td>Chess</td><td>react-chessboard + chess.js</td><td>Board UI + move parsing; chess.js v1 API used throughout</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+GitHub (main) ──push──→ Vercel Build ──→ Production (willmaness.com)
+                                            │
+              ┌─────────────────────────────┼────────────────────────┐
+              │                             │                         │
+       /ember (SSR)              /work/[slug] (SSG)           /api/* (Route Handlers)
+              │                             │                         │
+              ↓                             ↓                         ↓
+     Neon Postgres              MDX content files          ember-data, 311-departments,
+  ember_fire_clusters            (content/projects/)       pipeline-status (SSE), spx-data
+  ember_county_conditions                                            │
+  case_events (311)                                                  ↓
+  pipeline_runs                                               Neon Postgres
+  vf_* (vendor feed)                                         External APIs
+
+External data sources:
+  NASA FIRMS ──→ /api/cron/ember-ingest (Vercel Cron, daily 09:00 UTC)
+  NOAA Synoptic ──→ same cron
+  GitHub Actions ──→ Boston 311 nightly pipeline (CKAN → Neon)
+  GitHub Actions ──→ Vendor Feed pipeline (scrape → Claude → Neon)
+  Lichess API ──→ Chess Tracker (client-side polling, no server intermediary)
+  Yahoo Finance ──→ /api/spx-data (server-side, 24h cache)
+  </pre>
+
+  <h2>Data Model</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Used by</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>ember_fire_clusters</code></td><td>EmberBrief</td><td>One row per fire cluster per day; includes FRP, tier, briefing text</td></tr>
+      <tr><td><code>ember_county_conditions</code></td><td>EmberBrief</td><td>Daily weather snapshot; red flag status, wind, humidity</td></tr>
+      <tr><td><code>case_events</code></td><td>Boston 311</td><td>One row per 311 case; 95K rows backfilled to 2024; nightly incremental updates</td></tr>
+      <tr><td><code>department_weekly_metrics</code></td><td>Boston 311</td><td>Aggregated per-department ISO-week summaries rebuilt nightly</td></tr>
+      <tr><td><code>pipeline_runs</code></td><td>Pipeline Dashboard</td><td>Health record per pipeline run; <code>pipeline</code> col = '311', 'ember'; NOT 'chess' (orphaned rows deleted)</td></tr>
+      <tr><td><code>vf_feature_launches</code></td><td>Vendor Feed</td><td>Extracted entities; SHA-256 deduplication; 5 vf_ tables total</td></tr>
+      <tr><td><code>vf_pricing_changes</code></td><td>Vendor Feed</td><td>Same pattern</td></tr>
+      <tr><td><code>vf_partnerships</code></td><td>Vendor Feed</td><td>Same pattern</td></tr>
+      <tr><td><code>vf_architectural_shifts</code></td><td>Vendor Feed</td><td>Same pattern</td></tr>
+      <tr><td><code>raw_pages</code></td><td>Vendor Feed</td><td>Scrape cache with content hashes; pending/done/failed status</td></tr>
+    </tbody>
+  </table>
+
+  <h2>External Integrations</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Env Var</th><th>Env Scope</th><th>Used by</th></tr></thead>
+    <tbody>
+      <tr><td>NASA FIRMS</td><td><code>FIRMS_API_KEY</code></td><td>All environments</td><td>EmberBrief cron</td></tr>
+      <tr><td>NOAA Synoptic</td><td><code>SYNOPTIC_API_KEY</code></td><td>All environments</td><td>EmberBrief cron</td></tr>
+      <tr><td>Anthropic (Claude)</td><td><code>ANTHROPIC_API_KEY</code></td><td>Production only</td><td>EmberBrief briefings</td></tr>
+      <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code> / <code>DATABASE_URL_UNPOOLED</code></td><td>All environments</td><td>All DB-backed routes</td></tr>
+      <tr><td>Lichess Broadcasts API</td><td>None (public)</td><td>N/A</td><td>Chess Tracker (client-side)</td></tr>
+      <tr><td>Yahoo Finance</td><td>None (<code>yahoo-finance2</code> pkg)</td><td>N/A</td><td>SPX dashboard</td></tr>
+      <tr><td>GitHub Actions</td><td>Repo secrets: <code>DATABASE_URL</code></td><td>CI/CD</td><td>311 pipeline, Vendor Feed pipeline</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Infrastructure</h2>
+  <table>
+    <thead><tr><th>Component</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Hosting</td><td>Vercel Hobby plan; project name: <code>website</code> (NOT <code>will-maness-site</code> — that was an orphaned duplicate, deleted)</td></tr>
+      <tr><td>Database</td><td>Neon Postgres; connection string in <code>.env.local</code> (pooled + unpooled variants)</td></tr>
+      <tr><td>Cron jobs</td><td>Vercel Cron max 2 on Hobby plan. Active: <code>ember-ingest</code> at 09:00 UTC daily. Slot freed after chess-health removal (#103)</td></tr>
+      <tr><td>CI/CD</td><td>GitHub Actions for data pipelines (not site build); Vercel handles site deployments from push</td></tr>
+      <tr><td>Domain</td><td>willmaness.com → Vercel; branch previews at <code>*.vercel.app</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/lib/tokens.ts</code></td><td>Design tokens — single source of truth for all colors, typography, spacing. No raw hex in components.</td></tr>
+      <tr><td><code>src/app/globals.css</code></td><td>Tailwind v4 <code>@theme{}</code> block wired to tokens</td></tr>
+      <tr><td><code>content/site.mdx</code></td><td>All editable copy — hero statement, "currently" list, contact CTA</td></tr>
+      <tr><td><code>content/projects/*.mdx</code></td><td>One file per featured project; frontmatter controls routing and display</td></tr>
+      <tr><td><code>content/writing/*.mdx</code></td><td>Blog posts</td></tr>
+      <tr><td><code>src/app/layout.tsx</code></td><td>Root layout; navigation (client component for <code>usePathname</code>)</td></tr>
+      <tr><td><code>src/app/api/cron/ember-ingest/route.ts</code></td><td>Vercel Cron handler — full EmberBrief pipeline</td></tr>
+      <tr><td><code>src/app/api/311-departments/route.ts</code></td><td>311 dashboard API; force-dynamic, 24h edge cache</td></tr>
+      <tr><td><code>src/app/api/pipeline-status/route.ts</code></td><td>SSE endpoint for pipeline health dashboard</td></tr>
+      <tr><td><code>src/components/projects/chess/BroadcastService.ts</code></td><td>All Lichess API calls; rate-limit back-off; PGN parsing; cloud eval</td></tr>
+      <tr><td><code>src/lib/playPieceSound.ts</code></td><td>Web Audio API wood-thud sound; shared by Vienna and Chess tracker</td></tr>
+      <tr><td><code>vercel.json</code></td><td>Cron schedule; only one entry: <code>ember-ingest</code></td></tr>
+      <tr><td><code>_spec/</code></td><td>Design specs, mockups, tokens reference — read before any UI work</td></tr>
+      <tr><td><code>docs/build-log.md</code></td><td>Running build log — update after each meaningful unit of work</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Open Issues</h2>
+  <ul>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/38">#38</a> — Chess: Player profile panel (PR #153 open)</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/39">#39</a> — Chess: Move quality classification (PR #153 open)</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/117">#117</a> — This document (architecture reference set)</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/16">#16</a> — Dark mode support</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/20">#20</a> — 311 TrendChart (blocked: needs ≥8 weeks of pipeline data)</li>
+  </ul>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>Use pnpm, not npm.</strong> Running <code>npm install</code> crashes with an arborist null error due to the <code>.pnpm</code> symlink structure. Always use <code>pnpm add</code> and <code>pnpm test</code>.</div>
+  <div class="agent-note">⚠️ <strong>DB-backed pages need <code>export const dynamic = 'force-dynamic'</code>.</strong> ISR causes build-time prerender failures on Vercel for any route that hits Neon. Add force-dynamic at the top of any new page that queries the DB.</div>
+  <div class="agent-note">⚠️ <strong>Neon v1.1 API changed.</strong> Use <code>sql.query(text, params)</code> for raw parameterized queries. The old <code>sql(query, params)</code> form was dropped in v1.1.</div>
+  <div class="agent-note">⚠️ <strong>Vercel project name is "website"</strong> (not "will-maness-site"). The <code>will-maness-site</code> project was an orphaned duplicate that was disconnected and deleted. Always target the <code>website</code> project in Vercel CLI commands.</div>
+  <div class="agent-note">⚠️ <strong>Vercel <code>env add preview</code> is broken</strong> by a plugin. Bypass with the REST API using the token at <code>~/Library/Application Support/com.vercel.cli/auth.json</code>.</div>
+  <div class="agent-note">⚠️ <strong>Run migrations before shipping any DB-backed feature.</strong> Always run the relevant <code>migrate-*.ts</code> script against production Neon before a new DB-backed page goes live.</div>
+  <div class="agent-note">💡 <strong>Inline styles bypass Tailwind responsive prefixes.</strong> Use <code>className="grid-cols-*"</code> instead of <code>style=</code> on layout containers if you need responsive behavior.</div>
+  <div class="agent-note">💡 <strong>ANTHROPIC_API_KEY is Production-only</strong> in Vercel. Cron jobs that call Claude must guard against its absence gracefully (log and skip, don't throw).</div>
+  <div class="agent-note">💡 <strong>Design tokens are the single source of truth.</strong> No raw hex values in components. All colors/spacing/typography come from <code>src/lib/tokens.ts</code> via Tailwind utilities.</div>
+</div>
+</body>
+</html>

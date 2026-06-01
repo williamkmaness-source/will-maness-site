@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Architecture Reference — willmaness.com</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:780px;margin:0 auto;padding:40px 24px}
+h1{margin:0 0 6px;font-size:26px;font-weight:700}
+.subtitle{color:#6B7280;font-size:14px;margin:0 0 32px}
+h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px}
+.card{display:block;background:#fff;border:1px solid #E5DDD4;border-radius:8px;padding:16px 18px;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s}
+.card:hover{border-color:#E05C2B;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card-title{font-size:15px;font-weight:600;color:#1a1a1a;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.card-desc{font-size:13px;color:#6B7280;margin:0}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+.paused{background:#FEF3C7;color:#92400E}
+.complete{background:#DBEAFE;color:#1E40AF}
+footer{margin-top:40px;padding-top:20px;border-top:1px solid #E5DDD4;font-size:13px;color:#9CA3AF}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>Architecture Reference</h1>
+  <p class="subtitle">Internal reference for agents and developers — <a href="https://willmaness.com">willmaness.com</a> project ecosystem</p>
+
+  <h2>Site Infrastructure</h2>
+  <div class="grid">
+    <a class="card" href="website.html">
+      <p class="card-title">willmaness.com <span class="badge active">Active</span></p>
+      <p class="card-desc">Next.js 16 personal site — App Router, MDX content, Tailwind v4, Vercel, Neon Postgres</p>
+    </a>
+    <a class="card" href="pipeline-dashboard.html">
+      <p class="card-title">Pipeline Dashboard <span class="badge active">Active</span></p>
+      <p class="card-desc">Real-time pipeline health via Server-Sent Events; pipeline_runs table in Neon</p>
+    </a>
+  </div>
+
+  <h2>Embedded Apps (Live)</h2>
+  <div class="grid">
+    <a class="card" href="ember.html">
+      <p class="card-title">EmberBrief <span class="badge active">Active</span></p>
+      <p class="card-desc">Wildfire intelligence dashboard — NASA FIRMS + NOAA weather + Claude AI briefings</p>
+    </a>
+    <a class="card" href="boston-311.html">
+      <p class="card-title">Boston 311 Tracker <span class="badge active">Active</span></p>
+      <p class="card-desc">Department backlog equity dashboard — CKAN data, Neon Postgres, GitHub Actions nightly pipeline</p>
+    </a>
+    <a class="card" href="chess-tracker.html">
+      <p class="card-title">Chess Tournament Tracker <span class="badge active">Active</span></p>
+      <p class="card-desc">Live grandmaster tournament tracker — Lichess Broadcasts API, game replay, move quality</p>
+    </a>
+    <a class="card" href="vendor-feed.html">
+      <p class="card-title">Vendor Intelligence Feed <span class="badge active">Active</span></p>
+      <p class="card-desc">Daily pipeline tracking feature launches and pricing changes from 15 data companies</p>
+    </a>
+    <a class="card" href="vienna.html">
+      <p class="card-title">Vienna Opening Trainer <span class="badge complete">Complete</span></p>
+      <p class="card-desc">Interactive chess opening trainer — static theory tree, pure state machine, no API calls</p>
+    </a>
+  </div>
+
+  <h2>Standalone Projects</h2>
+  <div class="grid">
+    <a class="card" href="viktor.html">
+      <p class="card-title">Viktor (Local AI Stack) <span class="badge active">Active</span></p>
+      <p class="card-desc">Project Sovereign — local AI orchestration stack on dedicated home server</p>
+    </a>
+    <a class="card" href="stellar.html">
+      <p class="card-title">Sable (Project Stellar) <span class="badge active">Active</span></p>
+      <p class="card-desc">2D puzzle-action side-scroller — concept and visual direction locked, in pre-production</p>
+    </a>
+    <a class="card" href="competitive-intelligence.html">
+      <p class="card-title">Competitive Intelligence App <span class="badge paused">Paused</span></p>
+      <p class="card-desc">Desktop app for tracking competitive positioning — Electron or Tauri based</p>
+    </a>
+    <a class="card" href="architecture.html">
+      <p class="card-title">Enterprise Architecture <span class="badge complete">Complete</span></p>
+      <p class="card-desc">14-artifact enterprise data platform architecture and vendor scoring deliverable set</p>
+    </a>
+  </div>
+
+  <footer>
+    These files live in <code>docs/architecture/</code> and are not deployed to willmaness.com.
+    They are internal reference for AI agents and developers working on the project ecosystem.
+    Last updated: June 2026.
+  </footer>
+</div>
+</body>
+</html>

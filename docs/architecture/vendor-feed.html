@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vendor Intelligence Feed — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Vendor Intelligence Feed</h1>
+        <p class="desc">Daily pipeline tracking feature launches, pricing changes, partnerships, and architectural shifts from 15 data integration companies</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>An automated pipeline that monitors 15 data integration companies (Fivetran, dbt Labs, Airbyte, etc.) for competitive intelligence signals. Every morning, a GitHub Actions job scrapes blog posts and GitHub release notes, sends raw content to Claude Haiku for structured extraction, and upserts the results into Neon Postgres. A Next.js page renders the feed — filterable by company and entity type, with filter state reflected in the URL.</p>
+  <p>Pipeline runs in three stages: (1) Scrape — fetch pages, hash content (SHA-256), skip unchanged pages; (2) Extract — Claude Haiku via <code>tool_use</code> extracts all four entity types in a single call; (3) Upsert — write entities to typed tables, deduplicate by source URL + content hash. A weekly retry cron resets failed pages to <code>pending</code> for re-processing.</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Pipeline</td><td>GitHub Actions</td><td>Daily cron at 07:00 UTC; scrape → extract → upsert</td></tr>
+      <tr><td>AI extraction</td><td>Claude Haiku (Anthropic API)</td><td>Single <code>tool_use</code> call per page; extracts all 4 entity types at once</td></tr>
+      <tr><td>Database</td><td>Neon Postgres</td><td>5 tables with <code>vf_</code> prefix + <code>raw_pages</code></td></tr>
+      <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Server component reads from Neon; client component handles filter state</td></tr>
+      <tr><td>Validation</td><td>Zod</td><td>Company config validation; pipeline schema enforcement</td></tr>
+      <tr><td>Deduplication</td><td>SHA-256 content hashing</td><td>Pages skipped when content hash unchanged; entities upserted on hash change</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+GitHub Actions (daily 07:00 UTC):
+
+Company config (Zod-validated) → getSourceUrls()
+  └── URLs per company (blog root + RSS + GitHub releases)
+         │
+         ↓ fetch + hash
+  raw_pages table (Neon)
+  ├── hash unchanged? → skip
+  └── hash changed / new? → pending
+         │
+         ↓ batch extraction
+  Claude Haiku (tool_use)
+  └── single call → 4 entity types simultaneously:
+      feature_launches, pricing_changes, partnerships, architectural_shifts
+         │
+         ↓ upsert
+  Neon Postgres (vf_ tables)
+  ├── vf_feature_launches
+  ├── vf_pricing_changes
+  ├── vf_partnerships
+  └── vf_architectural_shifts
+
+Weekly retry cron:
+  raw_pages WHERE status='failed' → reset to 'pending' → re-extract
+
+                      ↓ (read at request time)
+              /work/vendor_feed (Next.js server component)
+              VendorFeedPreview — filterable by company + entity type
+              Filter state reflected in URL query params
+  </pre>
+
+  <h2>Data Model</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Key Columns</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>raw_pages</code></td><td><code>url</code>, <code>company</code>, <code>content_hash</code>, <code>status</code> (pending/done/failed), <code>scraped_at</code></td><td>Scrape cache; gating layer for extraction</td></tr>
+      <tr><td><code>vf_feature_launches</code></td><td><code>id</code>, <code>company</code>, <code>title</code>, <code>description</code>, <code>date</code>, <code>source_url</code>, <code>content_hash</code></td><td>Deduplication on <code>(source_url, content_hash)</code></td></tr>
+      <tr><td><code>vf_pricing_changes</code></td><td>Same pattern</td><td>Pricing tier changes, plan modifications</td></tr>
+      <tr><td><code>vf_partnerships</code></td><td>Same pattern</td><td>Partnership and integration announcements</td></tr>
+      <tr><td><code>vf_architectural_shifts</code></td><td>Same pattern</td><td>Technical direction changes, deprecations</td></tr>
+    </tbody>
+  </table>
+
+  <h2>External Integrations</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Auth</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Anthropic Claude Haiku</td><td><code>ANTHROPIC_API_KEY</code> in GitHub Actions secrets</td><td>Single tool_use call per pending page; tool schema enforces required fields</td></tr>
+      <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code> in GitHub Actions secrets</td><td>Read/write from pipeline; read-only from Next.js app</td></tr>
+      <tr><td>Target company blogs</td><td>None (public pages)</td><td>15 companies; blog root + RSS + GitHub releases per company</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/app/work/vendor_feed/</code></td><td>Next.js page; server component for DB reads; client component for filter UI</td></tr>
+      <tr><td><code>src/components/projects/vendor-feed/</code></td><td>VendorFeedPreview and related UI components</td></tr>
+      <tr><td><code>.github/workflows/pipeline-vendor-feed.yml</code></td><td>Daily + weekly retry pipeline crons</td></tr>
+      <tr><td><code>content/projects/vendor-feed.mdx</code></td><td>Project page copy</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Open Issues</h2>
+  <ul>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/68">#68</a> — [Deferred / Post-MVP] Upstash Vector embeddings — blocked until #62 (scraper + deduplication) is complete and MVP bar is met (30+ entities, 5+ companies, 3+ successful pipeline runs)</li>
+  </ul>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>Do not start #68 (embeddings) until the MVP bar is met.</strong> The issue is explicitly marked Post-MVP. Prerequisites: 30+ entities, 5+ companies, 3+ successful pipeline runs. Picking it up early wastes effort on infrastructure that has no frontend surface yet.</div>
+  <div class="agent-note">⚠️ <strong>Claude Haiku is the correct model here.</strong> Haiku is used for cost efficiency — extraction runs daily across 15 companies. Do not switch to Sonnet or Opus without understanding the cost impact of daily high-volume extraction.</div>
+  <div class="agent-note">⚠️ <strong>Company list is derived from actual data for filter rendering.</strong> The filter dropdown only shows companies with at least one extracted entity. Empty companies do not appear as filter options. This means freshly added companies won't appear until their first extraction completes.</div>
+  <div class="agent-note">💡 <strong>Deduplication is content-hash based, not date-based.</strong> If a company re-publishes old content with the same URL but changed text, a new extraction runs. If the URL and content hash both match, the page is skipped entirely — even if the extracted entity record changed.</div>
+  <div class="agent-note">💡 <strong>The retry cron resets <code>status='failed'</code> to <code>'pending'</code> weekly.</strong> Transient scrape failures (timeouts, 5xx) are automatically retried on the next weekly cycle. Do not manually reset statuses unless debugging a specific extraction issue.</div>
+</div>
+</body>
+</html>

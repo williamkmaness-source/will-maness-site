@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sable (Project Stellar) — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Sable <span style="font-weight:400;color:#6B7280;font-size:18px">(Project Stellar)</span></h1>
+        <p class="desc">2D puzzle-action side-scroller about a star-keeper navigating a world gone dark — concept locked, in active pre-production</p>
+      </div>
+      <span class="badge active">Pre-production</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p><strong>Sable</strong> is a 2D puzzle-action side-scroller. The protagonist is a star-keeper who carries bottled starlight through a world whose stars went out — and whose civilization is failing as a result. Visual references: Hollow Knight (atmospheric world), Sky: Children of the Light (expressive silhouette characters), Ori and the Will of the Wisps (light as a living thing).</p>
+  <p>Concept and visual direction are locked. Production is underway. The project is in pre-production — world-building, character design, and the opening scene beats are established. No playable build exists yet.</p>
+  <p>This project lives in the Claude OS workstation <code>project_stellar</code>, separate from willmaness.com. It appears on the site as a project page (<code>content/projects/project-stellar.mdx</code>) but the game itself is not embedded — there is no interactive component, only editorial copy describing the project.</p>
+
+  <h2>Production Roadmap</h2>
+  <table>
+    <thead><tr><th>Phase</th><th>Status</th><th>Deliverables</th></tr></thead>
+    <tbody>
+      <tr><td>Concept &amp; Lore</td><td>Done</td><td>World-building, character bios, opening scene beats</td></tr>
+      <tr><td>Visual Direction</td><td>Done</td><td>Art style, palette, character briefs, production pipeline</td></tr>
+      <tr><td>Moodboard</td><td>In progress</td><td>Reference imagery, atmospheric studies</td></tr>
+      <tr><td>Prototype</td><td>Planned</td><td>Playable vertical slice — movement, light mechanic, one puzzle</td></tr>
+      <tr><td>Alpha</td><td>Planned</td><td>First chapter complete, all core mechanics implemented</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Creative Decisions</h2>
+  <table>
+    <thead><tr><th>Decision</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Bottled starlight as core mechanic</td><td>Scarcity + resource management creates tension; light = plot-relevant resource, not arbitrary</td></tr>
+      <tr><td>Dark is dangerous to Sable's body</td><td>Stakes are personal and immediate; each area traversal has urgency</td></tr>
+      <tr><td>Silhouette characters</td><td>Universality + easier animation pipeline for solo/small team development</td></tr>
+      <tr><td>Hand-painted world aesthetic</td><td>Differentiates from pixel art; matches "earned color" theme</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Planned Tech Stack (prototype phase)</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Game engine</td><td>TBD (Godot 4 likely)</td><td>Strong 2D support; GDScript is fast for prototyping; open source</td></tr>
+      <tr><td>Art pipeline</td><td>Procreate + Aseprite</td><td>Hand-painted frames; silhouette characters</td></tr>
+      <tr><td>Audio</td><td>FMOD or GDNative audio</td><td>Adaptive ambient audio for light/dark transitions</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files (Claude OS workstation)</h2>
+  <table>
+    <thead><tr><th>Location</th><th>Contains</th></tr></thead>
+    <tbody>
+      <tr><td><code>Projects/project_stellar/</code></td><td>World-building docs, character bios, scene beats, art direction notes</td></tr>
+      <tr><td><code>content/projects/project-stellar.mdx</code></td><td>Site project page copy (willmaness.com)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>No playable build exists yet.</strong> The project is in pre-production. Do not attempt to run, test, or build any game binary. Work here is creative and documentation-oriented.</div>
+  <div class="agent-note">⚠️ <strong>The project slug in the issue tracker is "stellar" but the game title is "Sable."</strong> The workstation is <code>project_stellar</code>. The site content file is <code>project-stellar.mdx</code>. Use whichever is contextually appropriate.</div>
+  <div class="agent-note">💡 <strong>This project does not share infrastructure with willmaness.com.</strong> No Neon DB, no Vercel cron, no API routes. It's a standalone creative project that happens to have a project page on the site.</div>
+</div>
+</body>
+</html>

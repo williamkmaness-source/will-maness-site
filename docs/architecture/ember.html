@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EmberBrief — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}.complete{background:#DBEAFE;color:#1E40AF}.paused{background:#FEF3C7;color:#92400E}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>EmberBrief</h1>
+        <p class="desc">Wildfire intelligence dashboard — Lake Tahoe Basin fire detection, weather scoring, and AI situation briefings</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>EmberBrief translates live fire and weather feeds into plain-language situation briefings, automatically. NASA's FIRMS satellite network detects fire heat signatures within minutes; NOAA weather stations report conditions in real time. The bottleneck is synthesis — EmberBrief removes that step.</p>
+  <p>A Vercel cron job runs daily: fetch active fire detections from NASA FIRMS NRT feed → fetch current weather from the nearest NOAA Synoptic station → cluster detections within 2km into discrete fire events → score each cluster on a transparent risk index → for Action-tier events, generate a plain-language situation briefing via the Claude API.</p>
+  <p>Geographic scope: Lake Tahoe Basin bounding box. Weather station: LIB33 ("Tahoe-7300 Sugar Pine Point"). The risk score is a weighted composite of FRP intensity (40%), weather danger (40%), and trend over prior 3 hours (20%). Tiers: Monitor (&lt;40), Watch (40–69), Action (≥70). Claude is called only for Action-tier clusters — keeping AI costs proportional to actual risk.</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Dashboard at <code>/ember</code>; force-dynamic (DB reads)</td></tr>
+      <tr><td>Data pipeline</td><td>Vercel Cron + Route Handler</td><td><code>/api/cron/ember-ingest</code>; daily at 09:00 UTC</td></tr>
+      <tr><td>Database</td><td>Neon Postgres</td><td><code>ember_fire_clusters</code> + <code>ember_county_conditions</code> tables</td></tr>
+      <tr><td>Fire data</td><td>NASA FIRMS NRT</td><td>VIIRS_SNPP_NRT source; MAP_KEY auth (<code>FIRMS_API_KEY</code>)</td></tr>
+      <tr><td>Weather data</td><td>NOAA Synoptic v2</td><td>API token (NOT API key) required; variable: <code>wind_speed</code>, <code>relative_humidity</code>, etc.</td></tr>
+      <tr><td>AI layer</td><td>Claude Haiku (Anthropic API)</td><td>Action-tier briefings only; 3-section structured output</td></tr>
+      <tr><td>Styling</td><td>Tailwind CSS</td><td>Site design tokens throughout</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+Daily pipeline (Vercel Cron — 09:00 UTC):
+
+NASA FIRMS NRT ──HTTP──→ ┐
+                          ├── ember-ingest route handler
+NOAA Synoptic v2 ──HTTP──→ ┘
+                          │
+                          ├── 1. Parse fire detections (VIIRS CSV)
+                          ├── 2. Cluster within 2km radius
+                          ├── 3. Fetch 3h FRP history from Neon (trend calc)
+                          ├── 4. Compute risk score (FRP 40%, weather 40%, trend 20%)
+                          ├── 5. Assign tier: Monitor / Watch / Action
+                          ├── 6. Evaluate Red Flag (RH &lt;15% AND wind &gt;25mph)
+                          ├── 7. [Action only] Call Claude Haiku → briefing text
+                          └── 8. Upsert to Neon Postgres
+                               ├── ember_fire_clusters (one row per cluster per day)
+                               └── ember_county_conditions (weather snapshot)
+                                          ↓
+                             /api/ember-data (Route Handler, force-dynamic)
+                                          ↓
+                                /ember (Dashboard page, SSR)
+  </pre>
+
+  <h2>Data Model</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Key Columns</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>ember_fire_clusters</code></td><td><code>cluster_id</code>, <code>lat</code>, <code>lon</code>, <code>frp</code>, <code>tier</code>, <code>risk_score</code>, <code>briefing</code>, <code>detected_at</code></td><td>One row per cluster per daily run; briefing populated for Action-tier only</td></tr>
+      <tr><td><code>ember_county_conditions</code></td><td><code>station_id</code>, <code>wind_speed</code>, <code>wind_gust</code>, <code>relative_humidity</code>, <code>air_temp</code>, <code>red_flag</code>, <code>recorded_at</code></td><td>Daily weather snapshot for LIB33</td></tr>
+    </tbody>
+  </table>
+
+  <h2>External Integrations</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Env Var</th><th>Auth type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>NASA FIRMS</td><td><code>FIRMS_API_KEY</code></td><td>MAP_KEY</td><td>All environments. Source: <code>VIIRS_SNPP_NRT</code>. Get from firms.modaps.eosdis.nasa.gov</td></tr>
+      <tr><td>NOAA Synoptic</td><td><code>SYNOPTIC_API_KEY</code></td><td>API <strong>token</strong> (not key)</td><td>All environments. Generate token at developers.synopticdata.com — the raw API key won't work</td></tr>
+      <tr><td>Anthropic Claude</td><td><code>ANTHROPIC_API_KEY</code></td><td>Bearer</td><td>Production only. Cron skips briefing pass gracefully when absent (logs <code>briefed: 0</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Infrastructure</h2>
+  <table>
+    <thead><tr><th>Component</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Cron job</td><td>Vercel Cron: <code>/api/cron/ember-ingest</code> at <code>0 9 * * *</code> UTC. One of 2 allowed cron slots on Hobby plan.</td></tr>
+      <tr><td>Vercel project</td><td><code>website</code> (not "will-maness-site")</td></tr>
+      <tr><td>Database</td><td>Neon Postgres; shared with 311, pipeline-dashboard, vendor-feed</td></tr>
+      <tr><td>Route</td><td><code>/ember</code> within willmaness.com — not a separate Vercel project</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/app/api/cron/ember-ingest/route.ts</code></td><td>Full pipeline orchestration — FIRMS fetch, clustering, scoring, briefing generation, Neon upsert</td></tr>
+      <tr><td><code>src/app/api/ember-data/route.ts</code></td><td>Dashboard data API; force-dynamic; returns clusters + county conditions</td></tr>
+      <tr><td><code>src/app/ember/page.tsx</code></td><td>Dashboard page; SSR with force-dynamic</td></tr>
+      <tr><td><code>src/components/projects/ember/</code></td><td>ClusterCard, CountyConditions, RiskBadge, and other dashboard components</td></tr>
+      <tr><td><code>src/lib/ember-briefing.ts</code></td><td>Claude API call — builds structured prompt, parses 3-section response (Current Situation / Weather Context / 6-Hour Outlook)</td></tr>
+      <tr><td><code>src/lib/boston-311-flagging.ts</code></td><td>311 operational flagging engine (co-located; issue #135 merged)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Open Issues</h2>
+  <ul>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/98">#98</a> — AI briefings for Action-tier clusters → PR #144 open, ready to merge</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/115">#115</a> — Verify FIRMS_API_KEY and SYNOPTIC_API_KEY present in Vercel "website" project (human: delete orphaned will-maness-site Vercel project)</li>
+  </ul>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>SYNOPTIC_API_KEY must be a token, not the API key.</strong> Error "Be sure to use a token generated from your API Key" means the wrong value is stored. Generate tokens at developers.synopticdata.com. The raw API key silently fails.</div>
+  <div class="agent-note">⚠️ <strong>ANTHROPIC_API_KEY is Production-only.</strong> The cron is designed to skip the briefing step gracefully when the key is absent — it logs <code>briefed: 0</code> rather than throwing. Do not add this key to preview/development environments.</div>
+  <div class="agent-note">⚠️ <strong>Both FIRMS and Synoptic keys were historically set to "False" as placeholders.</strong> Silent pipeline failures ran for the entire lifetime of the project before being discovered (2026-05-26). Always verify env var values are real keys, not placeholders.</div>
+  <div class="agent-note">⚠️ <strong>Red Flag is county-level, not cluster-level.</strong> Red Flag (RH &lt;15% AND wind &gt;25mph) is surfaced as a separate county flag — it is NOT embedded in the cluster risk score. This is intentional: Red Flag conditions matter even with no active fire.</div>
+  <div class="agent-note">💡 <strong>Claude is only called for Action-tier events (score ≥ 70).</strong> Most daily runs produce zero Claude calls. Do not change this threshold without understanding cost implications.</div>
+  <div class="agent-note">💡 <strong>The briefing prompt is fully deterministic.</strong> Claude cannot infer beyond what is supplied — the prompt is constructed from exact cluster metrics. Three output sections mirror trained analyst output: Current Situation, Weather Context, 6-Hour Outlook.</div>
+  <div class="agent-note">💡 <strong>Synoptic valid variable names:</strong> <code>wind_speed</code>, <code>wind_direction</code>, <code>wind_gust</code>, <code>relative_humidity</code>, <code>air_temp</code>, <code>precip_accum</code>. Parsed from obs keys: <code>wind_gust_value_1</code>, <code>precip_accum_value_1</code>. The variable <code>precip_accum_24h</code> is NOT valid.</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Competitive Intelligence App — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.paused{background:#FEF3C7;color:#92400E}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Competitive Intelligence App</h1>
+        <p class="desc">Desktop application for tracking competitive positioning across the data integration landscape</p>
+      </div>
+      <span class="badge paused">Paused</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>A desktop application designed to give a product manager real-time visibility into competitor moves — feature launches, pricing changes, messaging shifts — without the manual work of monitoring dozens of sources. The Vendor Intelligence Feed (a web pipeline) is the hosted counterpart to this project; where the feed is a public-facing dashboard, the CI app is a private desktop tool with richer interaction.</p>
+  <p>This project lives in <code>Projects/project_competitive_intelligence/</code> in the Claude OS workstation. It is currently paused — the Vendor Feed pipeline covers many of the same intelligence needs in a web format, reducing the urgency for a dedicated desktop application. Work may resume once the Vendor Feed pipeline matures.</p>
+
+  <h2>Relationship to Vendor Feed</h2>
+  <table>
+    <thead><tr><th>Dimension</th><th>Vendor Feed (web)</th><th>CI App (desktop)</th></tr></thead>
+    <tbody>
+      <tr><td>Audience</td><td>Public — anyone visiting willmaness.com</td><td>Private — personal productivity tool</td></tr>
+      <tr><td>Interaction</td><td>Read-only, filterable feed</td><td>Richer: tagging, notes, alerts, comparison views</td></tr>
+      <tr><td>Data source</td><td>Automated pipeline (GitHub Actions)</td><td>TBD — may share pipeline or have separate scraping</td></tr>
+      <tr><td>Status</td><td>Active</td><td>Paused</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Known Tech Direction</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>App framework</td><td>Electron or Tauri (TBD)</td><td>Tauri preferred for smaller binary + Rust performance</td></tr>
+      <tr><td>UI</td><td>React + Tailwind</td><td>Consistent with willmaness.com stack</td></tr>
+      <tr><td>Data</td><td>Local SQLite or shared Neon</td><td>Architecture not finalized; local-first likely for offline capability</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files (Claude OS workstation)</h2>
+  <table>
+    <thead><tr><th>Location</th><th>Contains</th></tr></thead>
+    <tbody>
+      <tr><td><code>Projects/project_competitive_intelligence/</code></td><td>Main workstation; CLAUDE.md, any prototypes or design docs</td></tr>
+      <tr><td><code>competitive-intel-app/</code></td><td>App code directory (if any prototype exists)</td></tr>
+      <tr><td><code>competitive-intel-data/</code></td><td>Data / scraping experiments (if any)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>This project is paused.</strong> Do not pick up work here without explicit instruction. The Vendor Feed pipeline covers the core intelligence need in the interim.</div>
+  <div class="agent-note">💡 <strong>Architecture details are sparse</strong> because the project was paused before deep implementation. If resuming, start by reading the CLAUDE.md in <code>project_competitive_intelligence/</code> for the current state of design decisions.</div>
+  <div class="agent-note">💡 <strong>The Vendor Feed pipeline at willmaness.com is the active sibling project.</strong> If a user asks about competitive intelligence tooling, the vendor feed is the live implementation. The CI app is the aspirational desktop version.</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boston 311 Tracker — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Boston 311 Tracker</h1>
+        <p class="desc">Department backlog equity dashboard — which city departments are falling behind and is it getting worse?</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>The Boston 311 dashboard answers one operational question: which city departments are showing signs of stress before a council office gets there first? Boston publishes every 311 service request (potholes, missed trash, noise complaints) as open data. The dataset updates continuously and goes back years.</p>
+  <p>The dashboard tracks weekly open vs. closed ticket counts and median closure time for each of the nine city departments that handle 311 work. When both metrics worsen for two or more consecutive weeks, the department is flagged — giving an operations manager a clear signal before a backlog becomes a crisis.</p>
+  <p><strong>Framing:</strong> The dashboard is framed as operational reallocation intelligence, not staffing analytics. It surfaces where resources need to shift, not headcount decisions. This framing matters for how headers and copy are written.</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Dashboard embedded in willmaness.com; force-dynamic on API route</td></tr>
+      <tr><td>Database</td><td>Neon Postgres</td><td><code>case_events</code> + <code>department_weekly_metrics</code> tables</td></tr>
+      <tr><td>Pipeline</td><td>GitHub Actions</td><td>Nightly cron — CKAN fetch, upsert cases, rebuild weekly aggregates</td></tr>
+      <tr><td>Data source</td><td>Analyze Boston CKAN API</td><td>SQL queries over public per-year CSV resources; no auth required</td></tr>
+      <tr><td>Charts</td><td>Recharts</td><td>Net backlog bar charts, closure time sparklines</td></tr>
+      <tr><td>Caching</td><td>Vercel CDN edge cache</td><td>24-hour cache on <code>/api/311-departments</code> response</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+Analyze Boston (CKAN API) ──nightly──→ GitHub Actions pipeline
+                                              │
+                                    ┌─────────┴──────────┐
+                                    │  pipeline-311.ts   │
+                                    │  1. Fetch new cases │
+                                    │  2. Upsert case_events│
+                                    │  3. Rebuild dept_weekly_metrics│
+                                    │  4. Upsert pipeline_runs│
+                                    └─────────┬──────────┘
+                                              ↓
+                                        Neon Postgres
+                                    ┌─────────────────────┐
+                                    │  case_events         │
+                                    │  (95K rows, 2024–)   │
+                                    │  department_weekly   │
+                                    │  _metrics            │
+                                    │  pipeline_runs       │
+                                    └──────────┬──────────┘
+                                               ↓
+                                  /api/311-departments (Route Handler)
+                                  force-dynamic; 24h edge cache
+                                               ↓
+                              willmaness.com/work/[slug] → 311 dashboard
+                              (StaffingDashboard component)
+  </pre>
+
+  <h2>Data Model</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Key Columns</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>case_events</code></td><td><code>case_id</code> (PK), <code>department</code>, <code>request_type</code>, <code>neighborhood</code>, <code>open_date</code>, <code>close_date</code></td><td>95K rows backfilled to 2024 (completed 2026-05-18). Nightly incremental upserts. One row per 311 case.</td></tr>
+      <tr><td><code>department_weekly_metrics</code></td><td><code>department</code>, <code>iso_week</code>, <code>opened</code>, <code>closed</code>, <code>median_closure_days</code>, <code>flag_level</code></td><td>Aggregated from <code>case_events</code>; rebuilt nightly. Drives dashboard cards.</td></tr>
+      <tr><td><code>pipeline_runs</code></td><td><code>pipeline</code>, <code>run_at</code>, <code>status</code>, <code>records</code></td><td>Shared with EmberBrief; <code>pipeline = '311'</code> for this pipeline. Upserted on each run for health dashboard.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Flagging Logic</h2>
+  <table>
+    <thead><tr><th>Condition</th><th>Flag</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Backlog growing (opened &gt; closed) AND median closure time increasing — 1 consecutive week</td><td>Yellow (watch)</td><td>Single stressed week; may be noise</td></tr>
+      <tr><td>Same dual condition — 2+ consecutive weeks</td><td>Red (flagged)</td><td>Sustained deterioration; escalation signal</td></tr>
+      <tr><td>Either condition improves</td><td>Reset to green</td><td>Counter resets to zero on any calm week</td></tr>
+    </tbody>
+  </table>
+  <p>Methodology choices: median closure time (not mean, to resist outlier distortion). Both conditions must hold simultaneously — a single bad metric is noise. Two-week minimum for red.</p>
+
+  <h2>External Integrations</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Auth</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Analyze Boston CKAN API</td><td>None (public)</td><td>SQL queries over per-year CSVs at data.boston.gov</td></tr>
+      <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code> in GitHub Actions secrets</td><td>Pipeline writes; API route reads</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Infrastructure</h2>
+  <table>
+    <thead><tr><th>Component</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Pipeline</td><td>GitHub Actions nightly cron (not Vercel Cron — 311 uses GHA to avoid consuming a Vercel cron slot)</td></tr>
+      <tr><td>API</td><td><code>/api/311-departments</code> with <code>force-dynamic</code> + 24h Vercel CDN edge cache</td></tr>
+      <tr><td>Dashboard route</td><td>Embedded in willmaness.com project pages as <code>StaffingDashboard</code> component</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/app/api/311-departments/route.ts</code></td><td>API endpoint; force-dynamic; aggregates from <code>department_weekly_metrics</code></td></tr>
+      <tr><td><code>src/components/projects/boston-civic-data/</code></td><td>StaffingDashboard, DepartmentCard, BacklogFlowChart, and related components</td></tr>
+      <tr><td><code>.github/workflows/pipeline-311.yml</code></td><td>Nightly pipeline cron; upserts pipeline_runs on each run</td></tr>
+      <tr><td><code>content/projects/boston-civic-data.mdx</code></td><td>Project page copy and metadata</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Open Issues</h2>
+  <ul>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/150">#150</a> — Header/copy update (operational reallocation framing)</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/151">#151</a> — Breakdown section improvements</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/58">#58</a> — [Deferred] Burndown forecasting — blocked until 8+ weeks of post-backfill data</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/20">#20</a> — TrendChart — blocked until pipeline has ≥ 2–4 weeks of data</li>
+    <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/40">#40</a> — Jupyter notebook for dataset exploration (local dev tool)</li>
+  </ul>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>Dashboard framing is "operational reallocation," not "staffing."</strong> The distinction matters for copy. Headers and descriptions must not suggest headcount decisions. The dashboard surfaces where resources need to shift, not how many people to hire or fire.</div>
+  <div class="agent-note">⚠️ <strong>The backfill is complete.</strong> <code>case_events</code> has 95K rows going back to 2024 (backfilled 2026-05-18). Do not attempt to re-run the backfill script — it is a one-time operation already completed.</div>
+  <div class="agent-note">⚠️ <strong>pipeline-311.ts must upsert <code>pipeline_runs</code> on every run.</strong> The pipeline dashboard reads from this table for health status. If a pipeline run skips the upsert, the health card shows "Unknown." This was a historical bug (fixed 2026-05-24).</div>
+  <div class="agent-note">⚠️ <strong>API route needs <code>force-dynamic</code>.</strong> The <code>/api/311-departments</code> route hits Neon Postgres and must not be statically prerendered. Add <code>export const dynamic = 'force-dynamic'</code>.</div>
+  <div class="agent-note">💡 <strong>Median, not mean.</strong> A single case open for 2+ years would distort the mean dramatically. All closure time metrics use median. Do not change to mean.</div>
+  <div class="agent-note">💡 <strong>Forecasting (#58) is gated on data accumulation.</strong> Do not start the forecasting issue until at least 8 weeks of post-backfill pipeline data exists. The model needs ~125 weeks of weekly data to fit meaningful seasonal patterns — the backfill provides historical data, but model validation requires recent weeks.</div>
+</div>
+</body>
+</html>

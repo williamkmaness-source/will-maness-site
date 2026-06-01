@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pipeline Dashboard — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.active{background:#D1FAE5;color:#065F46}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+pre{background:#1C1917;color:#E5E7EB;padding:14px 16px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.6;margin:0 0 14px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Pipeline Dashboard</h1>
+        <p class="desc">Real-time health monitoring for the site's data pipelines via Server-Sent Events</p>
+      </div>
+      <span class="badge active">Active</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>A live dashboard showing the health of the data pipelines powering willmaness.com — currently the Boston 311 nightly pipeline and the Ember wildfire pipeline. The dashboard connects to a Server-Sent Events (SSE) endpoint that emits pipeline status on connect and every 10 seconds thereafter. The browser reconnects automatically on drop.</p>
+  <p>Each pipeline writes a row to the shared <code>pipeline_runs</code> table in Neon Postgres on every run. The SSE endpoint reads from this table to emit current status. Status cards show last success time, records processed, and a health indicator dot (green/yellow/red/grey).</p>
+
+  <h2>Tech Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>SSE server</td><td>Next.js Route Handler</td><td><code>/api/pipeline-status</code>; streams <code>text/event-stream</code> with keepalive pings</td></tr>
+      <tr><td>SSE client</td><td>Browser EventSource API</td><td>Auto-reconnect; no library required</td></tr>
+      <tr><td>Database</td><td>Neon Postgres</td><td><code>pipeline_runs</code> table; shared with all pipelines</td></tr>
+      <tr><td>State</td><td>React <code>useReducer</code> / <code>useState</code></td><td>Connection state + status array; no external store</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architecture Diagram</h2>
+  <pre>
+Data pipelines (write side):
+  Boston 311 (GitHub Actions nightly)
+  └── pipeline-311.ts → upsert pipeline_runs WHERE pipeline='311'
+
+  EmberBrief (Vercel Cron daily)
+  └── ember-ingest → upsert pipeline_runs WHERE pipeline='ember'
+
+                    ↓
+              Neon Postgres
+              pipeline_runs table
+              (pipeline, run_at, status, records, error_msg)
+
+                    ↓ (read every 10s)
+  Browser → EventSource → GET /api/pipeline-status (SSE)
+                            └── SELECT from pipeline_runs
+                                  ↓ emit: text/event-stream
+  PipelineDashboard component
+  └── Status cards per pipeline
+      ├── Last success timestamp
+      ├── Records processed
+      └── Health dot (green=ok, yellow=running, red=failed, grey=unknown)
+  </pre>
+
+  <h2>Data Model</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Column</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>pipeline_runs</code></td><td><code>pipeline</code> (text PK-ish)</td><td>Values: <code>'311'</code>, <code>'ember'</code>. Was <code>'chess'</code> historically — those rows deleted June 2026 (#104).</td></tr>
+      <tr><td></td><td><code>run_at</code> (timestamptz)</td><td>When the pipeline ran</td></tr>
+      <tr><td></td><td><code>status</code> (text)</td><td><code>'success'</code>, <code>'running'</code>, <code>'failed'</code></td></tr>
+      <tr><td></td><td><code>records</code> (int)</td><td>Rows processed/ingested</td></tr>
+      <tr><td></td><td><code>error_msg</code> (text, nullable)</td><td>Error detail on failure</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key Files</h2>
+  <table>
+    <thead><tr><th>File</th><th>Owns</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/app/api/pipeline-status/route.ts</code></td><td>SSE endpoint; reads pipeline_runs; emits every 10s; keepalive ping</td></tr>
+      <tr><td><code>src/components/projects/pipeline-dashboard/</code></td><td>Dashboard UI — PipelineCard, health dot, connection status indicator</td></tr>
+      <tr><td><code>content/projects/pipeline-dashboard.mdx</code></td><td>Project page copy</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>Every pipeline MUST upsert <code>pipeline_runs</code> on each run.</strong> If a pipeline skips this write, the health card shows "Unknown" (grey). This was a historical bug in the 311 pipeline (fixed 2026-05-24). New pipelines added to the system must include this upsert or they'll be invisible to the dashboard.</div>
+  <div class="agent-note">⚠️ <strong>Do NOT use <code>pipeline = 'chess'</code>.</strong> The chess tracker does not use a server-side pipeline — it polls Lichess client-side at runtime. Chess rows in <code>pipeline_runs</code> were orphaned and deleted (June 2026, issue #104).</div>
+  <div class="agent-note">💡 <strong>The SSE endpoint emits on connect and every 10 seconds.</strong> There is no webhook push when a pipeline run completes — the dashboard polls on a fixed interval. Near-real-time health is a design goal, not strict real-time.</div>
+  <div class="agent-note">💡 <strong>Phantom pipeline failures incident (2026-05-24):</strong> A stale branch in the claude_os repo became the default branch, causing all 3 GitHub Actions pipeline workflows to fail daily (they checked out the stale branch). Fixed by resetting the default branch. If pipelines all start failing simultaneously with no code changes, check GitHub Actions default branch configuration first.</div>
+</div>
+</body>
+</html>

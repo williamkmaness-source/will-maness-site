@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Enterprise Architecture — Architecture Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#F7F3EC;color:#1a1a1a;line-height:1.6}
+.wrapper{max-width:920px;margin:0 auto;padding:32px 24px}
+nav{font-size:13px;margin-bottom:20px}nav a{color:#E05C2B;text-decoration:none}nav a:hover{text-decoration:underline}
+header{border-bottom:2px solid #E5DDD4;padding-bottom:18px;margin-bottom:24px}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0 0 4px;font-size:24px;font-weight:700}
+.desc{color:#6B7280;font-size:14px;margin:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.complete{background:#DBEAFE;color:#1E40AF}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:28px 0 10px;border-bottom:1px solid #E5DDD4;padding-bottom:5px}
+p{margin:0 0 12px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+th{text-align:left;padding:6px 12px;background:#EEE8E0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+td{padding:8px 12px;border-bottom:1px solid #E5DDD4;vertical-align:top}
+code{font-family:Menlo,monospace;background:#EEE8E0;padding:1px 5px;border-radius:3px;font-size:12px}
+.agent-note{background:#FFFBEB;border-left:3px solid #F59E0B;padding:10px 14px;margin:8px 0;font-size:13px;border-radius:0 4px 4px 0}
+ul{margin:0 0 12px;padding-left:20px}li{font-size:14px;margin-bottom:3px}
+a{color:#E05C2B}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav><a href="index.html">← Architecture Index</a></nav>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Enterprise Data Platform Architecture</h1>
+        <p class="desc">14-artifact enterprise data platform architecture and vendor scoring deliverable set — completed May 2026</p>
+      </div>
+      <span class="badge complete">Complete</span>
+    </div>
+  </header>
+
+  <h2>Overview</h2>
+  <p>A complete enterprise data platform architecture and vendor evaluation deliverable set, produced as a demonstration of technical strategy and architectural thinking at the VP/Director level. The deliverable set includes reference architectures, vendor evaluation scorecards, decision frameworks, and executive-facing summaries.</p>
+  <p>All artifacts are static HTML documents stored in the Claude OS workstation at <code>Projects/project_architecture/</code>. The executive entry point is <code>index.html</code>. The deliverables are not deployed to willmaness.com but may be linked or referenced from the site.</p>
+  <p>This project is complete as of 2026-05-21. No open issues or planned extensions.</p>
+
+  <h2>Deliverable Set (14 Artifacts)</h2>
+  <table>
+    <thead><tr><th>#</th><th>Artifact</th><th>Audience</th></tr></thead>
+    <tbody>
+      <tr><td>00</td><td><code>index.html</code> — Executive entry point and navigation</td><td>Executive / VP</td></tr>
+      <tr><td>01</td><td>Platform vision and business case</td><td>Executive</td></tr>
+      <tr><td>02</td><td>Current state assessment</td><td>Director / Architect</td></tr>
+      <tr><td>03</td><td>Target state architecture overview</td><td>Executive / Director</td></tr>
+      <tr><td>04</td><td>Data ingestion layer design</td><td>Architect / Engineer</td></tr>
+      <tr><td>05</td><td>Storage and compute layer design</td><td>Architect / Engineer</td></tr>
+      <tr><td>06</td><td>Transformation and modeling layer</td><td>Architect / Engineer</td></tr>
+      <tr><td>07</td><td>Serving and consumption layer</td><td>Architect / Engineer</td></tr>
+      <tr><td>08</td><td>Governance, security, and compliance</td><td>Director / Legal</td></tr>
+      <tr><td>09</td><td>Vendor evaluation scorecard (ingestion tools)</td><td>Director</td></tr>
+      <tr><td>10</td><td>Vendor evaluation scorecard (transformation tools)</td><td>Director</td></tr>
+      <tr><td>11</td><td>Vendor evaluation scorecard (compute/warehouse)</td><td>Director</td></tr>
+      <tr><td>12</td><td>Migration and phasing plan</td><td>Director / PM</td></tr>
+      <tr><td>13</td><td>Operating model and team structure</td><td>Executive / Director</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Technology Coverage (Vendor Scoring)</h2>
+  <p>The vendor scorecards evaluate tools across the modern data stack:</p>
+  <ul>
+    <li><strong>Ingestion:</strong> Fivetran, Airbyte, Stitch, Hevo, dbt Cloud (source connectors)</li>
+    <li><strong>Transformation:</strong> dbt Core/Cloud, SQLMesh, Coalesce</li>
+    <li><strong>Compute/Warehouse:</strong> Snowflake, BigQuery, Databricks, Redshift</li>
+    <li><strong>Orchestration:</strong> Airflow, Prefect, Dagster</li>
+    <li><strong>Governance:</strong> Atlan, Alation, Collibra, DataHub</li>
+  </ul>
+
+  <h2>Key Files (Claude OS workstation)</h2>
+  <table>
+    <thead><tr><th>Location</th><th>Contains</th></tr></thead>
+    <tbody>
+      <tr><td><code>Projects/project_architecture/</code></td><td>Main workstation; CLAUDE.md, MEMORY.md</td></tr>
+      <tr><td><code>Projects/project_architecture/index.html</code></td><td>Executive entry point — links to all 14 artifacts; start here</td></tr>
+      <tr><td><code>Projects/project_architecture/artifacts/</code></td><td>The 14 HTML artifact files</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Agent Notes</h2>
+  <div class="agent-note">⚠️ <strong>This project is complete.</strong> The 14 artifacts were delivered as of 2026-05-21. Do not modify existing artifacts without explicit instruction.</div>
+  <div class="agent-note">⚠️ <strong>When referencing vendor product details, use Opus for fact-checking.</strong> Vendor pricing, feature availability, and product names change. Before any executive-facing delivery that references specific vendor capabilities, spawn an Opus subagent to verify current accuracy.</div>
+  <div class="agent-note">💡 <strong>Start at <code>index.html</code>.</strong> The executive entry point provides context and navigation for all 14 artifacts. Reading it first establishes the framing for the rest of the deliverable set.</div>
+  <div class="agent-note">💡 <strong>This is not deployed to willmaness.com.</strong> The artifacts are local HTML files in the Claude OS workstation. They are accessible via raw GitHub URL if the <code>project_architecture</code> repo is public, but they are not served from Vercel.</div>
+</div>
+</body>
+</html>
