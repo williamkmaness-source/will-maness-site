@@ -5,13 +5,20 @@ interface Props {
   tournamentName?: string | null;
   isLive?: boolean;
   format: TournamentFormat;
+  onPlayerClick?: (name: string) => void;
 }
 
 function pts(n: number): string {
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
-function StandingsTable({ standings }: { standings: PlayerStanding[] }) {
+function StandingsTable({
+  standings,
+  onPlayerClick,
+}: {
+  standings: PlayerStanding[];
+  onPlayerClick?: (name: string) => void;
+}) {
   return (
     <div className="mt-[24px] overflow-x-auto">
       <table className="w-full text-left border-collapse font-sans text-[14px]">
@@ -32,7 +39,18 @@ function StandingsTable({ standings }: { standings: PlayerStanding[] }) {
               className="border-b border-line last:border-0 hover:bg-bg-soft transition-colors duration-[80ms]"
             >
               <td className="py-[10px] pr-[16px] font-mono text-[12px] text-muted">{player.rank}</td>
-              <td className="py-[10px] pr-[16px] text-ink font-medium">{player.name}</td>
+              <td className="py-[10px] pr-[16px] text-ink font-medium">
+                {onPlayerClick ? (
+                  <button
+                    onClick={() => onPlayerClick(player.name)}
+                    className="hover:underline underline-offset-2 text-left"
+                  >
+                    {player.name}
+                  </button>
+                ) : (
+                  player.name
+                )}
+              </td>
               <td className="py-[10px] pr-[16px] text-right font-medium text-ink tabular-nums">{pts(player.points)}</td>
               <td className="py-[10px] pr-[16px] text-right text-muted tabular-nums hidden sm:table-cell">{player.wins}</td>
               <td className="py-[10px] pr-[16px] text-right text-muted tabular-nums hidden sm:table-cell">{player.draws}</td>
@@ -45,13 +63,28 @@ function StandingsTable({ standings }: { standings: PlayerStanding[] }) {
   );
 }
 
-function MatchScoreCard({ standings }: { standings: [PlayerStanding, PlayerStanding] }) {
+function MatchScoreCard({
+  standings,
+  onPlayerClick,
+}: {
+  standings: [PlayerStanding, PlayerStanding];
+  onPlayerClick?: (name: string) => void;
+}) {
   const [a, b] = standings;
   return (
     <div className="mt-[24px]">
       <div className="flex items-center gap-[12px] bg-bg-soft rounded-[6px] px-[20px] py-[16px]">
         <div className="flex-1 min-w-0">
-          <p className="font-sans text-[14px] font-medium text-ink truncate">{a.name}</p>
+          {onPlayerClick ? (
+            <button
+              onClick={() => onPlayerClick(a.name)}
+              className="font-sans text-[14px] font-medium text-ink truncate block text-left hover:underline underline-offset-2 w-full"
+            >
+              {a.name}
+            </button>
+          ) : (
+            <p className="font-sans text-[14px] font-medium text-ink truncate">{a.name}</p>
+          )}
           <p className="font-mono text-[11px] text-muted tracking-[0.04em] mt-[2px]">
             {a.wins}W {a.draws}D {a.losses}L
           </p>
@@ -62,7 +95,16 @@ function MatchScoreCard({ standings }: { standings: [PlayerStanding, PlayerStand
           </p>
         </div>
         <div className="flex-1 min-w-0 text-right">
-          <p className="font-sans text-[14px] font-medium text-ink truncate">{b.name}</p>
+          {onPlayerClick ? (
+            <button
+              onClick={() => onPlayerClick(b.name)}
+              className="font-sans text-[14px] font-medium text-ink truncate block text-right hover:underline underline-offset-2 w-full"
+            >
+              {b.name}
+            </button>
+          ) : (
+            <p className="font-sans text-[14px] font-medium text-ink truncate">{b.name}</p>
+          )}
           <p className="font-mono text-[11px] text-muted tracking-[0.04em] mt-[2px]">
             {b.wins}W {b.draws}D {b.losses}L
           </p>
@@ -72,7 +114,7 @@ function MatchScoreCard({ standings }: { standings: [PlayerStanding, PlayerStand
   );
 }
 
-export function TournamentStandings({ standings, tournamentName, isLive, format }: Props) {
+export function TournamentStandings({ standings, tournamentName, isLive, format, onPlayerClick }: Props) {
   if (format === 'unknown') {
     return (
       <p className="font-sans text-[14px] text-muted mt-[8px]">
@@ -93,17 +135,17 @@ export function TournamentStandings({ standings, tournamentName, isLive, format 
 
   if (format === 'knockout') {
     if (standings.length === 2) {
-      return <MatchScoreCard standings={[standings[0], standings[1]]} />;
+      return <MatchScoreCard standings={[standings[0], standings[1]]} onPlayerClick={onPlayerClick} />;
     }
     return (
       <>
         <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mt-[20px]">
           Match standings
         </p>
-        <StandingsTable standings={standings} />
+        <StandingsTable standings={standings} onPlayerClick={onPlayerClick} />
       </>
     );
   }
 
-  return <StandingsTable standings={standings} />;
+  return <StandingsTable standings={standings} onPlayerClick={onPlayerClick} />;
 }
