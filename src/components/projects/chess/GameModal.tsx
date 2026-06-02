@@ -357,6 +357,8 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
         });
 
         setQualityDot(quality && landingSquare ? { quality, square: landingSquare } : null);
+      }).catch(() => {
+        if (!cancelled) setQualityDot(null);
       });
     }, 120); // brief delay so the dot "arrives" after the move animation
 
