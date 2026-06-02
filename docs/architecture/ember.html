@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — EmberBrief</title>
+<style>
+  :root {
+    --bg: #F7F3EC; --bg-soft: #EFE9DD; --ink: #1F1E1A; --muted: #6B665B;
+    --accent: #2D4A3E; --clay: #B85C38; --line: #E5DFD3; --line-strong: #D6CFC0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.6; padding: 40px 24px; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 600; margin-bottom: 4px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); color: var(--accent); }
+  h3 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  p { margin-bottom: 12px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background: var(--bg-soft); border: 1px solid var(--line-strong); margin-left: 8px; vertical-align: middle; }
+  .badge.active { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; background: var(--bg-soft); border-bottom: 2px solid var(--line-strong); font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  code { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; background: var(--bg-soft); padding: 2px 5px; border-radius: 3px; }
+  pre { background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 6px; padding: 16px; font-size: 13px; font-family: 'SF Mono', Menlo, Consolas, monospace; overflow-x: auto; margin-bottom: 16px; white-space: pre; }
+  ul { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .callout { background: var(--bg-soft); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 4px 4px 0; margin-bottom: 16px; font-size: 14px; }
+  .warning { border-left-color: var(--clay); }
+  details { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 12px; }
+  summary { padding: 10px 14px; cursor: pointer; font-weight: 500; background: var(--bg-soft); border-radius: 5px; }
+  details[open] summary { border-radius: 5px 5px 0 0; border-bottom: 1px solid var(--line); }
+  details > *:not(summary) { padding: 14px; }
+  nav { margin-bottom: 32px; font-size: 13px; color: var(--muted); }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  .toc { list-style: none; padding: 0; }
+  .toc li { padding: 3px 0; }
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>EmberBrief <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> ember &nbsp;·&nbsp;
+  <strong>Dashboard:</strong> <a href="https://willmaness.com/ember" target="_blank">willmaness.com/ember</a> &nbsp;·&nbsp;
+  <strong>Route:</strong> <code>/ember</code> &nbsp;·&nbsp;
+  <strong>Repo:</strong> <a href="https://github.com/williamkmaness/will-maness-site" target="_blank">will-maness-site</a> (embedded)
+</p>
+
+<details open>
+  <summary>Table of contents</summary>
+  <div>
+    <ul class="toc">
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#tech-stack">Tech Stack</a></li>
+      <li><a href="#architecture">Architecture Diagram</a></li>
+      <li><a href="#pipeline">Pipeline Detail</a></li>
+      <li><a href="#scoring">Risk Scoring Model</a></li>
+      <li><a href="#data-model">Data Model</a></li>
+      <li><a href="#integrations">External Integrations</a></li>
+      <li><a href="#infrastructure">Infrastructure</a></li>
+      <li><a href="#key-files">Key Files</a></li>
+      <li><a href="#open-issues">Open Issues / Known Gaps</a></li>
+      <li><a href="#agent-notes">Agent Notes</a></li>
+    </ul>
+  </div>
+</details>
+
+<h2 id="overview">Overview</h2>
+<p>
+  EmberBrief translates live fire and weather data into plain-language situation briefings, automatically. When a wildfire ignites, NASA satellites detect the heat signature within minutes and NOAA weather stations report conditions in real time. The bottleneck is synthesis — EmberBrief removes that step.
+</p>
+<p>
+  The live dashboard at <a href="https://willmaness.com/ember">/ember</a> shows current fire activity and conditions for the <strong>Lake Tahoe Basin</strong>, scored and briefed automatically on a daily cadence. A Vercel cron job runs every day at 09:00 UTC, orchestrating: FIRMS ingest → clustering → weather fetch → risk scoring → AI briefing (Action tier only) → Neon upsert.
+</p>
+<p>
+  The AI layer boundary is deliberate: rules handle everything with a ground-truth answer (clustering geometry, risk thresholds, Red Flag flags). Claude handles exactly one thing — synthesizing structured data fields into a briefing paragraph a non-analyst can act on.
+</p>
+
+<h2 id="tech-stack">Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Host</td><td>Next.js App Router (within will-maness-site)</td><td>Dashboard at <code>/ember</code>; API at <code>/api/cron/ember-ingest</code> and <code>/api/ember-data</code></td></tr>
+  <tr><td>Database</td><td>Neon Postgres</td><td><code>ember_fire_clusters</code>, <code>ember_county_conditions</code>, <code>pipeline_runs</code> tables</td></tr>
+  <tr><td>Data source — fire</td><td>NASA FIRMS NRT (VIIRS SNPP)</td><td>Bounding box: Lake Tahoe Basin + surrounding Sierra Nevada foothills</td></tr>
+  <tr><td>Data source — weather</td><td>NOAA Synoptic Data API v2</td><td>Nearest weather station within 30 miles; English units</td></tr>
+  <tr><td>AI briefings</td><td>Anthropic Claude API</td><td>Action-tier events only; claude-sonnet model; production env only</td></tr>
+  <tr><td>Clustering</td><td>Custom engine (<code>cluster-engine.ts</code>)</td><td>2 km radius; pure TypeScript, no external library</td></tr>
+  <tr><td>Styling</td><td>Tailwind CSS v4</td><td>Uses this site's design tokens throughout</td></tr>
+  <tr><td>Cron</td><td>Vercel Cron</td><td><code>0 9 * * *</code> (09:00 UTC daily)</td></tr>
+</table>
+
+<h2 id="architecture">Architecture Diagram</h2>
+<pre>
+  Vercel Cron (09:00 UTC daily)
+         │
+         ▼
+  /api/cron/ember-ingest  (Node runtime, force-dynamic)
+         │
+         ├─1─ Snapshot prior clusters from ember_fire_clusters (for trend scoring)
+         │
+         ├─2─ NASA FIRMS NRT API  ──→  fetchFirmsDetections()
+         │       VIIRS SNPP, last 24h, Lake Tahoe Basin bbox
+         │       Filters: confidence 'n' or 'h' only (drops 'l' = low)
+         │
+         ├─3─ clusterDetections()
+         │       Groups detections within 2 km radius → fire clusters
+         │       DELETE old rows, INSERT new clusters → get IDs
+         │
+         ├─4─ NOAA Synoptic API  ──→  fetchWeatherForLocation()  [parallel per cluster]
+         │       Nearest station within 30 miles; English units
+         │       UPDATE ember_fire_clusters SET weather = ...
+         │
+         ├─5─ computeRiskScore() + assignTier()  [per cluster]
+         │       FRP 40% + weather danger 40% + trend 20%
+         │       Tier: Monitor (<40) / Watch (40–69) / Action (≥70)
+         │       UPDATE ember_fire_clusters SET risk_score, tier
+         │
+         ├─6─ Claude API  ──→  generateBriefing()  [Action tier only]
+         │       Constructs prompt from cluster metrics
+         │       3 sections: situation / weather context / 6-hour outlook
+         │       UPDATE ember_fire_clusters SET briefing, briefing_generated_at
+         │
+         ├─7─ Lake Tahoe Basin county conditions  ──→  ember_county_conditions UPSERT
+         │
+         └─8─ pipeline_runs UPSERT  (pipeline='ember', status, record_count)
+
+  Browser  ──GET /ember──→  Next.js page (force-dynamic)
+                │
+                └─ /api/ember-data  ──→  Neon  ──→  ember_fire_clusters + ember_county_conditions
+                                                      ORDER BY risk_score DESC, LIMIT 50
+</pre>
+
+<h2 id="pipeline">Pipeline Detail</h2>
+
+<h3>Step 1 — FIRMS Detection Fetch</h3>
+<p>Calls <code>https://firms.modaps.eosdis.nasa.gov/api/area/csv/{apiKey}/VIIRS_SNPP_NRT/{area}/1</code>.</p>
+<ul>
+  <li>Bounding box: west=-120.5, south=38.7, east=-119.5, north=39.4 (Lake Tahoe Basin + surrounding foothills)</li>
+  <li>Day range: 1 (last 24 hours)</li>
+  <li>Confidence filter: drops <code>l</code> (low confidence) — false alarms damage trust more than missed fires</li>
+  <li>Timeout: 20 seconds</li>
+</ul>
+
+<h3>Step 2 — Clustering</h3>
+<p>Groups VIIRS pixels within 2 km of each other using a greedy spatial grouping algorithm (<code>cluster-engine.ts</code>). Each cluster's centroid, total FRP, and detection count are computed from the member pixels.</p>
+
+<h3>Step 3 — Weather Fetch</h3>
+<p>For each cluster: calls Synoptic API for the nearest station within 30 miles. Extracts: wind speed (mph), wind direction (deg → cardinal), wind gust (mph), relative humidity (%), temperature (°F), 24h precip (in). Stored as JSONB in <code>ember_fire_clusters.weather</code>.</p>
+
+<h3>Step 4 — Risk Scoring</h3>
+<p>See <a href="#scoring">Scoring Model</a> below. Result stored as <code>risk_score</code> (0–100) and <code>tier</code> (Monitor/Watch/Action).</p>
+
+<h3>Step 5 — AI Briefing (Action tier only)</h3>
+<p>Constructs a <code>BriefingInput</code> from the cluster's metrics and calls <code>generateBriefing(anthropicClient, input)</code>. Skipped entirely if <code>ANTHROPIC_API_KEY</code> is not set. Output is a structured JSON object with three sections: current situation, weather context, 6-hour outlook. Stored in <code>briefing</code> column.</p>
+
+<h3>Step 6 — County Conditions</h3>
+<p>Fetches weather for the Lake Tahoe Basin centroid (lat=39.05, lng=-120.05) and upserts a single row in <code>ember_county_conditions</code> keyed on <code>county='Lake Tahoe Basin'</code>. Includes a Red Flag evaluation: RH &lt; 15% AND wind &gt; 25 mph.</p>
+
+<h3>Step 7 — Pipeline Health</h3>
+<p>Upserts <code>pipeline_runs</code> with <code>pipeline='ember'</code>, <code>status='success'</code>, and the cluster count. On failure, sets <code>status='failed'</code> and writes the error message.</p>
+
+<h2 id="scoring">Risk Scoring Model</h2>
+<p>Risk score is a weighted composite of three components, each normalized 0–100:</p>
+
+<table>
+  <tr><th>Component</th><th>Weight</th><th>Formula</th></tr>
+  <tr><td>FRP Intensity</td><td>40%</td><td>Linear ramp from FRP_LOW=10 MW (→ 0) to FRP_HIGH=500 MW (→ 100)</td></tr>
+  <tr><td>Weather Danger</td><td>40%</td><td>Average of RH score (100 − humidity%) and wind score (wind_mph / 50 × 100). Red Flag (RH&lt;15% AND wind&gt;25 mph) overrides to 100. Null variables use 50 (neutral).</td></tr>
+  <tr><td>Trend</td><td>20%</td><td>FRP change vs prior cluster within 10 km. 50=neutral, clamped 0–100. Null prior = 50.</td></tr>
+</table>
+
+<p><strong>Tier thresholds:</strong></p>
+<ul>
+  <li><strong>Monitor</strong> — score &lt; 40</li>
+  <li><strong>Watch</strong> — score 40–69</li>
+  <li><strong>Action</strong> — score ≥ 70 (triggers AI briefing)</li>
+</ul>
+
+<div class="callout">
+  Red Flag conditions (county-level RH &lt; 15% AND wind &gt; 25 mph) are surfaced as a separate flag on the dashboard, independent of cluster risk scores. They matter regardless of active fire.
+</div>
+
+<h2 id="data-model">Data Model</h2>
+
+<details open>
+  <summary><strong>ember_fire_clusters</strong></summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>id</td><td>serial PK</td><td></td></tr>
+      <tr><td>lat, lng</td><td>numeric</td><td>Cluster centroid (degrees)</td></tr>
+      <tr><td>frp</td><td>numeric</td><td>Fire Radiative Power (MW) — sum of all member pixels</td></tr>
+      <tr><td>detection_count</td><td>integer</td><td>Number of VIIRS pixels in cluster</td></tr>
+      <tr><td>detected_at</td><td>timestamptz</td><td>Most recent satellite pass time</td></tr>
+      <tr><td>risk_score</td><td>numeric</td><td>Composite 0–100; null if scoring failed</td></tr>
+      <tr><td>tier</td><td>text</td><td>'Monitor' | 'Watch' | 'Action'</td></tr>
+      <tr><td>weather</td><td>jsonb</td><td>Synoptic WeatherObservation object</td></tr>
+      <tr><td>briefing</td><td>jsonb / text</td><td>Claude output — JSON with situation/weather/outlook keys (Action only)</td></tr>
+      <tr><td>briefing_generated_at</td><td>timestamptz</td><td>Timestamp of Claude call</td></tr>
+    </table>
+    <p style="margin-top:8px;font-size:13px;color:var(--muted)">Full table is DELETE + re-INSERT on every cron run. Prior rows are snapshotted before DELETE for trend scoring.</p>
+  </div>
+</details>
+
+<details>
+  <summary><strong>ember_county_conditions</strong></summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>county</td><td>text PK</td><td>Currently: 'Lake Tahoe Basin'</td></tr>
+      <tr><td>wind_speed</td><td>numeric</td><td>mph</td></tr>
+      <tr><td>wind_direction</td><td>text</td><td>Cardinal direction (16-point)</td></tr>
+      <tr><td>wind_gust_mph</td><td>numeric</td><td>mph</td></tr>
+      <tr><td>humidity</td><td>numeric</td><td>% relative humidity</td></tr>
+      <tr><td>temperature</td><td>numeric</td><td>°F</td></tr>
+      <tr><td>precip_24h_in</td><td>numeric</td><td>24-hour accumulated precipitation (inches)</td></tr>
+      <tr><td>red_flag</td><td>boolean</td><td>True if RH &lt; 15% AND wind &gt; 25 mph</td></tr>
+      <tr><td>forecast</td><td>jsonb</td><td>6-hour outlook from Synoptic</td></tr>
+      <tr><td>observed_at</td><td>timestamptz</td><td>Station observation timestamp</td></tr>
+    </table>
+    <p style="margin-top:8px;font-size:13px;color:var(--muted)">Upserted (ON CONFLICT DO UPDATE) on every cron run. One row per county — future multi-county expansion preserves this schema.</p>
+  </div>
+</details>
+
+<details>
+  <summary><strong>pipeline_runs</strong> — shared health tracking table</summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>pipeline</td><td>text PK</td><td>'ember' for this project</td></tr>
+      <tr><td>status</td><td>text</td><td>'success' | 'failed'</td></tr>
+      <tr><td>last_success_at</td><td>timestamptz</td><td></td></tr>
+      <tr><td>last_attempt_at</td><td>timestamptz</td><td></td></tr>
+      <tr><td>record_count</td><td>integer</td><td>Number of clusters ingested</td></tr>
+      <tr><td>error</td><td>text</td><td>Error message on failure; null on success</td></tr>
+    </table>
+  </div>
+</details>
+
+<h2 id="integrations">External Integrations</h2>
+<table>
+  <tr><th>Service</th><th>Env Var</th><th>Environments</th><th>Notes</th></tr>
+  <tr><td>NASA FIRMS NRT API</td><td><code>FIRMS_API_KEY</code></td><td>All (prod + preview + dev)</td><td>Free tier; bounding box query; VIIRS SNPP source</td></tr>
+  <tr><td>NOAA Synoptic Data v2</td><td><code>SYNOPTIC_API_KEY</code></td><td>All</td><td>Nearest station within 30 miles; English units; 20s timeout</td></tr>
+  <tr><td>Anthropic Claude API</td><td><code>ANTHROPIC_API_KEY</code></td><td>Production only</td><td>Action-tier clusters only. Skipped if key absent — no error thrown.</td></tr>
+  <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code> / <code>POSTGRES_URL</code></td><td>All</td><td>Shared with 311, pipeline dashboard, vendor-feed</td></tr>
+</table>
+
+<h2 id="infrastructure">Infrastructure</h2>
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>Cron schedule</td><td><code>0 9 * * *</code> — 09:00 UTC daily. Defined in <code>vercel.json</code>.</td></tr>
+  <tr><td>Runtime</td><td><code>nodejs</code> (explicit) — required for Anthropic SDK and some Neon features. <code>force-dynamic</code> to prevent ISR prerender.</td></tr>
+  <tr><td>Error handling</td><td>FIRMS failure is non-fatal — cron continues with zero detections and logs the error. Weather fetch failure per-cluster is non-fatal. Claude failure per-cluster is non-fatal. All errors written to <code>pipeline_runs</code>.</td></tr>
+  <tr><td>Shared DB</td><td>Same Neon project as Boston 311 and pipeline dashboard. Shared <code>pipeline_runs</code> table drives the Pipeline Dashboard card.</td></tr>
+</table>
+
+<h2 id="key-files">Key Files</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>src/app/api/cron/ember-ingest/route.ts</code></td><td>Main pipeline orchestrator — all 8 steps end-to-end</td></tr>
+  <tr><td><code>src/app/api/ember-data/route.ts</code></td><td>Read API for the dashboard — queries Neon and returns JSON</td></tr>
+  <tr><td><code>src/app/ember/page.tsx</code></td><td>Dashboard page (force-dynamic, client components)</td></tr>
+  <tr><td><code>src/lib/ember/firms-client.ts</code></td><td>NASA FIRMS fetch, CSV parsing, confidence filtering</td></tr>
+  <tr><td><code>src/lib/ember/cluster-engine.ts</code></td><td>2 km spatial clustering of VIIRS detections</td></tr>
+  <tr><td><code>src/lib/ember/weather-client.ts</code></td><td>Synoptic API fetch, Red Flag evaluation, degree-to-cardinal</td></tr>
+  <tr><td><code>src/lib/ember/ember-scoring.ts</code></td><td>Risk score formula and tier assignment (all named constants)</td></tr>
+  <tr><td><code>src/lib/ember/ember-briefing.ts</code></td><td>Claude prompt construction and response parsing</td></tr>
+  <tr><td><code>src/lib/ember/ember-queries.ts</code></td><td>Neon query helpers — <code>getEmberData()</code> for the dashboard</td></tr>
+  <tr><td><code>src/components/projects/ember/ClusterCard.tsx</code></td><td>Per-cluster card UI — tier badge, risk score, weather</td></tr>
+  <tr><td><code>src/components/projects/ember/CountyConditionsHeader.tsx</code></td><td>County-level conditions banner with Red Flag indicator</td></tr>
+  <tr><td><code>src/components/projects/ember/PipelineStatus.tsx</code></td><td>Shows last cron run result (reads pipeline_runs)</td></tr>
+  <tr><td><code>content/projects/ember.mdx</code></td><td>Public-facing project description on /work page</td></tr>
+</table>
+
+<h2 id="open-issues">Open Issues / Known Gaps</h2>
+<ul>
+  <li>Multi-county support — currently hard-coded to Lake Tahoe Basin. Future: El Dorado, Placer, Washoe, Douglas counties with agency boundary routing.</li>
+  <li>Interactive map layer (Mapbox) — planned for Phase 2</li>
+  <li>Push notification delivery (service worker) — planned for Phase 2</li>
+  <li>AI briefings are Production-only — previews and local dev always skip the Claude pass</li>
+  <li><a href="https://github.com/williamkmaness/will-maness-site/issues/144" target="_blank">PR #144</a> — AI briefings may still be in progress (check if merged)</li>
+</ul>
+
+<h2 id="agent-notes">Agent Notes</h2>
+<div class="callout warning">
+  <strong>Full table DELETE on every run:</strong> <code>ember_fire_clusters</code> is truncated and re-inserted on each cron run. Never rely on row IDs persisting across runs. The prior run's rows are snapshotted in memory before DELETE for trend scoring — but they don't stay in the DB.
+</div>
+<div class="callout warning">
+  <strong>ANTHROPIC_API_KEY absent = silent skip:</strong> In preview and local dev, the briefing pass is skipped without error. This is intentional. If you need to test briefing generation locally, add the key to <code>.env.local</code>.
+</div>
+<div class="callout warning">
+  <strong>Neon API convention:</strong> The ingest route uses tagged template literals (<code>sql\`...\`</code>). For any parameterized queries you add, use <code>sql.query(query, params)</code> — the old <code>sql(query, params)</code> was dropped in Neon v1.1.
+</div>
+<ul>
+  <li><strong>Scoring constants are named:</strong> Never use magic numbers. All thresholds are exported constants in <code>ember-scoring.ts</code> — <code>FRP_WEIGHT</code>, <code>WATCH_THRESHOLD</code>, <code>MAX_DANGER_WIND_MPH</code>, etc.</li>
+  <li><strong>Confidence filtering:</strong> Low-confidence VIIRS detections (<code>'l'</code>) are dropped before clustering. This is a product decision — false alarms damage trust more than missed fires. Don't change without discussing.</li>
+  <li><strong>Red Flag is county-level, not cluster-level:</strong> The Red Flag boolean in <code>ember_county_conditions</code> reflects basin-wide conditions. Cluster weather stores raw wind/RH but the Red Flag badge on the dashboard comes from the county table.</li>
+  <li><strong>FIRMS bounding box:</strong> Defined as <code>LAKE_TAHOE_BASIN_BBOX</code> in <code>firms-client.ts</code>. Expanding coverage means changing this constant and verifying Synoptic station coverage for the new area.</li>
+  <li><strong>Weather fetch is parallel:</strong> Each cluster's weather is fetched concurrently via <code>Promise.all</code>. Individual failures are logged but don't fail the whole run.</li>
+  <li><strong>pipeline_runs is required:</strong> The pipeline dashboard shows "Unknown" if ember-ingest doesn't upsert <code>pipeline_runs</code>. Never remove the upsert step.</li>
+</ul>
+
+</body>
+</html>

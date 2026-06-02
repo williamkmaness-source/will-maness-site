@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Vendor Feed</title>
+<style>
+  :root{--bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:900px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:var(--accent)}
+  p{margin-bottom:12px}
+  a{color:var(--accent)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--bg-soft);border:1px solid var(--line-strong);margin-left:8px;vertical-align:middle}
+  .badge.active{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+  .badge.wip{background:#fef3c7;border-color:#fcd34d;color:#92400e}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px}
+  th{text-align:left;padding:8px 12px;background:var(--bg-soft);border-bottom:2px solid var(--line-strong);font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:var(--bg-soft);padding:2px 5px;border-radius:3px}
+  pre{background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:6px;padding:16px;font-size:13px;font-family:'SF Mono',Menlo,Consolas,monospace;overflow-x:auto;margin-bottom:16px;white-space:pre}
+  ul{padding-left:20px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .callout{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;margin-bottom:16px;font-size:14px}
+  .warning{border-left-color:var(--clay)}
+  nav{margin-bottom:32px;font-size:13px}
+  nav a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>Vendor Feed <span class="badge wip">in progress</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> vendor-feed &nbsp;·&nbsp;
+  <strong>Preview:</strong> <a href="https://willmaness.com/work/vendor_feed" target="_blank">willmaness.com/work/vendor_feed</a> &nbsp;·&nbsp;
+  <strong>Route:</strong> <code>/work/vendor_feed</code> &nbsp;·&nbsp;
+  <strong>Repo:</strong> <a href="https://github.com/williamkmaness/will-maness-site" target="_blank">will-maness-site</a>
+</p>
+
+<h2>Overview</h2>
+<p>An automated vendor and market intelligence pipeline. Scrapes public pages from target vendor companies, extracts structured entity data (product announcements, pricing changes, executive moves), deduplicates across sources, and surfaces a curated feed on the site.</p>
+<p>Currently in MVP development. The goal is 30+ entities, 5+ companies, and 3+ successful pipeline runs before unlocking post-MVP features. The site shows a preview of the feed at <code>/work/vendor_feed</code>.</p>
+
+<h2>Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Scraper</td><td><code>src/lib/vendor-feed/scraper.ts</code></td><td>Fetches raw page HTML from target URLs</td></tr>
+  <tr><td>Extractor</td><td><code>src/lib/vendor-feed/extractor.ts</code></td><td>Parses HTML → structured entity records</td></tr>
+  <tr><td>Config</td><td><code>src/lib/vendor-feed/config.ts</code></td><td>Target company URLs and scrape rules</td></tr>
+  <tr><td>Database</td><td>Neon Postgres (via <code>src/lib/vendor-feed/db.ts</code>)</td><td>Stores raw pages and extracted entities; deduplication logic</td></tr>
+  <tr><td>Feed queries</td><td><code>src/lib/vendor-feed/feed-queries.ts</code></td><td>Reads the curated feed for the UI</td></tr>
+  <tr><td>UI</td><td><code>src/components/projects/vendor-feed/VendorFeedPreview.tsx</code></td><td>Client component — displays feed cards</td></tr>
+  <tr><td>Page</td><td><code>src/app/work/vendor_feed/page.tsx</code> + <code>FeedClient.tsx</code></td><td>force-dynamic; client-side data fetch</td></tr>
+</table>
+
+<h2>Architecture Diagram</h2>
+<pre>
+  Pipeline (run manually or future cron)
+       │
+       ├─ config.ts → target company list + scrape rules
+       ├─ scraper.ts → fetch raw HTML → store in raw_pages table
+       ├─ extractor.ts → parse HTML → structured entities
+       └─ db.ts → upsert entities; deduplication on (company, url, content_hash)
+
+  Browser → /work/vendor_feed (force-dynamic)
+       │
+       └─ FeedClient.tsx → feed-queries.ts → Neon → curated entity feed
+</pre>
+
+<h2>Key Files</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>src/lib/vendor-feed/config.ts</code></td><td>Target companies and their scrape URLs/rules</td></tr>
+  <tr><td><code>src/lib/vendor-feed/scraper.ts</code></td><td>Raw HTML fetch; respects robots.txt conventions</td></tr>
+  <tr><td><code>src/lib/vendor-feed/extractor.ts</code></td><td>HTML → structured entity extraction</td></tr>
+  <tr><td><code>src/lib/vendor-feed/db.ts</code></td><td>Neon upsert logic; deduplication; raw_pages storage</td></tr>
+  <tr><td><code>src/lib/vendor-feed/feed-queries.ts</code></td><td>Read queries for the feed UI</td></tr>
+  <tr><td><code>src/app/work/vendor_feed/page.tsx</code></td><td>Route — force-dynamic, renders FeedClient</td></tr>
+  <tr><td><code>src/components/projects/vendor-feed/VendorFeedPreview.tsx</code></td><td>Feed card display component</td></tr>
+</table>
+
+<h2>Open Issues / Known Gaps</h2>
+<ul>
+  <li>MVP bar not yet met: needs 30+ entities, 5+ companies, 3+ successful runs before post-MVP features unlock</li>
+  <li><a href="https://github.com/williamkmaness/will-maness-site/issues/68" target="_blank">#68</a> — Upstash Vector embeddings (post-MVP; blocked until MVP bar met)</li>
+  <li><a href="https://github.com/williamkmaness/will-maness-site/issues/62" target="_blank">#62</a> — Scraper + deduplication (prerequisite for #68)</li>
+  <li>No cron job yet — pipeline is run manually</li>
+  <li>No pipeline_runs upsert — pipeline health not tracked in dashboard yet</li>
+</ul>
+
+<h2>Agent Notes</h2>
+<div class="callout warning">
+  <strong>Post-MVP features are gated.</strong> Issue #68 (embeddings) must not be started until the MVP bar is met: 30+ entities, 5+ companies, 3+ successful runs. Don't pick up post-MVP issues early.
+</div>
+<div class="callout">
+  <strong>force-dynamic required.</strong> The feed page reads from Neon — export <code>const dynamic = "force-dynamic"</code>.
+</div>
+<ul>
+  <li><strong>Deduplication:</strong> Entities are deduplicated on <code>(company, url, content_hash)</code> — upsert, not insert. Re-running the pipeline should not create duplicate rows.</li>
+  <li><strong>pipeline_runs:</strong> When a nightly cron is added, it must upsert <code>pipeline_runs</code> with <code>pipeline='vendor-feed'</code>. The pipeline dashboard shows "Unknown" until this is wired up.</li>
+</ul>
+
+</body>
+</html>

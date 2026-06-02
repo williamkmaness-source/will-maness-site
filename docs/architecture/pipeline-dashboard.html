@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Pipeline Dashboard</title>
+<style>
+  :root{--bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:900px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:var(--accent)}
+  p{margin-bottom:12px}
+  a{color:var(--accent)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--bg-soft);border:1px solid var(--line-strong);margin-left:8px;vertical-align:middle}
+  .badge.active{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px}
+  th{text-align:left;padding:8px 12px;background:var(--bg-soft);border-bottom:2px solid var(--line-strong);font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:var(--bg-soft);padding:2px 5px;border-radius:3px}
+  pre{background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:6px;padding:16px;font-size:13px;font-family:'SF Mono',Menlo,Consolas,monospace;overflow-x:auto;margin-bottom:16px;white-space:pre}
+  ul{padding-left:20px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .callout{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;margin-bottom:16px;font-size:14px}
+  .warning{border-left-color:var(--clay)}
+  nav{margin-bottom:32px;font-size:13px}
+  nav a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>Pipeline Dashboard <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> pipeline-dashboard &nbsp;·&nbsp;
+  <strong>Live:</strong> embedded on <a href="https://willmaness.com/work/pipeline-dashboard" target="_blank">willmaness.com/work/pipeline-dashboard</a> &nbsp;·&nbsp;
+  <strong>Route:</strong> <code>/work/pipeline-dashboard</code> &nbsp;·&nbsp;
+  <strong>Repo:</strong> <a href="https://github.com/williamkmaness/will-maness-site" target="_blank">will-maness-site</a>
+</p>
+
+<h2>Overview</h2>
+<p>A health dashboard that shows the last run status of all active data pipelines powering the site. Each pipeline that writes to Neon gets one card: status (success / failed / unknown), last success timestamp, last attempt timestamp, records processed, and error message on failure.</p>
+<p>The dashboard is a portfolio transparency tool — it proves the pipelines are actually running and gives visitors confidence that the live features show real data.</p>
+
+<h2>Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Database</td><td>Neon Postgres</td><td><code>pipeline_runs</code> table — shared with ember and 311</td></tr>
+  <tr><td>API</td><td><code>/api/pipeline-status</code></td><td>Next.js route; reads <code>pipeline_runs</code>; force-dynamic</td></tr>
+  <tr><td>Client</td><td><code>usePipelineStatus</code> hook</td><td>Polls the API; surfaces loading / error / data states</td></tr>
+  <tr><td>UI</td><td><code>PipelineCard</code>, <code>PipelineDashboard</code></td><td>One card per pipeline</td></tr>
+</table>
+
+<h2>Architecture Diagram</h2>
+<pre>
+  Each pipeline (ember-ingest, 311 nightly) upserts pipeline_runs after each run:
+
+    INSERT INTO pipeline_runs (pipeline, status, last_success_at, last_attempt_at, record_count, error)
+    ON CONFLICT (pipeline) DO UPDATE SET ...
+
+  Dashboard reads:
+
+  Browser  ──→  usePipelineStatus hook (polls /api/pipeline-status every 60s)
+                        │
+                        └─ /api/pipeline-status  ──→  Neon pipeline_runs  ──→  JSON
+                                                        SELECT * FROM pipeline_runs
+                                                        ORDER BY pipeline
+
+  PipelineDashboard renders one PipelineCard per row returned.
+</pre>
+
+<h2>Data Model</h2>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>pipeline</td><td>text PK</td><td>Unique identifier: 'ember', '311'. One row per pipeline.</td></tr>
+  <tr><td>status</td><td>text</td><td>'success' | 'failed'</td></tr>
+  <tr><td>last_success_at</td><td>timestamptz</td><td>Null until first successful run</td></tr>
+  <tr><td>last_attempt_at</td><td>timestamptz</td><td>Updated on every run regardless of outcome</td></tr>
+  <tr><td>record_count</td><td>integer</td><td>Rows processed / clusters ingested on last run</td></tr>
+  <tr><td>error</td><td>text</td><td>Error message on failure; null on success</td></tr>
+</table>
+
+<h2>Key Files</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>src/app/api/pipeline-status/route.ts</code></td><td>API route — reads pipeline_runs, returns JSON array</td></tr>
+  <tr><td><code>src/lib/PipelineStatusService.ts</code></td><td>Neon query logic for pipeline_runs</td></tr>
+  <tr><td><code>src/components/projects/pipeline-dashboard/usePipelineStatus.ts</code></td><td>Hook — fetches API, polls, surfaces states</td></tr>
+  <tr><td><code>src/components/projects/pipeline-dashboard/PipelineDashboard.tsx</code></td><td>Container — renders one PipelineCard per pipeline</td></tr>
+  <tr><td><code>src/components/projects/pipeline-dashboard/PipelineCard.tsx</code></td><td>Single pipeline status card UI</td></tr>
+  <tr><td><code>src/components/projects/pipeline-dashboard/types.ts</code></td><td>Shared TypeScript types</td></tr>
+</table>
+
+<h2>Open Issues / Known Gaps</h2>
+<ul>
+  <li>Orphaned 'chess' row in pipeline_runs — the chess health cron was removed (#103 closed) but the DB rows were not cleaned up yet (see <a href="https://github.com/williamkmaness/will-maness-site/issues/104" target="_blank">#104</a>)</li>
+  <li>No historical run log — <code>pipeline_runs</code> keeps only the most recent run per pipeline; no time-series history</li>
+</ul>
+
+<h2>Agent Notes</h2>
+<div class="callout warning">
+  <strong>If a pipeline shows "Unknown":</strong> the pipeline is not upserting <code>pipeline_runs</code> after each run. Every pipeline must write to this table — even on failure — or the dashboard card will show stale / unknown status forever.
+</div>
+<ul>
+  <li><strong>Adding a new pipeline:</strong> The pipeline key must be unique in <code>pipeline_runs</code>. Pick a short, lowercase slug (e.g. <code>'vendor-feed'</code>). The dashboard automatically picks up new rows — no frontend change needed.</li>
+  <li><strong>force-dynamic:</strong> <code>/api/pipeline-status</code> must export <code>dynamic = "force-dynamic"</code> since it reads from Neon on every request.</li>
+  <li><strong>Incident history:</strong> A stale branch in the Claude OS repo was incorrectly set as default branch, causing all 3 pipelines (including chess) to fail daily. Fixed 2026-05-24. If pipelines show phantom failures, check GitHub Actions branch configuration first.</li>
+</ul>
+
+</body>
+</html>
