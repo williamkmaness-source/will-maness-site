@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Lichess user API response shapes (partial — only what we display).
+type BroadcastPlayer = {
+  name: string;
+  title?: string;
+  rating?: number;
+  fideId?: number;
+  fed?: string;
+};
+
 type LichessPerf = {
   games: number;
   rating: number;
@@ -23,14 +30,6 @@ type LichessUser = {
   };
 };
 
-// Lichess tournament/results NDJSON line shape.
-type TournamentResult = {
-  rank?: number;
-  score?: number;
-  perf?: { glicko?: { rating?: number } };
-  tournament?: { id?: string; fullName?: string; slug?: string };
-};
-
 const DISPLAY_VARIANTS: Array<{ key: keyof LichessUser['perfs']; label: string }> = [
   { key: 'classical', label: 'Classical' },
   { key: 'rapid', label: 'Rapid' },
@@ -38,69 +37,130 @@ const DISPLAY_VARIANTS: Array<{ key: keyof LichessUser['perfs']; label: string }
   { key: 'bullet', label: 'Bullet' },
 ];
 
-// Module-level session cache to avoid redundant API calls for the same player.
-const userCache = new Map<string, LichessUser | null>();
-const resultsCache = new Map<string, TournamentResult[]>();
+type TournamentResult = {
+  id: string;
+  fullName: string;
+  nbGames: number;
+  score: number;
+  rank: number;
+  perf?: { key: string; name: string };
+  tourRating?: number;
+};
 
-async function fetchUser(username: string): Promise<LichessUser | null> {
-  const key = username.toLowerCase();
-  if (userCache.has(key)) return userCache.get(key)!;
+const broadcastCache = new Map<string, BroadcastPlayer[]>();
+const lichessCache = new Map<string, LichessUser | null>();
+const tournamentResultsCache = new Map<string, TournamentResult[]>();
 
-  try {
-    const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(key)}`);
-    if (!res.ok) { userCache.set(key, null); return null; }
-    const data = (await res.json()) as LichessUser;
-    userCache.set(key, data);
-    return data;
-  } catch {
-    userCache.set(key, null);
-    return null;
-  }
-}
-
-async function fetchResults(username: string): Promise<TournamentResult[]> {
-  const key = username.toLowerCase();
-  if (resultsCache.has(key)) return resultsCache.get(key)!;
+async function fetchBroadcastPlayers(roundId: string): Promise<BroadcastPlayer[]> {
+  if (broadcastCache.has(roundId)) return broadcastCache.get(roundId)!;
 
   try {
-    const res = await fetch(
-      `https://lichess.org/api/user/${encodeURIComponent(key)}/tournament/results?nb=10`,
-    );
-    if (!res.ok) { resultsCache.set(key, []); return []; }
-    const text = await res.text();
-    const rows = text.split('\n').filter(Boolean).map((l) => {
-      try { return JSON.parse(l) as TournamentResult; } catch { return null; }
-    }).filter((r): r is TournamentResult => r !== null);
-    resultsCache.set(key, rows);
-    return rows;
+    const res = await fetch(`https://lichess.org/api/broadcast/-/-/${roundId}`);
+    if (!res.ok) { broadcastCache.set(roundId, []); return []; }
+    const data = await res.json();
+    const games: Array<{ players?: BroadcastPlayer[] }> = data.games ?? [];
+    const players: BroadcastPlayer[] = [];
+    const seen = new Set<string>();
+    for (const game of games) {
+      for (const p of game.players ?? []) {
+        if (p.name && !seen.has(p.name)) {
+          seen.add(p.name);
+          players.push(p);
+        }
+      }
+    }
+    broadcastCache.set(roundId, players);
+    return players;
   } catch {
-    resultsCache.set(key, []);
+    broadcastCache.set(roundId, []);
     return [];
   }
 }
 
-// Derive a Lichess username from the display name shown in the broadcast.
-// Broadcasts use either the real Lichess username or the player's real name.
-// We try the raw string (spaces stripped) and fall back to just the name as-is.
-function deriveLichessUsername(displayName: string): string {
-  return displayName.replace(/\s+/g, '').toLowerCase();
+function findBroadcastPlayer(players: BroadcastPlayer[], displayName: string): BroadcastPlayer | null {
+  return players.find((p) => p.name === displayName) ?? null;
+}
+
+async function fetchTournamentResults(username: string): Promise<TournamentResult[]> {
+  const key = username.toLowerCase();
+  if (tournamentResultsCache.has(key)) return tournamentResultsCache.get(key)!;
+
+  try {
+    const res = await fetch(
+      `https://lichess.org/api/user/${encodeURIComponent(key)}/tournament/results?nb=10`,
+      { headers: { Accept: 'application/x-ndjson' } },
+    );
+    if (!res.ok) { tournamentResultsCache.set(key, []); return []; }
+    const text = await res.text();
+    const results: TournamentResult[] = text
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => { try { return JSON.parse(line) as TournamentResult; } catch { return null; } })
+      .filter((r): r is TournamentResult => r !== null);
+    tournamentResultsCache.set(key, results);
+    return results;
+  } catch {
+    tournamentResultsCache.set(key, []);
+    return [];
+  }
+}
+
+async function fetchLichessUser(username: string): Promise<LichessUser | null> {
+  const key = username.toLowerCase();
+  if (lichessCache.has(key)) return lichessCache.get(key)!;
+
+  try {
+    const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(key)}`);
+    if (!res.ok) { lichessCache.set(key, null); return null; }
+    const data = (await res.json()) as LichessUser;
+    lichessCache.set(key, data);
+    return data;
+  } catch {
+    lichessCache.set(key, null);
+    return null;
+  }
 }
 
 interface Props {
   displayName: string;
+  roundId?: string | null;
   onClose: () => void;
 }
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
 
-export function PlayerProfile({ displayName, onClose }: Props) {
+function formatPlayerName(displayName: string): string {
+  const parts = displayName.split(',').map((s) => s.trim());
+  if (parts.length === 2) return `${parts[1]} ${parts[0]}`;
+  return displayName;
+}
+
+const FLAG_EMOJI: Record<string, string> = {
+  NOR: '\u{1F1F3}\u{1F1F4}', USA: '\u{1F1FA}\u{1F1F8}', IND: '\u{1F1EE}\u{1F1F3}',
+  FRA: '\u{1F1EB}\u{1F1F7}', CHN: '\u{1F1E8}\u{1F1F3}', RUS: '\u{1F1F7}\u{1F1FA}',
+  GER: '\u{1F1E9}\u{1F1EA}', AZE: '\u{1F1E6}\u{1F1FF}', UZB: '\u{1F1FA}\u{1F1FF}',
+  ARM: '\u{1F1E6}\u{1F1F2}', POL: '\u{1F1F5}\u{1F1F1}', NED: '\u{1F1F3}\u{1F1F1}',
+  ESP: '\u{1F1EA}\u{1F1F8}', HUN: '\u{1F1ED}\u{1F1FA}', IRN: '\u{1F1EE}\u{1F1F7}',
+  CZE: '\u{1F1E8}\u{1F1FF}', SRB: '\u{1F1F7}\u{1F1F8}', ROU: '\u{1F1F7}\u{1F1F4}',
+  UKR: '\u{1F1FA}\u{1F1E6}', GEO: '\u{1F1EC}\u{1F1EA}', BRA: '\u{1F1E7}\u{1F1F7}',
+  ARG: '\u{1F1E6}\u{1F1F7}', CUB: '\u{1F1E8}\u{1F1FA}', AUS: '\u{1F1E6}\u{1F1FA}',
+  CAN: '\u{1F1E8}\u{1F1E6}', ISR: '\u{1F1EE}\u{1F1F1}', TUR: '\u{1F1F9}\u{1F1F7}',
+  ITA: '\u{1F1EE}\u{1F1F9}', PER: '\u{1F1F5}\u{1F1EA}', PHI: '\u{1F1F5}\u{1F1ED}',
+  VIE: '\u{1F1FB}\u{1F1F3}', KOR: '\u{1F1F0}\u{1F1F7}', JPN: '\u{1F1EF}\u{1F1F5}',
+  MGL: '\u{1F1F2}\u{1F1F3}', KAZ: '\u{1F1F0}\u{1F1FF}', SWE: '\u{1F1F8}\u{1F1EA}',
+  FIN: '\u{1F1EB}\u{1F1EE}', DEN: '\u{1F1E9}\u{1F1F0}', BEL: '\u{1F1E7}\u{1F1EA}',
+  SUI: '\u{1F1E8}\u{1F1ED}', AUT: '\u{1F1E6}\u{1F1F9}', POR: '\u{1F1F5}\u{1F1F9}',
+  GRE: '\u{1F1EC}\u{1F1F7}', BUL: '\u{1F1E7}\u{1F1EC}', CRO: '\u{1F1ED}\u{1F1F7}',
+  SVK: '\u{1F1F8}\u{1F1F0}', SVN: '\u{1F1F8}\u{1F1EE}', ENG: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',
+};
+
+export function PlayerProfile({ displayName, roundId, onClose }: Props) {
   const [status, setStatus] = useState<Status>('loading');
-  const [user, setUser] = useState<LichessUser | null>(null);
-  const [results, setResults] = useState<TournamentResult[]>([]);
+  const [broadcastPlayer, setBroadcastPlayer] = useState<BroadcastPlayer | null>(null);
+  const [lichessUser, setLichessUser] = useState<LichessUser | null>(null);
+  const [tournamentResults, setTournamentResults] = useState<TournamentResult[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  const username = deriveLichessUsername(displayName);
 
   useEffect(() => {
     closeButtonRef.current?.focus();
@@ -110,18 +170,42 @@ export function PlayerProfile({ displayName, onClose }: Props) {
     setStatus('loading');
     let cancelled = false;
 
-    Promise.all([fetchUser(username), fetchResults(username)]).then(([u, r]) => {
-      if (cancelled) return;
-      if (u === null) { setStatus('not-found'); return; }
-      setUser(u);
-      setResults(r);
-      setStatus('ready');
-    }).catch(() => {
-      if (!cancelled) setStatus('error');
-    });
+    async function loadProfile() {
+      let bp: BroadcastPlayer | null = null;
 
+      if (roundId) {
+        const players = await fetchBroadcastPlayers(roundId);
+        bp = findBroadcastPlayer(players, displayName);
+      }
+
+      if (cancelled) return;
+
+      if (bp) {
+        setBroadcastPlayer(bp);
+        setStatus('ready');
+        fetchLichessUser(displayName.replace(/[\s,]+/g, '').toLowerCase()).then((u) => {
+          if (!cancelled && u) {
+            setLichessUser(u);
+            fetchTournamentResults(u.id).then((r) => { if (!cancelled) setTournamentResults(r); }).catch(() => {});
+          }
+        }).catch(() => {});
+      } else {
+        const username = displayName.replace(/[\s,]+/g, '').toLowerCase();
+        const u = await fetchLichessUser(username);
+        if (cancelled) return;
+        if (u) {
+          setLichessUser(u);
+          setStatus('ready');
+          fetchTournamentResults(u.id).then((r) => { if (!cancelled) setTournamentResults(r); }).catch(() => {});
+        } else {
+          setStatus('not-found');
+        }
+      }
+    }
+
+    loadProfile();
     return () => { cancelled = true; };
-  }, [username]);
+  }, [displayName, roundId]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -154,11 +238,14 @@ export function PlayerProfile({ displayName, onClose }: Props) {
     return () => panel.removeEventListener('keydown', trapFocus);
   }, []);
 
+  const readableName = formatPlayerName(displayName);
+  const hasBroadcast = broadcastPlayer != null;
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${displayName} — Lichess profile`}
+      aria-label={`${readableName} — player profile`}
       className="fixed inset-0 z-[60] flex items-start justify-end sm:p-[16px]"
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
@@ -167,14 +254,13 @@ export function PlayerProfile({ displayName, onClose }: Props) {
         ref={panelRef}
         className="relative z-10 bg-bg border-l border-line sm:border sm:rounded-[6px] sm:shadow-xl w-full sm:w-[340px] h-full sm:h-auto sm:max-h-[85vh] overflow-y-auto p-[20px] sm:p-[24px] mt-0 sm:mt-[24px]"
       >
-        {/* Header */}
         <div className="flex items-start justify-between mb-[16px]">
           <div>
             <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[2px]">
-              Lichess profile
+              Player profile
             </p>
             <p className="font-sans text-[16px] font-medium text-ink leading-[1.2]">
-              {displayName}
+              {readableName}
             </p>
           </div>
           <button
@@ -183,22 +269,21 @@ export function PlayerProfile({ displayName, onClose }: Props) {
             aria-label="Close player profile"
             className="font-sans text-[20px] leading-none text-muted hover:text-ink transition-colors duration-[100ms] p-[8px] -m-[8px] shrink-0 ml-[8px]"
           >
-            ×
+            &times;
           </button>
         </div>
 
         {status === 'loading' && (
           <div className="py-[32px] flex justify-center">
             <p className="font-mono text-[12px] text-hint tracking-[0.04em] animate-pulse">
-              Loading…
+              Loading&hellip;
             </p>
           </div>
         )}
 
         {status === 'not-found' && (
           <p className="font-sans text-[14px] text-muted">
-            Profile not found on Lichess for{' '}
-            <span className="font-mono">{username}</span>.
+            No profile data available for this player.
           </p>
         )}
 
@@ -208,96 +293,140 @@ export function PlayerProfile({ displayName, onClose }: Props) {
           </p>
         )}
 
-        {status === 'ready' && user && (
+        {status === 'ready' && (
           <>
-            {/* Title badge + username */}
-            <div className="flex items-center gap-[8px] mb-[20px]">
-              {user.title && (
-                <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
-                  {user.title}
-                </span>
-              )}
-              <a
-                href={`https://lichess.org/@/${user.username}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-[12px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
-              >
-                @{user.username}
-              </a>
-            </div>
-
-            {/* Ratings */}
-            <div className="mb-[24px]">
-              <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
-                Ratings
-              </p>
-              <table className="w-full border-collapse">
-                <tbody>
-                  {DISPLAY_VARIANTS.map(({ key, label }) => {
-                    const perf = user.perfs[key];
-                    if (!perf || perf.games === 0) return null;
-                    return (
-                      <tr key={key} className="border-b border-line last:border-0">
-                        <td className="py-[7px] font-sans text-[13px] text-muted">{label}</td>
-                        <td className="py-[7px] text-right font-mono text-[13px] text-ink tabular-nums">
-                          {perf.rating}
-                          {perf.prov && (
-                            <span className="text-hint ml-[2px]">?</span>
-                          )}
-                        </td>
-                        <td className="py-[7px] text-right font-mono text-[11px] text-hint pl-[8px] tabular-nums w-[48px]">
-                          ±{perf.rd}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Recent tournament results */}
-            {results.length > 0 && (
-              <div>
-                <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
-                  Recent tournaments
-                </p>
-                <div className="flex flex-col gap-[10px]">
-                  {results.map((r, i) => {
-                    const name = r.tournament?.fullName ?? 'Unknown tournament';
-                    const slug = r.tournament?.slug;
-                    const id = r.tournament?.id;
-                    const perfRating = r.perf?.glicko?.rating;
-                    const href = slug ? `https://lichess.org/tournament/${slug}` : id ? `https://lichess.org/tournament/${id}` : null;
-
-                    return (
-                      <div key={i} className="border-b border-line last:border-0 pb-[10px] last:pb-0">
-                        {href ? (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-sans text-[13px] text-ink font-medium hover:underline underline-offset-2 leading-[1.3] block"
-                          >
-                            {name}
-                          </a>
-                        ) : (
-                          <p className="font-sans text-[13px] text-ink font-medium leading-[1.3]">{name}</p>
-                        )}
-                        <div className="flex items-center gap-[12px] mt-[3px] font-mono text-[11px] text-muted">
-                          {r.rank != null && <span>#{r.rank}</span>}
-                          {r.score != null && <span>{r.score}pts</span>}
-                          {perfRating != null && <span>Perf {perfRating}</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            {hasBroadcast && (
+              <div className="flex items-center gap-[8px] mb-[20px] flex-wrap">
+                {broadcastPlayer.title && (
+                  <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
+                    {broadcastPlayer.title}
+                  </span>
+                )}
+                {broadcastPlayer.fed && (
+                  <span className="font-mono text-[11px] text-muted tracking-[0.04em]">
+                    {FLAG_EMOJI[broadcastPlayer.fed] ? `${FLAG_EMOJI[broadcastPlayer.fed]} ` : ''}{broadcastPlayer.fed}
+                  </span>
+                )}
+                {broadcastPlayer.fideId && (
+                  <a
+                    href={`https://ratings.fide.com/profile/${broadcastPlayer.fideId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[11px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
+                  >
+                    FIDE profile
+                  </a>
+                )}
               </div>
             )}
 
-            {results.length === 0 && (
-              <p className="font-sans text-[13px] text-muted">No recent tournament results.</p>
+            {hasBroadcast && broadcastPlayer.rating && (
+              <div className="mb-[24px]">
+                <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
+                  FIDE Rating
+                </p>
+                <p className="font-mono text-[28px] font-medium text-ink tabular-nums leading-[1]">
+                  {broadcastPlayer.rating}
+                </p>
+              </div>
+            )}
+
+            {lichessUser && (
+              <div className="mb-[24px]">
+                <div className="flex items-center gap-[8px] mb-[10px]">
+                  <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase">
+                    Lichess Ratings
+                  </p>
+                  <a
+                    href={`https://lichess.org/@/${lichessUser.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[11px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
+                  >
+                    @{lichessUser.username}
+                  </a>
+                </div>
+                <table className="w-full border-collapse">
+                  <tbody>
+                    {DISPLAY_VARIANTS.map(({ key, label }) => {
+                      const perf = lichessUser.perfs[key];
+                      if (!perf || perf.games === 0) return null;
+                      return (
+                        <tr key={key} className="border-b border-line last:border-0">
+                          <td className="py-[7px] font-sans text-[13px] text-muted">{label}</td>
+                          <td className="py-[7px] text-right font-mono text-[13px] text-ink tabular-nums">
+                            {perf.rating}
+                            {perf.prov && (
+                              <span className="text-hint ml-[2px]">?</span>
+                            )}
+                          </td>
+                          <td className="py-[7px] text-right font-mono text-[11px] text-hint pl-[8px] tabular-nums w-[48px]">
+                            &plusmn;{perf.rd}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!hasBroadcast && lichessUser && (
+              <div className="flex items-center gap-[8px] mb-[20px]">
+                {lichessUser.title && (
+                  <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
+                    {lichessUser.title}
+                  </span>
+                )}
+                <a
+                  href={`https://lichess.org/@/${lichessUser.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[12px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
+                >
+                  @{lichessUser.username}
+                </a>
+              </div>
+            )}
+
+            {tournamentResults.length > 0 && (
+              <div>
+                <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
+                  Recent Tournaments
+                </p>
+                <table className="w-full border-collapse">
+                  <tbody>
+                    {tournamentResults.map((t) => (
+                      <tr key={t.id} className="border-b border-line last:border-0">
+                        <td className="py-[7px] pr-[8px]">
+                          <a
+                            href={`https://lichess.org/tournament/${t.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-sans text-[12px] text-ink hover:underline underline-offset-2 line-clamp-1"
+                          >
+                            {t.fullName}
+                          </a>
+                          {t.perf && (
+                            <span className="font-mono text-[10px] text-hint ml-[0px] block">{t.perf.name}</span>
+                          )}
+                        </td>
+                        <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                          #{t.rank}
+                        </td>
+                        <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                          {t.score}pt{t.score !== 1 ? 's' : ''}
+                        </td>
+                        {t.tourRating != null && (
+                          <td className="py-[7px] text-right font-mono text-[12px] text-hint tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                            {t.tourRating}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </>
         )}
