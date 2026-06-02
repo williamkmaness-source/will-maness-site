@@ -153,6 +153,7 @@ export function ChessTrackerInner() {
       {selectedPlayer && (
         <PlayerProfile
           displayName={selectedPlayer}
+          roundIds={state.playedRoundIds}
           onClose={closeProfile}
         />
       )}

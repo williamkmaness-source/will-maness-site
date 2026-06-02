@@ -77,6 +77,10 @@ export function useTournament(): UseTournamentReturn {
             isLive: live,
           }));
 
+          const playedRoundIds = allRounds
+            .filter((r) => r.finished || r.ongoing)
+            .map((r) => r.id);
+
           dispatch({
             type: 'FETCH_SUCCESS',
             isLive,
@@ -84,6 +88,7 @@ export function useTournament(): UseTournamentReturn {
             tournamentId,
             roundName,
             activeRoundId,
+            playedRoundIds,
             pollingInterval: broadcast.pollingInterval,
             standings,
             pairings,
