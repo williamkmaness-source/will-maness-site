@@ -298,6 +298,12 @@
 <div class="callout warning">
   <strong>Neon API convention:</strong> The ingest route uses tagged template literals (<code>sql\`...\`</code>). For any parameterized queries you add, use <code>sql.query(query, params)</code> — the old <code>sql(query, params)</code> was dropped in Neon v1.1.
 </div>
+<div class="callout warning">
+  <strong>SYNOPTIC_API_KEY must be a token, not the raw API key.</strong> If you see the error "Be sure to use a token generated from your API Key," the wrong value is stored. Generate tokens at <code>developers.synopticdata.com</code>. The raw API key is accepted silently but returns no data.
+</div>
+<div class="callout warning">
+  <strong>Env vars were historically set to "False" as placeholders.</strong> Both <code>FIRMS_API_KEY</code> and <code>SYNOPTIC_API_KEY</code> were placeholder strings for the entire early lifetime of the project — silent pipeline failures ran undetected until 2026-05-26. Always verify env var values are real keys before debugging a pipeline.
+</div>
 <ul>
   <li><strong>Scoring constants are named:</strong> Never use magic numbers. All thresholds are exported constants in <code>ember-scoring.ts</code> — <code>FRP_WEIGHT</code>, <code>WATCH_THRESHOLD</code>, <code>MAX_DANGER_WIND_MPH</code>, etc.</li>
   <li><strong>Confidence filtering:</strong> Low-confidence VIIRS detections (<code>'l'</code>) are dropped before clustering. This is a product decision — false alarms damage trust more than missed fires. Don't change without discussing.</li>
@@ -305,6 +311,7 @@
   <li><strong>FIRMS bounding box:</strong> Defined as <code>LAKE_TAHOE_BASIN_BBOX</code> in <code>firms-client.ts</code>. Expanding coverage means changing this constant and verifying Synoptic station coverage for the new area.</li>
   <li><strong>Weather fetch is parallel:</strong> Each cluster's weather is fetched concurrently via <code>Promise.all</code>. Individual failures are logged but don't fail the whole run.</li>
   <li><strong>pipeline_runs is required:</strong> The pipeline dashboard shows "Unknown" if ember-ingest doesn't upsert <code>pipeline_runs</code>. Never remove the upsert step.</li>
+  <li><strong>Synoptic valid variable names:</strong> <code>wind_speed</code>, <code>wind_direction</code>, <code>wind_gust</code>, <code>relative_humidity</code>, <code>air_temp</code>, <code>precip_accum</code>. Parsed from obs keys <code>wind_gust_value_1</code> and <code>precip_accum_value_1</code>. The variable name <code>precip_accum_24h</code> is NOT valid and will silently return no data.</li>
 </ul>
 
 </body>
