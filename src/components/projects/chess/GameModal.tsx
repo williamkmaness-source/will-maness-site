@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { fetchGamePgn, fetchGamePgnLive, DEFAULT_INTERVAL } from './BroadcastService';
 import { ChessBoard } from './ChessBoard';
+import type { QualityDot } from './ChessBoard';
 import { ReplayControls } from './ReplayControls';
 import { playPieceSound } from '@/lib/playPieceSound';
 import type { GameMoveData, SelectedGame } from './types';
+import { fetchCloudEval } from '@/lib/chess/cloudEval';
+import { classifyMove } from '@/lib/chess/moveQuality';
+import { Chess } from 'chess.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -55,6 +59,7 @@ function PieceIcon({ piece }: { piece: string }) {
 interface Props {
   game: SelectedGame;
   onClose: () => void;
+  onPlayerClick?: (name: string) => void;
 }
 
 type Status = 'loading' | 'ready' | 'error';
@@ -209,12 +214,13 @@ function MoveList({
   );
 }
 
-export function GameModal({ game, onClose }: Props) {
+export function GameModal({ game, onClose, onPlayerClick }: Props) {
   const [status, setStatus] = useState<Status>('loading');
   const [moves, setMoves] = useState<GameMoveData[]>([]);
   const [moveIndex, setMoveIndex] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [newMoveCount, setNewMoveCount] = useState(0);
+  const [qualityDot, setQualityDot] = useState<QualityDot | null>(null);
   const returnFocusRef = useRef<Element | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -308,6 +314,57 @@ export function GameModal({ game, onClose }: Props) {
     return () => { aborted = true; controller.abort(); clearTimeout(timerId); };
   }, [game.isLive, game.roundId, game.gameId, status]);
 
+  // Move quality: fetch cloud eval for the FEN before the current move, then classify.
+  useEffect(() => {
+    if (moveIndex === 0 || status !== 'ready') { setQualityDot(null); return; }
+    const currentMove = moves[moveIndex - 1];
+    if (!currentMove?.san) { setQualityDot(null); return; }
+
+    const fenBefore = moveIndex === 1 ? START_FEN : (moves[moveIndex - 2]?.fen ?? START_FEN);
+    const fenAfter = currentMove.fen;
+    const san = currentMove.san;
+
+    // Derive the landing square from the SAN using chess.js.
+    let landingSquare: string | null = null;
+    try {
+      const chess = new Chess(fenBefore);
+      const move = chess.move(san);
+      landingSquare = move.to;
+    } catch {
+      setQualityDot(null);
+      return;
+    }
+    if (!landingSquare) { setQualityDot(null); return; }
+
+    let cancelled = false;
+
+    // Show a pulsing placeholder while the eval is in flight.
+    setQualityDot({ quality: 'Good', square: landingSquare, isLoading: true });
+
+    setTimeout(() => {
+      if (cancelled) return;
+      fetchCloudEval(fenBefore).then((cloud) => {
+        if (cancelled) return;
+        if (!cloud) { setQualityDot(null); return; }
+
+        const quality = classifyMove({
+          cloud,
+          fenBefore,
+          fenAfter,
+          san,
+          moveIndex,
+          pgnEvalAfter: currentMove.eval,
+        });
+
+        setQualityDot(quality && landingSquare ? { quality, square: landingSquare } : null);
+      }).catch(() => {
+        if (!cancelled) setQualityDot(null);
+      });
+    }, 120); // brief delay so the dot "arrives" after the move animation
+
+    return () => { cancelled = true; };
+  }, [moveIndex, moves, status]);
+
   const goFirst = useCallback(() => setMoveIndex(0), []);
   const goPrev  = useCallback(() => setMoveIndex((i) => Math.max(0, i - 1)), []);
   const goNext  = useCallback(() => setMoveIndex((i) => Math.min(moves.length, i + 1)), [moves.length]);
@@ -383,7 +440,16 @@ export function GameModal({ game, onClose }: Props) {
             {/* Black player row */}
             <div className="flex items-center justify-between mb-[4px]">
               <div>
-                <p className="font-sans text-[14px] font-medium text-ink">{game.black}</p>
+                {onPlayerClick ? (
+                  <button
+                    onClick={() => onPlayerClick(game.black)}
+                    className="font-sans text-[14px] font-medium text-ink hover:underline underline-offset-2 text-left"
+                  >
+                    {game.black}
+                  </button>
+                ) : (
+                  <p className="font-sans text-[14px] font-medium text-ink">{game.black}</p>
+                )}
                 <CapturedPieces pieces={byBlack} advantage={delta < 0 ? -delta : 0} />
               </div>
               {blackClock && (
@@ -392,13 +458,22 @@ export function GameModal({ game, onClose }: Props) {
             </div>
 
             {/* Board */}
-            <ChessBoard fen={fen} />
+            <ChessBoard fen={fen} qualityDot={qualityDot} />
 
             {/* White player row */}
             <div className="flex items-center justify-between mt-[4px]">
               <div>
                 <CapturedPieces pieces={byWhite} advantage={delta > 0 ? delta : 0} />
-                <p className="font-sans text-[14px] font-medium text-ink mt-[2px]">{game.white}</p>
+                {onPlayerClick ? (
+                  <button
+                    onClick={() => onPlayerClick(game.white)}
+                    className="font-sans text-[14px] font-medium text-ink mt-[2px] hover:underline underline-offset-2 text-left block"
+                  >
+                    {game.white}
+                  </button>
+                ) : (
+                  <p className="font-sans text-[14px] font-medium text-ink mt-[2px]">{game.white}</p>
+                )}
               </div>
               {whiteClock && (
                 <span className="font-mono text-[13px] text-muted tabular-nums">{whiteClock}</span>

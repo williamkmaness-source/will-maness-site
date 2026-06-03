@@ -6,9 +6,10 @@ interface Props {
   pairings: GamePairing[];
   activeRoundId: string | null;
   onSelectGame: (game: SelectedGame) => void;
+  onPlayerClick?: (name: string) => void;
 }
 
-export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) {
+export function PairingsTable({ pairings, activeRoundId, onSelectGame, onPlayerClick }: Props) {
   if (!pairings.length) return null;
 
   return (
@@ -52,7 +53,16 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
                 ].join(' ')}
               >
                 <td className="font-sans text-[14px] text-ink py-[10px] pr-[12px] truncate max-w-0">
-                  {pairing.white}
+                  {onPlayerClick ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onPlayerClick(pairing.white); }}
+                      className="hover:underline underline-offset-2 text-left w-full truncate block"
+                    >
+                      {pairing.white}
+                    </button>
+                  ) : (
+                    pairing.white
+                  )}
                 </td>
                 <td className="text-center py-[10px] px-[12px] w-[60px]">
                   {inProgress ? (
@@ -65,7 +75,16 @@ export function PairingsTable({ pairings, activeRoundId, onSelectGame }: Props) 
                   )}
                 </td>
                 <td className="font-sans text-[14px] text-ink text-right py-[10px] pl-[12px] truncate max-w-0">
-                  {pairing.black}
+                  {onPlayerClick ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onPlayerClick(pairing.black); }}
+                      className="hover:underline underline-offset-2 text-right w-full truncate block"
+                    >
+                      {pairing.black}
+                    </button>
+                  ) : (
+                    pairing.black
+                  )}
                 </td>
               </tr>
             );

@@ -1,9 +1,11 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import { useTournament } from './useTournament';
 import { TournamentStandings } from './TournamentStandings';
 import { PairingsTable } from './PairingsTable';
 import { GameModal } from './GameModal';
+import { PlayerProfile } from './PlayerProfile';
 import type { AvailableTournament } from './types';
 
 function formatDate(ms: number | null): string | null {
@@ -51,6 +53,10 @@ function TournamentDropdown({
 
 export function ChessTrackerInner() {
   const { state, retry, selectGame, closeGame, selectTournament } = useTournament();
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+
+  const openProfile = useCallback((name: string) => setSelectedPlayer(name), []);
+  const closeProfile = useCallback(() => setSelectedPlayer(null), []);
 
   if (state.phase === 'loading') {
     return (
@@ -126,16 +132,30 @@ export function ChessTrackerInner() {
         tournamentName={state.tournamentName}
         isLive={state.isLive}
         format={state.format}
+        onPlayerClick={openProfile}
       />
 
       <PairingsTable
         pairings={state.pairings}
         activeRoundId={state.activeRoundId}
         onSelectGame={selectGame}
+        onPlayerClick={openProfile}
       />
 
       {state.selectedGame && (
-        <GameModal game={state.selectedGame} onClose={closeGame} />
+        <GameModal
+          game={state.selectedGame}
+          onClose={closeGame}
+          onPlayerClick={openProfile}
+        />
+      )}
+
+      {selectedPlayer && (
+        <PlayerProfile
+          displayName={selectedPlayer}
+          roundIds={state.playedRoundIds}
+          onClose={closeProfile}
+        />
       )}
 
       {!state.isLive && state.upcoming && (
