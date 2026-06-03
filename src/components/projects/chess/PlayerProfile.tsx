@@ -417,11 +417,9 @@ export function PlayerProfile({ displayName, roundId, onClose }: Props) {
                         <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
                           {t.score}pt{t.score !== 1 ? 's' : ''}
                         </td>
-                        {t.tourRating != null && (
-                          <td className="py-[7px] text-right font-mono text-[12px] text-hint tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
-                            {t.tourRating}
-                          </td>
-                        )}
+                        <td className="py-[7px] text-right font-mono text-[12px] text-hint tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                          {t.tourRating ?? ''}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
