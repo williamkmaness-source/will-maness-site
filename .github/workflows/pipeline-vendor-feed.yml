@@ -20,6 +20,10 @@ jobs:
         run: pnpm tsx scripts/migrate-vendor-feed.ts
         env:
           POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+      - name: Run embeddings migration
+        run: pnpm tsx scripts/migrate-vendor-feed-embeddings.ts
+        env:
+          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
       - name: Run scraper
         run: pnpm tsx scripts/pipeline-vendor-feed.ts scrape
         env:
@@ -29,3 +33,9 @@ jobs:
         env:
           POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Run embedder
+        run: pnpm tsx scripts/pipeline-vendor-feed.ts embed
+        env:
+          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+          UPSTASH_VECTOR_REST_URL: ${{ secrets.UPSTASH_VECTOR_REST_URL }}
+          UPSTASH_VECTOR_REST_TOKEN: ${{ secrets.UPSTASH_VECTOR_REST_TOKEN }}
