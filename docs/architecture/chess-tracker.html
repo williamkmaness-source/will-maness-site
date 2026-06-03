@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Chess Tournament Tracker</title>
+<style>
+  :root{--bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:900px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:var(--accent)}
+  p{margin-bottom:12px}
+  a{color:var(--accent)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--bg-soft);border:1px solid var(--line-strong);margin-left:8px;vertical-align:middle}
+  .badge.active{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px}
+  th{text-align:left;padding:8px 12px;background:var(--bg-soft);border-bottom:2px solid var(--line-strong);font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:var(--bg-soft);padding:2px 5px;border-radius:3px}
+  pre{background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:6px;padding:16px;font-size:13px;font-family:'SF Mono',Menlo,Consolas,monospace;overflow-x:auto;margin-bottom:16px;white-space:pre}
+  ul{padding-left:20px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .callout{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;margin-bottom:16px;font-size:14px}
+  .warning{border-left-color:var(--clay)}
+  nav{margin-bottom:32px;font-size:13px}
+  nav a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>Chess Tournament Tracker <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> chess-tracker &nbsp;·&nbsp;
+  <strong>Live:</strong> <a href="https://willmaness.com/work/chess" target="_blank">willmaness.com/work/chess</a> &nbsp;·&nbsp;
+  <strong>Route:</strong> <code>/work/chess</code> (embedded via MDX) &nbsp;·&nbsp;
+  <strong>No database — fully client-side</strong>
+</p>
+
+<h2>Overview</h2>
+<p>A live chess tournament tracker embedded at <code>/work/chess</code>. Auto-discovers the current top Lichess Broadcast, displays round-robin standings and pairings, and lets visitors replay completed games move-by-move on an interactive board. No sign-in, no config, no staleness — 60-second polling keeps data current.</p>
+<p>All data is fetched client-side from the public Lichess Broadcasts API. No backend, no database, no server-side state. The entire feature is local to the route — no Zustand, no Context API.</p>
+
+<h2>Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Data source</td><td>Lichess Broadcasts API</td><td>Public; no auth. Base URL: <code>https://lichess.org/api/broadcast</code></td></tr>
+  <tr><td>Board rendering</td><td>react-chessboard</td><td>Stateless — accepts FEN prop</td></tr>
+  <tr><td>PGN parsing</td><td>chess.js</td><td>Move list, FEN generation at each step, move validation</td></tr>
+  <tr><td>State management</td><td><code>useReducer</code></td><td>Single reducer at the page level; no external store</td></tr>
+  <tr><td>Polling</td><td>Custom interval in <code>useTournament</code></td><td>60s default; 5-min backoff when rate-limit quota &lt; 10</td></tr>
+</table>
+
+<h2>Architecture Diagram</h2>
+<pre>
+  Browser (client-side only — no server involvement)
+       │
+       ├─ useTournament hook (useReducer)
+       │      │
+       │      └─ BroadcastService
+       │             ├─ GET /api/broadcast?nb=10  → auto-select top active broadcast
+       │             ├─ GET /api/broadcast/{tournamentId}/{roundId}  → standings + pairings
+       │             └─ GET /api/broadcast/{roundId}.pgn  → lazy-fetched on game open
+       │
+       ├─ TournamentStandings  ← rank / name / points / W-D-L
+       ├─ PairingsTable        ← current round pairings; click → opens GameModal
+       └─ GameModal
+              ├─ ChessBoard  ← FEN-driven, stateless
+              └─ ReplayControls  ← prev/next/start/end + arrow key listener
+
+  Rate limit: reads X-RateLimit-Remaining on each response.
+  If remaining < 10, BroadcastService switches to 5-minute polling.
+  Last successful response kept in state — UI never blanks on failed refresh.
+</pre>
+
+<h2>Key Modules</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>src/components/projects/chess/BroadcastService.ts</code></td><td>All Lichess API calls — broadcast list, round data, PGN fetch. Rate-limit backoff. No React dependency.</td></tr>
+  <tr><td><code>src/components/projects/chess/reducer.ts</code></td><td>State machine — broadcast list, selected tournament, standings, selected game, loading/error states</td></tr>
+  <tr><td><code>src/components/projects/chess/useTournament.ts</code></td><td>Hook — wraps reducer, owns polling interval, exposes dispatch</td></tr>
+  <tr><td><code>src/components/projects/chess/TournamentStandings.tsx</code></td><td>Round-robin table; W/D/L columns hidden on mobile (&lt;sm); unsupported-format message</td></tr>
+  <tr><td><code>src/components/projects/chess/PairingsTable.tsx</code></td><td>Pairings list; completed games are clickable, unplayed are inert</td></tr>
+  <tr><td><code>src/components/projects/chess/GameModal.tsx</code></td><td>Modal overlay; full-screen on mobile; lazy PGN fetch on open; spinner + error states</td></tr>
+  <tr><td><code>src/components/projects/chess/ChessBoard.tsx</code></td><td>Thin react-chessboard wrapper; stateless FEN prop</td></tr>
+  <tr><td><code>src/components/projects/chess/ReplayControls.tsx</code></td><td>Prev/Next/Start/End; keyboard arrow listener; move index owned internally</td></tr>
+  <tr><td><code>src/components/projects/chess/types.ts</code></td><td>Shared TypeScript types</td></tr>
+</table>
+
+<h2>Lichess API Endpoints Used</h2>
+<table>
+  <tr><th>Endpoint</th><th>Purpose</th><th>Auth</th></tr>
+  <tr><td><code>GET /api/broadcast?nb=10</code></td><td>Fetch broadcast list, auto-select top active</td><td>None</td></tr>
+  <tr><td><code>GET /api/broadcast/{tournamentId}/{roundId}</code></td><td>Round standings + pairings</td><td>None</td></tr>
+  <tr><td><code>GET /api/broadcast/{roundId}.pgn</code></td><td>Game PGN for replay — lazy-fetched on modal open</td><td>None</td></tr>
+</table>
+
+<h2>Open Issues / Known Gaps</h2>
+<ul>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/107" target="_blank">#107</a> — Tournament dropdown for manual selection (filed 2026-05-23)</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/108" target="_blank">#108</a> — Piece-move sound on replay (filed 2026-05-23)</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/39" target="_blank">#39</a> — Move quality classification (Brilliant / Excellent / Mistake) via Lichess cloud eval</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/38" target="_blank">#38</a> — Player profile panel (ratings by variant, recent tournament results)</li>
+  <li>Swiss and knockout bracket formats not yet supported — unsupported-format message shown instead</li>
+</ul>
+
+<h2>Agent Notes</h2>
+<div class="callout warning">
+  <strong>Rate limit:</strong> Lichess enforces rate limits via <code>X-RateLimit-Remaining</code> and <code>X-RateLimit-Reset</code> headers. BroadcastService reads these and switches to 5-minute polling intervals when remaining &lt; 10. Don't bypass or remove this logic.
+</div>
+<div class="callout">
+  <strong>No backend:</strong> This feature has zero server-side code. All API calls go directly from the browser to <code>lichess.org</code>. There is no API route, no Neon table, no cron job.
+</div>
+<ul>
+  <li><strong>Broadcast selection:</strong> The tracker auto-selects the top active broadcast by tier (tier-4 floor, tier-5 preferred). The selection logic lives in BroadcastService — not configurable from the UI in MVP.</li>
+  <li><strong>PGN is lazy:</strong> PGN is not pre-fetched for all games. It's fetched when a user clicks a game row in PairingsTable. Cache by FEN/roundId within the session to avoid refetching.</li>
+  <li><strong>chess.js for move parsing:</strong> <code>chess.js</code> handles PGN → FEN conversion for each move. ReplayControls manages the move index internally; ChessBoard is purely FEN-driven.</li>
+  <li><strong>Format detection:</strong> If the broadcast format is not round-robin (e.g. Swiss), TournamentStandings renders an unsupported-format message. Don't try to render standings for unsupported formats.</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Boston 311 Equity Tracker</title>
+<style>
+  :root { --bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:900px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:var(--accent)}
+  h3{font-size:14px;font-weight:600;margin:20px 0 8px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)}
+  p{margin-bottom:12px}
+  a{color:var(--accent)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--bg-soft);border:1px solid var(--line-strong);margin-left:8px;vertical-align:middle}
+  .badge.active{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px}
+  th{text-align:left;padding:8px 12px;background:var(--bg-soft);border-bottom:2px solid var(--line-strong);font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:var(--bg-soft);padding:2px 5px;border-radius:3px}
+  pre{background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:6px;padding:16px;font-size:13px;font-family:'SF Mono',Menlo,Consolas,monospace;overflow-x:auto;margin-bottom:16px;white-space:pre}
+  ul{padding-left:20px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .callout{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;margin-bottom:16px;font-size:14px}
+  .warning{border-left-color:var(--clay)}
+  nav{margin-bottom:32px;font-size:13px}
+  nav a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>Boston 311 Equity Tracker <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> boston-311 &nbsp;·&nbsp;
+  <strong>Dashboard:</strong> <a href="https://willmaness.com/work/boston-civic-data" target="_blank">willmaness.com/work/boston-civic-data</a> &nbsp;·&nbsp;
+  <strong>Route:</strong> <code>/work/boston-civic-data</code> &nbsp;·&nbsp;
+  <strong>Repo:</strong> <a href="https://github.com/williamkmaness-source/will-maness-site" target="_blank">will-maness-site</a> (embedded)
+</p>
+
+<h2>Overview</h2>
+<p>An operational reallocation dashboard built on Boston's public 311 service request data. The dashboard answers: which neighborhoods wait longest for city services, by request type, and what does that gap cost in staff-hours? Framed as a staffing tool for department heads, not a complaint tracker.</p>
+<p>Data is sourced from the Open Boston CKAN portal (Analyze Boston) — public, no auth required. A nightly pipeline fetches new cases and upserts them into Neon Postgres. The dashboard reads from Neon and renders charts with Recharts.</p>
+<p>Historical backfill covers 2024-01-01 to present (95K+ rows as of 2026-05-18). New rows accumulate nightly.</p>
+
+<h2>Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Data source</td><td>Open Boston CKAN API (Analyze Boston)</td><td>Public; no auth. Per-year resource IDs for 2024, 2025, 2026.</td></tr>
+  <tr><td>Database</td><td>Neon Postgres</td><td><code>case_events</code>, <code>request_type_meta</code>, <code>pipeline_runs</code></td></tr>
+  <tr><td>Charts</td><td>Recharts</td><td>Bar charts, flow charts for neighborhood comparison</td></tr>
+  <tr><td>API</td><td>Next.js API Routes</td><td><code>/api/311-departments</code> — CKAN proxy + Neon logic</td></tr>
+  <tr><td>Backfill script</td><td><code>scripts/backfill-311.ts</code></td><td>One-time; safe to re-run (upserts on case_id)</td></tr>
+</table>
+
+<h2>Architecture Diagram</h2>
+<pre>
+  Nightly pipeline (script or future cron)
+         │
+         ├─ Fetch new cases from CKAN (paginated, 50K rows/page)
+         │   YEAR_RESOURCES: 2024, 2025, 2026 resource IDs
+         │   Retry: 3 attempts with exponential backoff (2s, 4s, 8s)
+         │   Timeout: 20s per page
+         │
+         ├─ prepareCaseEvent() → filters nulls, computes days_to_close
+         │
+         ├─ batchUpsertCaseEvents() → batches of 200 rows
+         │   ON CONFLICT (case_id) DO UPDATE
+         │
+         └─ pipeline_runs UPSERT (pipeline='311')
+
+  Browser  ──GET /work/boston-civic-data──→  Next.js page
+                │
+                └─ /api/311-departments  ──→  CKAN fetch (30-day window)
+                                          └─  Neon (request_type_meta)
+                                          └─  computeWindow() + mergeWindows()
+                                          └─  JSON response to client components
+</pre>
+
+<h2>Data Model</h2>
+<table>
+  <tr><th>Table</th><th>Key Columns</th><th>Notes</th></tr>
+  <tr><td><code>case_events</code></td><td>case_id (PK), neighborhood, request_type, open_date, close_date, days_to_close, on_time, sla_days</td><td>One row per 311 service request. Backfilled 2024+. Upserted nightly.</td></tr>
+  <tr><td><code>request_type_meta</code></td><td>request_type (PK), department, sla_target, include_in_dashboard</td><td><code>include_in_dashboard=false</code> hides a category from the staffing view</td></tr>
+  <tr><td><code>pipeline_runs</code></td><td>pipeline (PK), status, last_success_at, record_count, error</td><td>Shared with ember. '311' pipeline key.</td></tr>
+</table>
+
+<h2>External Integrations</h2>
+<table>
+  <tr><th>Service</th><th>Auth</th><th>Notes</th></tr>
+  <tr><td>Open Boston CKAN API</td><td>None</td><td>Base URL: <code>https://data.boston.gov/api/3/action/datastore_search_sql</code>. SQL injection protected: date params validated against ISO_DATE_RE regex before string interpolation.</td></tr>
+</table>
+
+<h2>Key Files</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>src/lib/boston-311.ts</code></td><td>CKAN fetch, pagination, aggregation (median, equity gap, YoY), case_event upsert helpers</td></tr>
+  <tr><td><code>src/lib/boston-311-flagging.ts</code></td><td>Statistical flagging logic for outlier neighborhoods</td></tr>
+  <tr><td><code>src/app/api/311-departments/route.ts</code></td><td>API route — fetches CKAN + Neon, returns aggregated JSON</td></tr>
+  <tr><td><code>src/components/projects/boston-civic-data/StaffingDashboard.tsx</code></td><td>Main dashboard component</td></tr>
+  <tr><td><code>src/components/projects/boston-civic-data/DepartmentCard.tsx</code></td><td>Per-department metric card</td></tr>
+  <tr><td><code>scripts/backfill-311.ts</code></td><td>Historical backfill script (2024-01-01 → today)</td></tr>
+  <tr><td><code>scripts/migrate-311-departments.ts</code></td><td>Schema migration — adds include_in_dashboard, reclassifies departments</td></tr>
+</table>
+
+<h2>Open Issues / Known Gaps</h2>
+<ul>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/150" target="_blank">#150</a> — Header/copy update for the reframed operational dashboard</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/151" target="_blank">#151</a> — Breakdown section improvements</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/20" target="_blank">#20</a> — TrendChart deferred (needs 2–4 weeks of nightly data accumulation)</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/58" target="_blank">#58</a> — Burndown forecasting (deferred: needs 8 weeks post-backfill data)</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/40" target="_blank">#40</a> — Jupyter notebook for dataset exploration (local dev tool)</li>
+  <li>No dedicated nightly cron — pipeline script currently run manually or via CI (not yet wired to Vercel Cron)</li>
+</ul>
+
+<h2>Agent Notes</h2>
+<div class="callout warning">
+  <strong>Neon parameterized queries:</strong> Use <code>sql.query(query, params)</code> for the batch upsert — NOT <code>sql(query, params)</code>. Neon v1.1 dropped the old convention. Tagged template literals still work for simple queries.
+</div>
+<div class="callout warning">
+  <strong>CKAN SQL injection guard:</strong> Date parameters are validated against <code>/^\d{4}-\d{2}-\d{2}$/</code> before string interpolation. CKAN's SQL endpoint does not support parameterized queries, so this regex is the injection boundary. Don't relax it.
+</div>
+<ul>
+  <li><strong>Dashboard framing:</strong> The project is an <em>operational reallocation</em> dashboard, not a staffing complaint tracker. Copy and UI choices should reinforce this framing.</li>
+  <li><strong>YEAR_RESOURCES:</strong> Three resource IDs in <code>boston-311.ts</code> — one per calendar year (2024, 2025, 2026). A new resource ID must be added when Boston publishes the 2027 dataset.</li>
+  <li><strong>Backfill is safe to re-run:</strong> All upserts use <code>ON CONFLICT (case_id) DO UPDATE</code>. Re-running the backfill script won't duplicate rows.</li>
+  <li><strong>Migrations before deploying schema changes:</strong> Run <code>pnpm tsx scripts/migrate-311-departments.ts</code> against prod Neon before any new DB-backed feature goes live.</li>
+  <li><strong>force-dynamic:</strong> Any page or route that reads from Neon must export <code>const dynamic = "force-dynamic"</code>.</li>
+</ul>
+
+</body>
+</html>
