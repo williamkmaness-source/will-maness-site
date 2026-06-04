@@ -57,6 +57,19 @@ export async function getPendingRawPages(
   return rows as RawPage[];
 }
 
+export async function getUnembeddedRawPages(
+  sql: NeonQueryFunction<false, false>
+): Promise<RawPage[]> {
+  const rows = await sql`
+    SELECT id, company, source_url, raw_content, scraped_at
+    FROM vf_raw_pages
+    WHERE status = 'extracted'
+      AND (embedded_at IS NULL OR embedded_at < scraped_at)
+    ORDER BY scraped_at ASC
+  `;
+  return rows as RawPage[];
+}
+
 // ── Feature launches ─────────────────────────────────────────────────────────
 
 export interface FeatureLaunchData {
@@ -177,6 +190,15 @@ export async function markExtracted(
 ): Promise<void> {
   await sql`
     UPDATE vf_raw_pages SET status = 'extracted', error_message = NULL WHERE id = ${id}
+  `;
+}
+
+export async function markEmbedded(
+  sql: NeonQueryFunction<false, false>,
+  id: number
+): Promise<void> {
+  await sql`
+    UPDATE vf_raw_pages SET embedded_at = now() WHERE id = ${id}
   `;
 }
 

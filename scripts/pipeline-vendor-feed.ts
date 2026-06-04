@@ -1,5 +1,5 @@
 // pipeline-vendor-feed.ts — Entry point for the vendor feed pipeline.
-// Usage: pnpm tsx scripts/pipeline-vendor-feed.ts <scrape|extract|retry>
+// Usage: pnpm tsx scripts/pipeline-vendor-feed.ts <scrape|extract|embed|retry>
 
 import { config } from "dotenv";
 import { neon } from "@neondatabase/serverless";
@@ -8,8 +8,8 @@ config({ path: ".env.local" });
 
 const command = process.argv[2];
 
-if (!["scrape", "extract", "retry"].includes(command)) {
-  console.error("Usage: pipeline-vendor-feed.ts <scrape|extract|retry>");
+if (!["scrape", "extract", "embed", "retry"].includes(command)) {
+  console.error("Usage: pipeline-vendor-feed.ts <scrape|extract|embed|retry>");
   process.exit(1);
 }
 
@@ -31,6 +31,16 @@ async function extract() {
   await runExtractor(sql);
 }
 
+async function embed() {
+  const { runEmbedder } = await import("../src/lib/vendor-feed/embedder");
+  try {
+    await runEmbedder(sql);
+  } catch (err) {
+    // Fire-and-forget: log but do not fail the pipeline if embeddings are unavailable
+    console.error("[embedder] fatal error (non-blocking):", err instanceof Error ? err.message : String(err));
+  }
+}
+
 async function retry() {
   const { resetFailedToPending } = await import("../src/lib/vendor-feed/db");
   const { runExtractor } = await import("../src/lib/vendor-feed/extractor");
@@ -39,7 +49,7 @@ async function retry() {
   await runExtractor(sql);
 }
 
-const steps: Record<string, () => Promise<void>> = { scrape, extract, retry };
+const steps: Record<string, () => Promise<void>> = { scrape, extract, embed, retry };
 
 steps[command]().catch((err) => {
   console.error(err);
