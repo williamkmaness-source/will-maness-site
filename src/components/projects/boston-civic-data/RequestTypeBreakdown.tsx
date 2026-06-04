@@ -13,9 +13,9 @@ import {
 import type { DepartmentBreakdownPayload } from "@/app/api/311-department-breakdown/route";
 
 const OPENED_COLOR = "var(--accent)";
-const CLOSED_COLOR = "var(--muted)";
+const CLOSED_COLOR = "var(--line-strong)";
 
-function truncate(label: string, max = 22): string {
+function truncate(label: string, max = 32): string {
   return label.length > max ? label.slice(0, max - 1) + "…" : label;
 }
 
@@ -83,27 +83,27 @@ export function RequestTypeBreakdown({ department }: { department: string }) {
 
       {!loading && !error && data && data.reasons.length > 0 && (
         <>
-          <div className="h-[220px]">
+          <div style={{ height: Math.max(220, data.reasons.length * 28) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
+                layout="vertical"
                 data={data.reasons.map((r) => ({
                   reason: truncate(r.reason),
                   Opened: r.opened,
                   Closed: r.closed,
                 }))}
-                margin={{ top: 4, right: 8, bottom: 48, left: 0 }}
+                margin={{ top: 4, right: 8, bottom: 4, left: 0 }}
               >
                 <XAxis
-                  dataKey="reason"
-                  tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--hint)" }}
-                  interval={0}
-                  angle={-35}
-                  textAnchor="end"
-                />
-                <YAxis
+                  type="number"
                   tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--hint)" }}
                   allowDecimals={false}
-                  width={32}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="reason"
+                  tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--hint)" }}
+                  width={160}
                 />
                 <Tooltip
                   contentStyle={{
@@ -118,8 +118,8 @@ export function RequestTypeBreakdown({ department }: { department: string }) {
                 <Legend
                   wrapperStyle={{ fontSize: "11px", fontFamily: "var(--font-mono)" }}
                 />
-                <Bar dataKey="Opened" fill={OPENED_COLOR} isAnimationActive={false} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Closed" fill={CLOSED_COLOR} isAnimationActive={false} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Opened" fill={OPENED_COLOR} isAnimationActive={false} radius={[0, 2, 2, 0]} />
+                <Bar dataKey="Closed" fill={CLOSED_COLOR} isAnimationActive={false} radius={[0, 2, 2, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
