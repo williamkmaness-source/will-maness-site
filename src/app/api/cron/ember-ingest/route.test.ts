@@ -44,7 +44,7 @@ vi.mock("@/lib/ember/ember-scoring", () => ({
 const mockGenerateBriefing = vi.fn<() => Promise<{ currentSituation: string; weatherContext: string; outlook: string } | null>>();
 
 vi.mock("@/lib/ember/ember-briefing", () => ({
-  generateBriefing: (...args: unknown[]) => mockGenerateBriefing(),
+  generateBriefing: () => mockGenerateBriefing(),
 }));
 
 vi.mock("@anthropic-ai/sdk", () => ({

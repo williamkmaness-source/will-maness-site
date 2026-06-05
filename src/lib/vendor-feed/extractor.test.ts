@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { stripHtml, extractFromPage, type ExtractedEntities } from "./extractor";
+import { stripHtml, type ExtractedEntities } from "./extractor";
 import type { RawPage } from "./db";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 
