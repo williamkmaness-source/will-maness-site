@@ -20,14 +20,14 @@ function truncate(label: string, max = 32): string {
 }
 
 export function RequestTypeBreakdown({ department }: { department: string }) {
+  const [activeDept, setActiveDept] = useState<string | null>(null);
   const [data, setData] = useState<DepartmentBreakdownPayload | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
+  // Derived: loading whenever the fetched department lags behind the prop
+  const loading = activeDept !== department;
 
+  useEffect(() => {
     const controller = new AbortController();
     const encoded = encodeURIComponent(department);
 
@@ -40,12 +40,13 @@ export function RequestTypeBreakdown({ department }: { department: string }) {
       })
       .then((json: DepartmentBreakdownPayload) => {
         setData(json);
-        setLoading(false);
+        setError(null);
+        setActiveDept(department);
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load data");
-        setLoading(false);
+        setActiveDept(department);
       });
 
     return () => controller.abort();
