@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import {
   assertIsoDate,
   toDateStr,
@@ -217,18 +217,16 @@ describe("prepareCaseEvent", () => {
 // --- batchUpsertCaseEvents ---
 
 describe("batchUpsertCaseEvents", () => {
-  let mockSql: ReturnType<typeof vi.fn> & { query: ReturnType<typeof vi.fn> };
+  let mockSql: { query: Mock };
 
   beforeEach(() => {
-    const fn = vi.fn().mockResolvedValue([]) as typeof mockSql;
-    fn.query = vi.fn().mockResolvedValue([]);
-    mockSql = fn;
+    mockSql = { query: vi.fn().mockResolvedValue([]) };
   });
 
   it("returns 0 for empty records array without calling sql", async () => {
-    const result = await batchUpsertCaseEvents(mockSql as any, []);
+    const result = await batchUpsertCaseEvents(mockSql, []);
     expect(result).toBe(0);
-    expect(mockSql).not.toHaveBeenCalled();
+    expect(mockSql.query).not.toHaveBeenCalled();
   });
 
   it("sends a single batch for records <= UPSERT_BATCH_SIZE", async () => {
@@ -244,7 +242,7 @@ describe("batchUpsertCaseEvents", () => {
       sla_days: 5,
     }));
 
-    const result = await batchUpsertCaseEvents(mockSql as any, records);
+    const result = await batchUpsertCaseEvents(mockSql, records);
     expect(result).toBe(5);
     expect(mockSql.query).toHaveBeenCalledTimes(1);
   });
@@ -265,7 +263,7 @@ describe("batchUpsertCaseEvents", () => {
       })
     );
 
-    const result = await batchUpsertCaseEvents(mockSql as any, records);
+    const result = await batchUpsertCaseEvents(mockSql, records);
     expect(result).toBe(UPSERT_BATCH_SIZE + 50);
     expect(mockSql.query).toHaveBeenCalledTimes(2);
   });
@@ -285,7 +283,7 @@ describe("batchUpsertCaseEvents", () => {
       },
     ];
 
-    await batchUpsertCaseEvents(mockSql as any, records);
+    await batchUpsertCaseEvents(mockSql, records);
 
     const [query, params] = mockSql.query.mock.calls[0];
     expect(query).toContain("INSERT INTO case_events");
@@ -313,7 +311,7 @@ describe("batchUpsertCaseEvents", () => {
       },
     ];
 
-    await batchUpsertCaseEvents(mockSql as any, records);
+    await batchUpsertCaseEvents(mockSql, records);
 
     const [, params] = mockSql.query.mock.calls[0];
     expect(params[3]).toBeNull(); // department
