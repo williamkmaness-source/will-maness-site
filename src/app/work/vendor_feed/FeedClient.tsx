@@ -346,7 +346,9 @@ export function FeedClient({
       {filtered.length === 0 ? (
         <div className="py-[60px] text-center">
           <p className="font-serif text-[20px] text-muted mb-[12px]">
-            No entities match these filters.
+            {matchingUrls !== null && matchingUrls.size === 0
+              ? `No results for “${searchQuery}”.`
+              : "No entities match these filters."}
           </p>
           <button
             onClick={clearAll}
