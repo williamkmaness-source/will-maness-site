@@ -215,12 +215,55 @@ function MoveList({
 }
 
 export function GameModal({ game, onClose, onPlayerClick }: Props) {
-  const [status, setStatus] = useState<Status>('loading');
+  const [resolvedGame, setResolvedGame] = useState<{ key: string; status: 'ready' | 'error' } | null>(null);
   const [moves, setMoves] = useState<GameMoveData[]>([]);
-  const [moveIndex, setMoveIndex] = useState(0);
+  // navState bundles moveIndex + newMoveCount with the gameKey so both derive to 0 when the game changes —
+  // avoiding synchronous setState resets inside the fetch effect.
+  const [navState, setNavState] = useState<{ key: string; moveIndex: number; newMoveCount: number }>({ key: '', moveIndex: 0, newMoveCount: 0 });
   const [retryCount, setRetryCount] = useState(0);
-  const [newMoveCount, setNewMoveCount] = useState(0);
-  const [qualityDot, setQualityDot] = useState<QualityDot | null>(null);
+  const [qualityDotEntry, setQualityDotEntry] = useState<{ owner: string | null; dot: QualityDot | null }>({ owner: null, dot: null });
+  const gameKey = `${game.roundId}/${game.gameId}/${retryCount}`;
+  const status: Status = resolvedGame?.key === gameKey ? resolvedGame.status : 'loading';
+  const moveIndex = navState.key === gameKey ? navState.moveIndex : 0;
+  const newMoveCount = navState.key === gameKey ? navState.newMoveCount : 0;
+  const setMoveIndex = useCallback((idx: number | ((prev: number) => number)) => {
+    setNavState(prev => {
+      const prevIdx = prev.key === gameKey ? prev.moveIndex : 0;
+      const prevCnt = prev.key === gameKey ? prev.newMoveCount : 0;
+      return { key: gameKey, moveIndex: typeof idx === 'function' ? idx(prevIdx) : idx, newMoveCount: prevCnt };
+    });
+  }, [gameKey]);
+  const setNewMoveCount = useCallback((cnt: number | ((prev: number) => number)) => {
+    setNavState(prev => {
+      const prevIdx = prev.key === gameKey ? prev.moveIndex : 0;
+      const prevCnt = prev.key === gameKey ? prev.newMoveCount : 0;
+      return { key: gameKey, moveIndex: prevIdx, newMoveCount: typeof cnt === 'function' ? cnt(prevCnt) : cnt };
+    });
+  }, [gameKey]);
+  const qualityOwner = (status === 'ready' && moveIndex > 0 && moves[moveIndex - 1]?.san)
+    ? `${moveIndex}-${moves[moveIndex - 1]?.fen ?? ''}`
+    : null;
+  // Precompute landing square outside the quality effect so the isLoading dot can be derived
+  // rather than set synchronously — eliminates the setState-in-effect violation.
+  const landingSquare = useMemo(() => {
+    if (!qualityOwner || moveIndex === 0) return null;
+    const m = moves[moveIndex - 1];
+    if (!m?.san) return null;
+    const fenBefore = moveIndex === 1 ? START_FEN : (moves[moveIndex - 2]?.fen ?? START_FEN);
+    try {
+      const chess = new Chess(fenBefore);
+      const mv = chess.move(m.san);
+      return mv.to;
+    } catch {
+      return null;
+    }
+  }, [qualityOwner, moveIndex, moves]);
+  const qualityDot: QualityDot | null =
+    qualityOwner !== null && qualityDotEntry.owner === qualityOwner
+      ? qualityDotEntry.dot
+      : qualityOwner !== null && landingSquare !== null
+        ? { quality: 'Good', square: landingSquare, isLoading: true }
+        : null;
   const returnFocusRef = useRef<Element | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -241,13 +284,11 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
   }, [moveIndex]);
 
   useEffect(() => {
+    const key = `${game.roundId}/${game.gameId}/${retryCount}`;
     const controller = new AbortController();
-    setStatus('loading');
-    setMoveIndex(0);
-    setNewMoveCount(0);
     fetchGamePgn(game.roundId, game.gameId, controller.signal)
-      .then((m) => { movesLenRef.current = m.length; setMoves(m); setStatus('ready'); })
-      .catch((err) => { if ((err as Error).name !== 'AbortError') setStatus('error'); });
+      .then((m) => { movesLenRef.current = m.length; setMoves(m); setResolvedGame({ key, status: 'ready' }); })
+      .catch((err) => { if ((err as Error).name !== 'AbortError') setResolvedGame({ key, status: 'error' }); });
     return () => controller.abort();
   }, [game.roundId, game.gameId, retryCount]);
 
@@ -312,40 +353,29 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
 
     timerId = setTimeout(runPoll, DEFAULT_INTERVAL);
     return () => { aborted = true; controller.abort(); clearTimeout(timerId); };
-  }, [game.isLive, game.roundId, game.gameId, status]);
+  }, [game.isLive, game.roundId, game.gameId, status, setNewMoveCount]);
 
   // Move quality: fetch cloud eval for the FEN before the current move, then classify.
+  // landingSquare is precomputed by useMemo; qualityDot derives the isLoading placeholder
+  // automatically — no synchronous setState in this effect.
   useEffect(() => {
-    if (moveIndex === 0 || status !== 'ready') { setQualityDot(null); return; }
+    if (!qualityOwner || !landingSquare) return;
+    const owner = qualityOwner;
+    const ls = landingSquare;
     const currentMove = moves[moveIndex - 1];
-    if (!currentMove?.san) { setQualityDot(null); return; }
+    if (!currentMove?.san) return;
 
     const fenBefore = moveIndex === 1 ? START_FEN : (moves[moveIndex - 2]?.fen ?? START_FEN);
     const fenAfter = currentMove.fen;
     const san = currentMove.san;
 
-    // Derive the landing square from the SAN using chess.js.
-    let landingSquare: string | null = null;
-    try {
-      const chess = new Chess(fenBefore);
-      const move = chess.move(san);
-      landingSquare = move.to;
-    } catch {
-      setQualityDot(null);
-      return;
-    }
-    if (!landingSquare) { setQualityDot(null); return; }
-
     let cancelled = false;
-
-    // Show a pulsing placeholder while the eval is in flight.
-    setQualityDot({ quality: 'Good', square: landingSquare, isLoading: true });
 
     setTimeout(() => {
       if (cancelled) return;
       fetchCloudEval(fenBefore).then((cloud) => {
         if (cancelled) return;
-        if (!cloud) { setQualityDot(null); return; }
+        if (!cloud) { setQualityDotEntry({ owner, dot: null }); return; }
 
         const quality = classifyMove({
           cloud,
@@ -356,20 +386,20 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
           pgnEvalAfter: currentMove.eval,
         });
 
-        setQualityDot(quality && landingSquare ? { quality, square: landingSquare } : null);
+        setQualityDotEntry({ owner, dot: quality && ls ? { quality, square: ls } : null });
       }).catch(() => {
-        if (!cancelled) setQualityDot(null);
+        if (!cancelled) setQualityDotEntry({ owner, dot: null });
       });
     }, 120); // brief delay so the dot "arrives" after the move animation
 
     return () => { cancelled = true; };
-  }, [moveIndex, moves, status]);
+  }, [qualityOwner, landingSquare, moveIndex, moves]);
 
-  const goFirst = useCallback(() => setMoveIndex(0), []);
-  const goPrev  = useCallback(() => setMoveIndex((i) => Math.max(0, i - 1)), []);
-  const goNext  = useCallback(() => setMoveIndex((i) => Math.min(moves.length, i + 1)), [moves.length]);
-  const goLast  = useCallback(() => setMoveIndex(moves.length), [moves.length]);
-  const jumpToLatest = useCallback(() => { setMoveIndex(moves.length); setNewMoveCount(0); }, [moves.length]);
+  const goFirst = useCallback(() => setMoveIndex(0), [setMoveIndex]);
+  const goPrev  = useCallback(() => setMoveIndex((i) => Math.max(0, i - 1)), [setMoveIndex]);
+  const goNext  = useCallback(() => setMoveIndex((i) => Math.min(moves.length, i + 1)), [moves.length, setMoveIndex]);
+  const goLast  = useCallback(() => setMoveIndex(moves.length), [moves.length, setMoveIndex]);
+  const jumpToLatest = useCallback(() => { setMoveIndex(moves.length); setNewMoveCount(0); }, [moves.length, setMoveIndex, setNewMoveCount]);
 
   const fen = moveIndex === 0 ? START_FEN : (moves[moveIndex - 1]?.fen ?? START_FEN);
 
