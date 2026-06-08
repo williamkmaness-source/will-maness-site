@@ -58,6 +58,13 @@ export function validateEntityDate(llmDate: string | null, canonicalDate: string
   return normalizeDate(llmDate);
 }
 
+// GitHub releases pages list multiple releases inline — each with its own date.
+// The page-level canonical date is the most-recent release, which would incorrectly
+// override the per-release dates Claude extracts for older entries on the same page.
+export function isGitHubReleasesUrl(url: string): boolean {
+  return url.includes("github.com") && url.includes("/releases");
+}
+
 export function stripHtml(html: string): string {
   return html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
@@ -207,7 +214,7 @@ export async function callClaude(
 
 Extract all market intelligence entities: feature launches, pricing changes, partnerships, and architectural shifts.
 
-CRITICAL DATE INSTRUCTION: Extract the exact article-level publication or announcement date. Do NOT extract the current scraped date, or the date of a wrapper page that aggregates multiple posts. If the specific announcement date for an entity is unclear, return null.
+CRITICAL DATE INSTRUCTION: Extract the exact article-level publication or announcement date. Do NOT extract the current scraped date, or the date of a wrapper page that aggregates multiple posts. If the specific announcement date for an entity is unclear, return null.${isGitHubReleasesUrl(sourceUrl) ? "\n\nSOURCE TYPE: GitHub releases page. Multiple releases are listed inline, each with its own date in the section heading. Use the date from each release's own heading — do NOT use the page-level date for all releases." : ""}
 
 Content:
 ${cleaned}`,
@@ -239,7 +246,11 @@ export async function extractFromPage(
   callFn: CallClaudeFn = callClaude
 ): Promise<void> {
   try {
-    const canonicalDate = extractCanonicalDate(rawPage.raw_content);
+    // GitHub releases pages embed multiple releases with individual dates — the page-level
+    // canonical date is only the most-recent release and must not override per-release dates.
+    const canonicalDate = isGitHubReleasesUrl(rawPage.source_url)
+      ? null
+      : extractCanonicalDate(rawPage.raw_content);
     const entities = await callFn(rawPage.raw_content, rawPage.company, rawPage.source_url);
 
     await deleteEntitiesForPage(sql, rawPage.id);
