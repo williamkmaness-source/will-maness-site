@@ -10,7 +10,7 @@ import YahooFinance from "yahoo-finance2";
 const yahooFinance = new YahooFinance({
   suppressNotices: ["yahooSurvey"],
 });
-import { SMA, RSI, MACD } from "technicalindicators";
+import { SMA, RSI, MACD, BollingerBands } from "technicalindicators";
 import { deriveSignals } from "@/lib/spx-signals";
 import type { SpxData, SpxCandle, SpxSeries } from "@/lib/spx-types";
 
@@ -109,6 +109,13 @@ export async function GET() {
       macdData.histogram.push({ time, value: m.histogram });
     });
 
+    const bbRaw = BollingerBands.calculate({ period: 20, stdDev: 2, values: closes });
+    const bollingerBands = {
+      upper:  alignedSeries(dates, bbRaw.map((b) => b.upper)),
+      middle: alignedSeries(dates, bbRaw.map((b) => b.middle)),
+      lower:  alignedSeries(dates, bbRaw.map((b) => b.lower)),
+    };
+
     const lastClose  = closes[closes.length - 1];
     const lastSma200 = sma200[sma200.length - 1]?.value ?? lastClose;
     const lastSma50  = sma50[sma50.length - 1]?.value ?? lastClose;
@@ -125,6 +132,7 @@ export async function GET() {
       sma200,
       rsi,
       macd: macdData,
+      bollingerBands,
       vix,
       goldenCross: lastSma50 > lastSma200,
       signals,
