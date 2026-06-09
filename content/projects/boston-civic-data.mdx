@@ -8,13 +8,15 @@ summary: "Which city departments are falling behind on 311 requests — and is t
 featured: true
 ---
 
+## Problem
+
 The weekly operations review surfaces the same question week after week: is this department struggling, or is it just noise? Boston's 311 data is public and continuously updated — but raw case counts don't tell you whether a backlog is building or easing. By the time the signal is obvious, a council office has usually gotten there first.
 
 <StaffingDashboard />
 
-Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset updates continuously and goes back years. This dashboard tracks weekly open vs. closed ticket counts and median closure time for each of the nine city departments that handle 311 work. When both metrics worsen for two or more consecutive weeks, the department is flagged — giving an operations manager a clear signal before a backlog becomes a crisis.
-
 ## How it works
+
+Boston publishes every 311 service request — every pothole report, every missed trash pickup, every noise complaint — as open data. The dataset updates continuously and goes back years. This dashboard tracks weekly open vs. closed ticket counts and median closure time for each of the nine city departments that handle 311 work. When both metrics worsen for two or more consecutive weeks, the department is flagged — giving an operations manager a clear signal before a backlog becomes a crisis.
 
 The city's data lives on the Analyze Boston CKAN platform, split into per-year CSV resources. A nightly pipeline fetches new cases and upserts them into a `case_events` table in Neon Postgres — one row per 311 case, keyed on the city's case ID. A second pass aggregates case data into ISO-week buckets per department, which the API route serves to the dashboard.
 
