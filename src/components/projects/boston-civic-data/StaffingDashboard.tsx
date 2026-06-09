@@ -8,23 +8,6 @@ import type {
 import { DepartmentCard } from "./DepartmentCard";
 import { RequestTypeBreakdown } from "./RequestTypeBreakdown";
 
-function ProblemHeader() {
-  return (
-    <div className="mb-[28px]">
-      <h2 className="font-serif text-[28px] font-medium leading-[1.25] tracking-[-0.01em] text-ink mt-[64px] mb-[20px]">
-        The Problem
-      </h2>
-      <p className="font-sans text-[14px] text-muted leading-[1.6]">
-        Operational Reallocation of Municipal Resources — Boston&rsquo;s municipal
-        departments need to regularly reallocate operational capacity to where citizens
-        need help most. This dashboard uses 311 data to identify two-week trends in
-        that need across departments, so ops managers can act before a backlog becomes
-        a service failure.
-      </p>
-    </div>
-  );
-}
-
 function Headline({
   flagged,
   total,
@@ -120,7 +103,6 @@ export function StaffingDashboard() {
 
   return (
     <div>
-      <ProblemHeader />
       <Headline flagged={data.flaggedCount} total={data.totalCount} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px]">
         {data.departments.map((dept: DepartmentResult) => (
