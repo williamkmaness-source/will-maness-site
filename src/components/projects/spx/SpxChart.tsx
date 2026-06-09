@@ -6,10 +6,11 @@ import {
   CandlestickSeries,
   LineSeries,
   HistogramSeries,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
 } from "lightweight-charts";
-import type { SpxCandle, SpxSeries } from "@/lib/spx-types";
+import type { SpxCandle, SpxSeries, SpxBollingerBands } from "@/lib/spx-types";
 import { colors, fontFamilies } from "@/lib/tokens";
 
 export type TimeRange = "3M" | "6M" | "1Y";
@@ -21,15 +22,19 @@ type Props = {
   sma20: SpxSeries[];
   sma50: SpxSeries[];
   sma200: SpxSeries[];
+  bollingerBands: SpxBollingerBands;
   showSma20: boolean;
   showSma50: boolean;
   showSma200: boolean;
+  showBB: boolean;
   timeRange: TimeRange;
   onToggleSma: (key: SmaKey) => void;
+  onToggleBB: () => void;
 };
 
 const UP_COLOR = "#3A7D5A";
 const DOWN_COLOR = colors.clay;
+const BB_COLOR = "#6B9FE4";
 
 const SMA_META: { key: SmaKey; label: string; color: string; width: 1 | 2 }[] = [
   { key: "sma20",  label: "SMA 20",  color: colors.muted,  width: 1 },
@@ -51,16 +56,22 @@ export function SpxChart({
   sma20,
   sma50,
   sma200,
+  bollingerBands,
   showSma20,
   showSma50,
   showSma200,
+  showBB,
   timeRange,
   onToggleSma,
+  onToggleBB,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const smaSeries = useRef<Record<SmaKey, ISeriesApi<"Line"> | null>>({
     sma20: null, sma50: null, sma200: null,
+  });
+  const bbSeries = useRef<{ upper: ISeriesApi<"Line"> | null; middle: ISeriesApi<"Line"> | null; lower: ISeriesApi<"Line"> | null }>({
+    upper: null, middle: null, lower: null,
   });
 
   useEffect(() => {
@@ -114,6 +125,25 @@ export function SpxChart({
       smaSeries.current[key] = series;
     }
 
+    const bbSharedOpts = {
+      color: BB_COLOR,
+      lineWidth: 1 as const,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    };
+    const bbUpperSeries = chart.addSeries(LineSeries, { ...bbSharedOpts, lineStyle: LineStyle.Dashed });
+    bbUpperSeries.setData(bollingerBands.upper);
+    bbSeries.current.upper = bbUpperSeries;
+
+    const bbMiddleSeries = chart.addSeries(LineSeries, bbSharedOpts);
+    bbMiddleSeries.setData(bollingerBands.middle);
+    bbSeries.current.middle = bbMiddleSeries;
+
+    const bbLowerSeries = chart.addSeries(LineSeries, { ...bbSharedOpts, lineStyle: LineStyle.Dashed });
+    bbLowerSeries.setData(bollingerBands.lower);
+    bbSeries.current.lower = bbLowerSeries;
+
     const range = getVisibleRange(candles, "1Y");
     if (range) chart.timeScale().setVisibleRange(range);
 
@@ -131,6 +161,11 @@ export function SpxChart({
   useEffect(() => { smaSeries.current.sma20?.applyOptions({ visible: showSma20 }); }, [showSma20]);
   useEffect(() => { smaSeries.current.sma50?.applyOptions({ visible: showSma50 }); }, [showSma50]);
   useEffect(() => { smaSeries.current.sma200?.applyOptions({ visible: showSma200 }); }, [showSma200]);
+  useEffect(() => {
+    bbSeries.current.upper?.applyOptions({ visible: showBB });
+    bbSeries.current.middle?.applyOptions({ visible: showBB });
+    bbSeries.current.lower?.applyOptions({ visible: showBB });
+  }, [showBB]);
 
   const showMap: Record<SmaKey, boolean> = { sma20: showSma20, sma50: showSma50, sma200: showSma200 };
 
@@ -156,6 +191,22 @@ export function SpxChart({
             {label}
           </button>
         ))}
+        <button
+          onClick={onToggleBB}
+          className="inline-flex items-center gap-[5px] px-[9px] py-[3px] rounded-[3px] font-mono text-[11px] tracking-[0.04em] border transition-opacity cursor-pointer"
+          style={{
+            borderColor: showBB ? BB_COLOR : colors.line,
+            color: showBB ? BB_COLOR : colors.hint,
+            opacity: showBB ? 1 : 0.45,
+            backgroundColor: colors.bgSoft,
+          }}
+        >
+          <span
+            className="inline-block w-[14px] rounded-full"
+            style={{ height: 1, backgroundColor: showBB ? BB_COLOR : colors.line }}
+          />
+          BB
+        </button>
       </div>
       <div
         ref={containerRef}
