@@ -110,11 +110,10 @@ export async function GET() {
     });
 
     const bbRaw = BollingerBands.calculate({ period: 20, stdDev: 2, values: closes });
-    const bbOffset = dates.length - bbRaw.length;
     const bollingerBands = {
-      upper:  bbRaw.map((b, i) => ({ time: dates[bbOffset + i], value: b.upper })),
-      middle: bbRaw.map((b, i) => ({ time: dates[bbOffset + i], value: b.middle })),
-      lower:  bbRaw.map((b, i) => ({ time: dates[bbOffset + i], value: b.lower })),
+      upper:  alignedSeries(dates, bbRaw.map((b) => b.upper)),
+      middle: alignedSeries(dates, bbRaw.map((b) => b.middle)),
+      lower:  alignedSeries(dates, bbRaw.map((b) => b.lower)),
     };
 
     const lastClose  = closes[closes.length - 1];
