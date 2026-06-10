@@ -15,6 +15,7 @@ const rawCompanies = [
     name: "Fivetran",
     blog_url: "https://www.fivetran.com/blog",
     github_org: "fivetran",
+    rss_url: "https://www.fivetran.com/blog/rss.xml",
   },
   {
     name: "Airbyte",
@@ -37,17 +38,20 @@ const rawCompanies = [
     name: "Hevo Data",
     blog_url: "https://hevodata.com/blog",
     github_org: "hevodata",
+    rss_url: "https://hevodata.com/blog/feed",
   },
   {
     name: "dbt Labs",
     blog_url: "https://www.getdbt.com/blog",
     github_org: "dbt-labs",
+    rss_url: "https://docs.getdbt.com/blog/rss.xml",
     github_releases_url: "https://github.com/dbt-labs/dbt-core/releases",
   },
   {
     name: "Coalesce",
     blog_url: "https://coalesce.io/blog",
     github_org: "coalesceio",
+    rss_url: "https://coalesce.io/blog/?feed=rss2",
   },
   {
     name: "Astronomer",
@@ -71,6 +75,7 @@ const rawCompanies = [
     name: "Unstructured",
     blog_url: "https://unstructured.io/blog",
     github_org: "Unstructured-IO",
+    rss_url: "https://unstructured.substack.com/feed",
     github_releases_url: "https://github.com/Unstructured-IO/unstructured/releases",
   },
   {
@@ -83,6 +88,7 @@ const rawCompanies = [
     name: "Chunkr",
     blog_url: "https://chunkr.ai/blog",
     github_org: "lumina-ai-inc",
+    rss_url: "https://chunkr.ai/rss.xml",
   },
   {
     name: "Hightouch",
@@ -98,17 +104,20 @@ const rawCompanies = [
     name: "Dagster",
     blog_url: "https://dagster.io/blog",
     github_org: "dagster-io",
+    rss_url: "https://dagster.io/blog/rss.xml",
     github_releases_url: "https://github.com/dagster-io/dagster/releases",
   },
   {
     name: "Monte Carlo",
     blog_url: "https://www.montecarlodata.com/blog",
     github_org: "monte-carlo-data",
+    rss_url: "https://montecarlo.ai/blog/feed",
   },
   {
     name: "Estuary",
     blog_url: "https://estuary.dev/blog",
     github_org: "estuary",
+    rss_url: "https://estuary.dev/blog/rss.xml",
     github_releases_url: "https://github.com/estuary/flow/releases",
   },
 ];
