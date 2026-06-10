@@ -557,11 +557,26 @@ const MULTI_GAME_PGN = `[White "Magnus Carlsen"]
 1. d4 d5 2. c4 *`;
 
 describe('extractGameMoves', () => {
-  it('returns GameMoveData with san and fen for the matching gameId', () => {
+  it('returns GameMoveData with san, fen, and to for the matching gameId', () => {
     const moves = extractGameMoves(MULTI_GAME_PGN, 'gameAAA');
     expect(moves).not.toBeNull();
     expect(moves!.map((m) => m.san)).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4']);
     expect(moves![0].fen).toBeTruthy();
+    // landing squares: 1.e4 → e4, 1…e5 → e5, 2.Nf3 → f3, 2…Nc6 → c6, 3.Bc4 → c4
+    expect(moves!.map((m) => m.to)).toEqual(['e4', 'e5', 'f3', 'c6', 'c4']);
+  });
+
+  it('populates to correctly for castling (O-O → king lands on g1)', () => {
+    const pgn = `[White "A"]
+[Black "B"]
+[Result "1-0"]
+[GameURL "https://lichess.org/broadcast/t/r/round/castleGame2"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. O-O Nf6 1-0`;
+    const moves = extractGameMoves(pgn, 'castleGame2')!;
+    const castleMove = moves.find((m) => m.san === 'O-O');
+    expect(castleMove).toBeDefined();
+    expect(castleMove!.to).toBe('g1');
   });
 
   it('returns moves for the second game when first is skipped', () => {

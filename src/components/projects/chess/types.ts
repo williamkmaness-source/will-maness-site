@@ -34,6 +34,7 @@ export interface SelectedGame {
 export interface GameMoveData {
   san: string;
   fen: string;
+  to: string; // landing square, e.g. 'e4'; precomputed at parse time to avoid Chess re-instantiation on navigation
   eval: number | null;
   clock: string | null; // remaining time for the player who made this move (H:MM:SS)
   captured: string | null; // piece type captured on this move, e.g. 'p', 'n', 'B'

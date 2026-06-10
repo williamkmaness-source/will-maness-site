@@ -5,11 +5,11 @@ import { fetchGamePgn, fetchGamePgnLive, DEFAULT_INTERVAL } from './BroadcastSer
 import { ChessBoard } from './ChessBoard';
 import type { QualityDot } from './ChessBoard';
 import { ReplayControls } from './ReplayControls';
+import { PlayerProfile } from './PlayerProfile';
 import { playPieceSound } from '@/lib/playPieceSound';
 import type { GameMoveData, SelectedGame } from './types';
 import { fetchCloudEval } from '@/lib/chess/cloudEval';
 import { classifyMove } from '@/lib/chess/moveQuality';
-import { Chess } from 'chess.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -59,7 +59,6 @@ function PieceIcon({ piece }: { piece: string }) {
 interface Props {
   game: SelectedGame;
   onClose: () => void;
-  onPlayerClick?: (name: string) => void;
 }
 
 type Status = 'loading' | 'ready' | 'error';
@@ -214,9 +213,10 @@ function MoveList({
   );
 }
 
-export function GameModal({ game, onClose, onPlayerClick }: Props) {
+export function GameModal({ game, onClose }: Props) {
   const [resolvedGame, setResolvedGame] = useState<{ key: string; status: 'ready' | 'error' } | null>(null);
   const [moves, setMoves] = useState<GameMoveData[]>([]);
+  const [profilePlayer, setProfilePlayer] = useState<string | null>(null);
   // navState bundles moveIndex + newMoveCount with the gameKey so both derive to 0 when the game changes —
   // avoiding synchronous setState resets inside the fetch effect.
   const [navState, setNavState] = useState<{ key: string; moveIndex: number; newMoveCount: number }>({ key: '', moveIndex: 0, newMoveCount: 0 });
@@ -243,20 +243,10 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
   const qualityOwner = (status === 'ready' && moveIndex > 0 && moves[moveIndex - 1]?.san)
     ? `${moveIndex}-${moves[moveIndex - 1]?.fen ?? ''}`
     : null;
-  // Precompute landing square outside the quality effect so the isLoading dot can be derived
-  // rather than set synchronously — eliminates the setState-in-effect violation.
+  // Landing square is precomputed at parse time (GameMoveData.to) — no Chess re-instantiation needed.
   const landingSquare = useMemo(() => {
     if (!qualityOwner || moveIndex === 0) return null;
-    const m = moves[moveIndex - 1];
-    if (!m?.san) return null;
-    const fenBefore = moveIndex === 1 ? START_FEN : (moves[moveIndex - 2]?.fen ?? START_FEN);
-    try {
-      const chess = new Chess(fenBefore);
-      const mv = chess.move(m.san);
-      return mv.to;
-    } catch {
-      return null;
-    }
+    return moves[moveIndex - 1]?.to ?? null;
   }, [qualityOwner, moveIndex, moves]);
   const qualityDot: QualityDot | null =
     qualityOwner !== null && qualityDotEntry.owner === qualityOwner
@@ -470,16 +460,12 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
             {/* Black player row */}
             <div className="flex items-center justify-between mb-[4px]">
               <div>
-                {onPlayerClick ? (
-                  <button
-                    onClick={() => onPlayerClick(game.black)}
-                    className="font-sans text-[14px] font-medium text-ink hover:underline underline-offset-2 text-left"
-                  >
-                    {game.black}
-                  </button>
-                ) : (
-                  <p className="font-sans text-[14px] font-medium text-ink">{game.black}</p>
-                )}
+                <button
+                  onClick={() => setProfilePlayer(game.black)}
+                  className="font-sans text-[14px] font-medium text-ink hover:underline underline-offset-2 text-left"
+                >
+                  {game.black}
+                </button>
                 <CapturedPieces pieces={byBlack} advantage={delta < 0 ? -delta : 0} />
               </div>
               {blackClock && (
@@ -494,16 +480,12 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
             <div className="flex items-center justify-between mt-[4px]">
               <div>
                 <CapturedPieces pieces={byWhite} advantage={delta > 0 ? delta : 0} />
-                {onPlayerClick ? (
-                  <button
-                    onClick={() => onPlayerClick(game.white)}
-                    className="font-sans text-[14px] font-medium text-ink mt-[2px] hover:underline underline-offset-2 text-left block"
-                  >
-                    {game.white}
-                  </button>
-                ) : (
-                  <p className="font-sans text-[14px] font-medium text-ink mt-[2px]">{game.white}</p>
-                )}
+                <button
+                  onClick={() => setProfilePlayer(game.white)}
+                  className="font-sans text-[14px] font-medium text-ink mt-[2px] hover:underline underline-offset-2 text-left block"
+                >
+                  {game.white}
+                </button>
               </div>
               {whiteClock && (
                 <span className="font-mono text-[13px] text-muted tabular-nums">{whiteClock}</span>
@@ -531,7 +513,24 @@ export function GameModal({ game, onClose, onPlayerClick }: Props) {
               onLast={goLast}
             />
 
-            <MoveList moves={moves} moveIndex={moveIndex} onSelect={setMoveIndex} />
+            {profilePlayer !== null ? (
+              <>
+                <button
+                  onClick={() => setProfilePlayer(null)}
+                  className="mt-[12px] font-mono text-[11px] tracking-[0.04em] uppercase text-muted hover:text-ink transition-colors duration-[100ms]"
+                >
+                  ← Back to moves
+                </button>
+                <PlayerProfile
+                  displayName={profilePlayer}
+                  roundIds={[game.roundId]}
+                  onClose={() => setProfilePlayer(null)}
+                  variant="inline"
+                />
+              </>
+            ) : (
+              <MoveList moves={moves} moveIndex={moveIndex} onSelect={setMoveIndex} />
+            )}
           </>
         )}
       </div>
