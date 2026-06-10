@@ -126,6 +126,7 @@ interface Props {
   displayName: string;
   roundIds?: string[];
   onClose: () => void;
+  variant?: 'drawer' | 'inline';
 }
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
@@ -155,7 +156,8 @@ const FLAG_EMOJI: Record<string, string> = {
   SVK: '\u{1F1F8}\u{1F1F0}', SVN: '\u{1F1F8}\u{1F1EE}', ENG: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',
 };
 
-export function PlayerProfile({ displayName, roundIds, onClose }: Props) {
+export function PlayerProfile({ displayName, roundIds, onClose, variant = 'drawer' }: Props) {
+  const isInline = variant === 'inline';
   const [resolvedProfile, setResolvedProfile] = useState<{ key: string; status: 'ready' | 'not-found' | 'error' } | null>(null);
   const profileKey = `${displayName}::${roundIds?.join() ?? ''}`;
   const status: Status = resolvedProfile?.key === profileKey ? resolvedProfile.status : 'loading';
@@ -166,8 +168,9 @@ export function PlayerProfile({ displayName, roundIds, onClose }: Props) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (isInline) return;
     closeButtonRef.current?.focus();
-  }, []);
+  }, [isInline]);
 
   useEffect(() => {
     const key = `${displayName}::${roundIds?.join() ?? ''}`;
@@ -216,14 +219,16 @@ export function PlayerProfile({ displayName, roundIds, onClose }: Props) {
   }, [displayName, roundIds?.join()]);
 
   useEffect(() => {
+    if (isInline) return;
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+  }, [onClose, isInline]);
 
   useEffect(() => {
+    if (isInline) return;
     const panel = panelRef.current;
     if (!panel) return;
     function trapFocus(e: KeyboardEvent) {
@@ -244,10 +249,201 @@ export function PlayerProfile({ displayName, roundIds, onClose }: Props) {
     }
     panel.addEventListener('keydown', trapFocus);
     return () => panel.removeEventListener('keydown', trapFocus);
-  }, []);
+  }, [isInline]);
 
   const readableName = formatPlayerName(displayName);
   const hasBroadcast = broadcastPlayer != null;
+
+  const profileContent = (
+    <>
+      <div className={`flex items-start ${isInline ? '' : 'justify-between'} mb-[16px]`}>
+        <div>
+          <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[2px]">
+            Player profile
+          </p>
+          <p className="font-sans text-[16px] font-medium text-ink leading-[1.2]">
+            {readableName}
+          </p>
+        </div>
+        {!isInline && (
+          <button
+            ref={closeButtonRef}
+            onClick={onClose}
+            aria-label="Close player profile"
+            className="font-sans text-[20px] leading-none text-muted hover:text-ink transition-colors duration-[100ms] p-[8px] -m-[8px] shrink-0 ml-[8px]"
+          >
+            &times;
+          </button>
+        )}
+      </div>
+
+      {status === 'loading' && (
+        <div className="py-[32px] flex justify-center">
+          <p className="font-mono text-[12px] text-hint tracking-[0.04em] animate-pulse">
+            Loading&hellip;
+          </p>
+        </div>
+      )}
+
+      {status === 'not-found' && (
+        <p className="font-sans text-[14px] text-muted">
+          No profile data available for this player.
+        </p>
+      )}
+
+      {status === 'error' && (
+        <p className="font-sans text-[14px] text-muted">
+          Could not load profile.
+        </p>
+      )}
+
+      {status === 'ready' && (
+        <>
+          {hasBroadcast && (
+            <div className="flex items-center gap-[8px] mb-[20px] flex-wrap">
+              {broadcastPlayer.title && (
+                <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
+                  {broadcastPlayer.title}
+                </span>
+              )}
+              {broadcastPlayer.fed && (
+                <span className="font-mono text-[11px] text-muted tracking-[0.04em]">
+                  {FLAG_EMOJI[broadcastPlayer.fed] ? `${FLAG_EMOJI[broadcastPlayer.fed]} ` : ''}{broadcastPlayer.fed}
+                </span>
+              )}
+              {broadcastPlayer.fideId && (
+                <a
+                  href={`https://ratings.fide.com/profile/${broadcastPlayer.fideId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[11px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
+                >
+                  FIDE profile
+                </a>
+              )}
+            </div>
+          )}
+
+          {hasBroadcast && broadcastPlayer.rating && (
+            <div className="mb-[24px]">
+              <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
+                FIDE Rating
+              </p>
+              <p className="font-mono text-[28px] font-medium text-ink tabular-nums leading-[1]">
+                {broadcastPlayer.rating}
+              </p>
+            </div>
+          )}
+
+          {lichessUser && (
+            <div className="mb-[24px]">
+              <div className="flex items-center gap-[8px] mb-[10px]">
+                <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase">
+                  Lichess Ratings
+                </p>
+                <a
+                  href={`https://lichess.org/@/${lichessUser.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[11px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
+                >
+                  @{lichessUser.username}
+                </a>
+              </div>
+              <table className="w-full border-collapse">
+                <tbody>
+                  {DISPLAY_VARIANTS.map(({ key, label }) => {
+                    const perf = lichessUser.perfs[key];
+                    if (!perf || perf.games === 0) return null;
+                    return (
+                      <tr key={key} className="border-b border-line last:border-0">
+                        <td className="py-[7px] font-sans text-[13px] text-muted">{label}</td>
+                        <td className="py-[7px] text-right font-mono text-[13px] text-ink tabular-nums">
+                          {perf.rating}
+                          {perf.prov && (
+                            <span className="text-hint ml-[2px]">?</span>
+                          )}
+                        </td>
+                        <td className="py-[7px] text-right font-mono text-[11px] text-hint pl-[8px] tabular-nums w-[48px]">
+                          &plusmn;{perf.rd}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!hasBroadcast && lichessUser && (
+            <div className="flex items-center gap-[8px] mb-[20px]">
+              {lichessUser.title && (
+                <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
+                  {lichessUser.title}
+                </span>
+              )}
+              <a
+                href={`https://lichess.org/@/${lichessUser.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[12px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
+              >
+                @{lichessUser.username}
+              </a>
+            </div>
+          )}
+
+          {tournamentResults.length > 0 && (
+            <div>
+              <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
+                Recent Tournaments
+              </p>
+              <table className="w-full border-collapse">
+                <tbody>
+                  {tournamentResults.map((t) => (
+                    <tr key={t.id} className="border-b border-line last:border-0">
+                      <td className="py-[7px] pr-[8px]">
+                        <a
+                          href={`https://lichess.org/tournament/${t.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-sans text-[12px] text-ink hover:underline underline-offset-2 line-clamp-1"
+                        >
+                          {t.fullName}
+                        </a>
+                        {t.perf && (
+                          <span className="font-mono text-[10px] text-hint ml-[0px] block">{t.perf.name}</span>
+                        )}
+                      </td>
+                      <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                        #{t.rank}
+                      </td>
+                      <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                        {t.score}pt{t.score !== 1 ? 's' : ''}
+                      </td>
+                      {t.tourRating != null && (
+                        <td className="py-[7px] text-right font-mono text-[12px] text-hint tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
+                          {t.tourRating}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  if (isInline) {
+    return (
+      <div ref={panelRef} className="mt-[12px] border-t border-line pt-[12px]">
+        {profileContent}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -257,187 +453,11 @@ export function PlayerProfile({ displayName, roundIds, onClose }: Props) {
       className="fixed inset-0 z-[60] flex items-start justify-end sm:p-[16px]"
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
-
       <div
         ref={panelRef}
         className="relative z-10 bg-bg border-l border-line sm:border sm:rounded-[6px] sm:shadow-xl w-full sm:w-[340px] h-full sm:h-auto sm:max-h-[85vh] overflow-y-auto p-[20px] sm:p-[24px] mt-0 sm:mt-[24px]"
       >
-        <div className="flex items-start justify-between mb-[16px]">
-          <div>
-            <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[2px]">
-              Player profile
-            </p>
-            <p className="font-sans text-[16px] font-medium text-ink leading-[1.2]">
-              {readableName}
-            </p>
-          </div>
-          <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            aria-label="Close player profile"
-            className="font-sans text-[20px] leading-none text-muted hover:text-ink transition-colors duration-[100ms] p-[8px] -m-[8px] shrink-0 ml-[8px]"
-          >
-            &times;
-          </button>
-        </div>
-
-        {status === 'loading' && (
-          <div className="py-[32px] flex justify-center">
-            <p className="font-mono text-[12px] text-hint tracking-[0.04em] animate-pulse">
-              Loading&hellip;
-            </p>
-          </div>
-        )}
-
-        {status === 'not-found' && (
-          <p className="font-sans text-[14px] text-muted">
-            No profile data available for this player.
-          </p>
-        )}
-
-        {status === 'error' && (
-          <p className="font-sans text-[14px] text-muted">
-            Could not load profile.
-          </p>
-        )}
-
-        {status === 'ready' && (
-          <>
-            {hasBroadcast && (
-              <div className="flex items-center gap-[8px] mb-[20px] flex-wrap">
-                {broadcastPlayer.title && (
-                  <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
-                    {broadcastPlayer.title}
-                  </span>
-                )}
-                {broadcastPlayer.fed && (
-                  <span className="font-mono text-[11px] text-muted tracking-[0.04em]">
-                    {FLAG_EMOJI[broadcastPlayer.fed] ? `${FLAG_EMOJI[broadcastPlayer.fed]} ` : ''}{broadcastPlayer.fed}
-                  </span>
-                )}
-                {broadcastPlayer.fideId && (
-                  <a
-                    href={`https://ratings.fide.com/profile/${broadcastPlayer.fideId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-[11px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
-                  >
-                    FIDE profile
-                  </a>
-                )}
-              </div>
-            )}
-
-            {hasBroadcast && broadcastPlayer.rating && (
-              <div className="mb-[24px]">
-                <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
-                  FIDE Rating
-                </p>
-                <p className="font-mono text-[28px] font-medium text-ink tabular-nums leading-[1]">
-                  {broadcastPlayer.rating}
-                </p>
-              </div>
-            )}
-
-            {lichessUser && (
-              <div className="mb-[24px]">
-                <div className="flex items-center gap-[8px] mb-[10px]">
-                  <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase">
-                    Lichess Ratings
-                  </p>
-                  <a
-                    href={`https://lichess.org/@/${lichessUser.username}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-[11px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
-                  >
-                    @{lichessUser.username}
-                  </a>
-                </div>
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {DISPLAY_VARIANTS.map(({ key, label }) => {
-                      const perf = lichessUser.perfs[key];
-                      if (!perf || perf.games === 0) return null;
-                      return (
-                        <tr key={key} className="border-b border-line last:border-0">
-                          <td className="py-[7px] font-sans text-[13px] text-muted">{label}</td>
-                          <td className="py-[7px] text-right font-mono text-[13px] text-ink tabular-nums">
-                            {perf.rating}
-                            {perf.prov && (
-                              <span className="text-hint ml-[2px]">?</span>
-                            )}
-                          </td>
-                          <td className="py-[7px] text-right font-mono text-[11px] text-hint pl-[8px] tabular-nums w-[48px]">
-                            &plusmn;{perf.rd}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {!hasBroadcast && lichessUser && (
-              <div className="flex items-center gap-[8px] mb-[20px]">
-                {lichessUser.title && (
-                  <span className="font-mono text-[11px] font-medium tracking-[0.04em] px-[6px] py-[2px] rounded bg-ink text-bg">
-                    {lichessUser.title}
-                  </span>
-                )}
-                <a
-                  href={`https://lichess.org/@/${lichessUser.username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[12px] text-muted hover:text-ink underline underline-offset-2 transition-colors"
-                >
-                  @{lichessUser.username}
-                </a>
-              </div>
-            )}
-
-            {tournamentResults.length > 0 && (
-              <div>
-                <p className="font-mono text-[11px] text-muted tracking-[0.04em] uppercase mb-[10px]">
-                  Recent Tournaments
-                </p>
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {tournamentResults.map((t) => (
-                      <tr key={t.id} className="border-b border-line last:border-0">
-                        <td className="py-[7px] pr-[8px]">
-                          <a
-                            href={`https://lichess.org/tournament/${t.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-sans text-[12px] text-ink hover:underline underline-offset-2 line-clamp-1"
-                          >
-                            {t.fullName}
-                          </a>
-                          {t.perf && (
-                            <span className="font-mono text-[10px] text-hint ml-[0px] block">{t.perf.name}</span>
-                          )}
-                        </td>
-                        <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
-                          #{t.rank}
-                        </td>
-                        <td className="py-[7px] text-right font-mono text-[12px] text-muted tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
-                          {t.score}pt{t.score !== 1 ? 's' : ''}
-                        </td>
-                        {t.tourRating != null && (
-                          <td className="py-[7px] text-right font-mono text-[12px] text-hint tabular-nums whitespace-nowrap pl-[8px] w-[1%]">
-                            {t.tourRating}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
+        {profileContent}
       </div>
     </div>
   );

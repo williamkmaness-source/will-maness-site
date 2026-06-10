@@ -334,6 +334,7 @@ export function extractGameMoves(roundPgn: string, gameId: string): GameMoveData
     return verboseMoves.map((move, i) => ({
       san: move.san,
       fen: move.after,
+      to: move.to,
       eval: annotations[i]?.eval ?? null,
       clock: annotations[i]?.clock ?? null,
       captured: move.captured ?? null,

@@ -146,7 +146,6 @@ export function ChessTrackerInner() {
         <GameModal
           game={state.selectedGame}
           onClose={closeGame}
-          onPlayerClick={openProfile}
         />
       )}
 
