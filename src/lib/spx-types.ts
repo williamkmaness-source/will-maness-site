@@ -36,6 +36,12 @@ export type SpxIndicators = {
   vix: number;
 };
 
+export type SpxBollingerBands = {
+  upper: SpxSeries[];
+  middle: SpxSeries[];
+  lower: SpxSeries[];
+};
+
 export type SpxData = {
   candles: SpxCandle[];
   volume: SpxSeries[];
@@ -44,6 +50,7 @@ export type SpxData = {
   sma200: SpxSeries[];
   rsi: SpxSeries[];
   macd: SpxMacd;
+  bollingerBands: SpxBollingerBands;
   vix: number;
   goldenCross: boolean;
   signals: SpxSignals;

@@ -94,6 +94,23 @@ const rawCompanies = [
     blog_url: "https://www.getcensus.com/blog",
     github_org: "sutrolabs",
   },
+  {
+    name: "Dagster",
+    blog_url: "https://dagster.io/blog",
+    github_org: "dagster-io",
+    github_releases_url: "https://github.com/dagster-io/dagster/releases",
+  },
+  {
+    name: "Monte Carlo",
+    blog_url: "https://www.montecarlodata.com/blog",
+    github_org: "monte-carlo-data",
+  },
+  {
+    name: "Estuary",
+    blog_url: "https://estuary.dev/blog",
+    github_org: "estuary",
+    github_releases_url: "https://github.com/estuary/flow/releases",
+  },
 ];
 
 export function loadCompanies(raw: unknown[] = rawCompanies): Company[] {

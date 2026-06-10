@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture References — will-maness-site</title>
+<style>
+  :root{--bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:860px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:8px}
+  h2{font-size:13px;font-weight:600;margin:36px 0 10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted)}
+  p{margin-bottom:16px;color:var(--muted);font-size:14px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .card{display:block;border:1px solid var(--line);border-radius:6px;padding:14px 18px;margin-bottom:10px;background:#fff;transition:border-color 0.15s}
+  .card:hover{border-color:var(--accent)}
+  .card-title{font-weight:600;font-size:15px;color:var(--ink)}
+  .card-meta{font-size:13px;color:var(--muted);margin-top:2px}
+  .badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:500;vertical-align:middle;margin-left:6px}
+  .badge.active{background:#d1fae5;border:1px solid #6ee7b7;color:#065f46}
+  .badge.wip{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
+  .badge.paused{background:#f3f4f6;border:1px solid #d1d5db;color:#6b7280}
+  .badge.complete{background:#dbeafe;border:1px solid #93c5fd;color:#1e3a8a}
+  .note{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;font-size:13px;color:var(--muted);margin-bottom:28px}
+</style>
+</head>
+<body>
+
+<h1>Architecture References</h1>
+<p>Internal reference documents for all active projects and the will-maness-site codebase. Not deployed — lives in <code>docs/architecture/</code> for GitHub and agent use. Each file is self-contained (inline CSS, no external requests).</p>
+
+<div class="note">
+  <strong>Agents:</strong> Start with the file for the project you're working on. The <strong>Agent Notes</strong> section in each file contains the highest-value non-obvious constraints and footguns. Cross-references to shared infrastructure (Neon, pipeline_runs, Vercel) are noted where relevant.
+</div>
+
+<h2>This site</h2>
+
+<a class="card" href="website.html">
+  <div class="card-title">will-maness-site (website) <span class="badge active">active</span></div>
+  <div class="card-meta">Next.js 16 · Tailwind v4 · MDX · Neon Postgres · Vercel — the codebase this file lives in</div>
+</a>
+
+<h2>Embedded projects (live in this repo)</h2>
+
+<a class="card" href="ember.html">
+  <div class="card-title">EmberBrief <span class="badge active">active</span></div>
+  <div class="card-meta">Wildfire detection + AI briefings — NASA FIRMS · Synoptic weather · Claude API · Neon · Vercel Cron</div>
+</a>
+
+<a class="card" href="boston-311.html">
+  <div class="card-title">Boston 311 Equity Tracker <span class="badge active">active</span></div>
+  <div class="card-meta">Operational reallocation dashboard — Open Boston CKAN · Neon Postgres · Recharts</div>
+</a>
+
+<a class="card" href="chess-tracker.html">
+  <div class="card-title">Chess Tournament Tracker <span class="badge active">active</span></div>
+  <div class="card-meta">Live grandmaster tournament tracker — Lichess Broadcasts API · react-chessboard · chess.js · client-side only</div>
+</a>
+
+<a class="card" href="vienna.html">
+  <div class="card-title">Vienna Opening Trainer <span class="badge active">active</span></div>
+  <div class="card-meta">Interactive chess opening drill — theory.json · react-chessboard · chess.js · client-side only</div>
+</a>
+
+<a class="card" href="vendor-feed.html">
+  <div class="card-title">Vendor Feed <span class="badge wip">in progress</span></div>
+  <div class="card-meta">Automated vendor intelligence pipeline — custom scraper · extractor · Neon Postgres</div>
+</a>
+
+<a class="card" href="pipeline-dashboard.html">
+  <div class="card-title">Pipeline Dashboard <span class="badge active">active</span></div>
+  <div class="card-meta">Health monitor for all site pipelines — reads pipeline_runs table · shared infrastructure</div>
+</a>
+
+<h2>External projects (separate repos, described on site)</h2>
+
+<a class="card" href="viktor.html">
+  <div class="card-title">Local AI Stack (Project Sovereign / Viktor) <span class="badge active">active</span></div>
+  <div class="card-meta">Personal AI agent infrastructure — Gmail · Calendar · launchd scheduling · Claude agents · macOS</div>
+</a>
+
+<a class="card" href="architecture.html">
+  <div class="card-title">Enterprise Data Platform Architecture <span class="badge complete">complete</span></div>
+  <div class="card-meta">14-artifact consulting deliverable — vendor scoring · reference architecture · executive materials</div>
+</a>
+
+<a class="card" href="competitive-intelligence.html">
+  <div class="card-title">Competitive Intelligence Desktop App <span class="badge paused">paused</span></div>
+  <div class="card-meta">macOS native app for competitor signal tracking</div>
+</a>
+
+<a class="card" href="stellar.html">
+  <div class="card-title">Project Stellar <span class="badge paused">paused</span></div>
+  <div class="card-meta">2D side-scrolling video game — separate repo</div>
+</a>
+
+<h2>Shared infrastructure</h2>
+<p style="color:var(--ink);font-size:14px">The following resources are shared across multiple embedded projects:</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px">
+  <tr style="background:var(--bg-soft)"><th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--line-strong);font-weight:600">Resource</th><th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--line-strong);font-weight:600">Used by</th><th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--line-strong);font-weight:600">Notes</th></tr>
+  <tr><td style="padding:8px 12px;border-bottom:1px solid var(--line)">Neon Postgres (<code>DATABASE_URL</code>)</td><td style="padding:8px 12px;border-bottom:1px solid var(--line)">ember, 311, pipeline-dashboard, vendor-feed</td><td style="padding:8px 12px;border-bottom:1px solid var(--line)">Single Neon project; tables namespaced by feature</td></tr>
+  <tr><td style="padding:8px 12px;border-bottom:1px solid var(--line)"><code>pipeline_runs</code> table</td><td style="padding:8px 12px;border-bottom:1px solid var(--line)">ember, 311, pipeline-dashboard</td><td style="padding:8px 12px;border-bottom:1px solid var(--line)">Every pipeline must upsert after each run or dashboard shows "Unknown"</td></tr>
+  <tr><td style="padding:8px 12px;border-bottom:1px solid var(--line)">Vercel project <code>website</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--line)">all embedded projects</td><td style="padding:8px 12px;border-bottom:1px solid var(--line)">Push to <code>main</code> deploys production. Hobby plan: max 2 cron jobs.</td></tr>
+  <tr><td style="padding:8px 12px">Design tokens (<code>src/lib/tokens.ts</code>)</td><td style="padding:8px 12px">all embedded projects</td><td style="padding:8px 12px">Single source of truth for all colors, spacing, typography</td></tr>
+</table>
+
+<p style="font-size:12px;color:var(--muted);margin-top:32px">Generated 2026-06-01 · <a href="https://github.com/williamkmaness-source/will-maness-site/issues/117">Issue #117</a></p>
+
+</body>
+</html>

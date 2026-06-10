@@ -56,8 +56,8 @@ describe("loadCompanies", () => {
 });
 
 describe("companies (built-in config)", () => {
-  it("loads all 15 companies without error", () => {
-    expect(companies).toHaveLength(15);
+  it("loads all 18 companies without error", () => {
+    expect(companies).toHaveLength(18);
   });
 
   it("every company has a valid blog_url and github_org", () => {

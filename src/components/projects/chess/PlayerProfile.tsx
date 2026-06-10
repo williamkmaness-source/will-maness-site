@@ -113,6 +113,7 @@ async function fetchLichessUser(username: string): Promise<LichessUser | null> {
     const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(key)}`);
     if (!res.ok) { lichessCache.set(key, null); return null; }
     const data = (await res.json()) as LichessUser;
+    if (!data.perfs) { lichessCache.set(key, null); return null; }
     lichessCache.set(key, data);
     return data;
   } catch {
@@ -123,7 +124,7 @@ async function fetchLichessUser(username: string): Promise<LichessUser | null> {
 
 interface Props {
   displayName: string;
-  roundId?: string | null;
+  roundIds?: string[];
   onClose: () => void;
 }
 
@@ -154,8 +155,10 @@ const FLAG_EMOJI: Record<string, string> = {
   SVK: '\u{1F1F8}\u{1F1F0}', SVN: '\u{1F1F8}\u{1F1EE}', ENG: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',
 };
 
-export function PlayerProfile({ displayName, roundId, onClose }: Props) {
-  const [status, setStatus] = useState<Status>('loading');
+export function PlayerProfile({ displayName, roundIds, onClose }: Props) {
+  const [resolvedProfile, setResolvedProfile] = useState<{ key: string; status: 'ready' | 'not-found' | 'error' } | null>(null);
+  const profileKey = `${displayName}::${roundIds?.join() ?? ''}`;
+  const status: Status = resolvedProfile?.key === profileKey ? resolvedProfile.status : 'loading';
   const [broadcastPlayer, setBroadcastPlayer] = useState<BroadcastPlayer | null>(null);
   const [lichessUser, setLichessUser] = useState<LichessUser | null>(null);
   const [tournamentResults, setTournamentResults] = useState<TournamentResult[]>([]);
@@ -167,22 +170,26 @@ export function PlayerProfile({ displayName, roundId, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    setStatus('loading');
+    const key = `${displayName}::${roundIds?.join() ?? ''}`;
     let cancelled = false;
 
     async function loadProfile() {
       let bp: BroadcastPlayer | null = null;
 
-      if (roundId) {
-        const players = await fetchBroadcastPlayers(roundId);
-        bp = findBroadcastPlayer(players, displayName);
+      if (roundIds && roundIds.length > 0) {
+        for (const rid of roundIds) {
+          if (cancelled) return;
+          const players = await fetchBroadcastPlayers(rid);
+          bp = findBroadcastPlayer(players, displayName);
+          if (bp) break;
+        }
       }
 
       if (cancelled) return;
 
       if (bp) {
         setBroadcastPlayer(bp);
-        setStatus('ready');
+        setResolvedProfile({ key, status: 'ready' });
         fetchLichessUser(displayName.replace(/[\s,]+/g, '').toLowerCase()).then((u) => {
           if (!cancelled && u) {
             setLichessUser(u);
@@ -195,17 +202,18 @@ export function PlayerProfile({ displayName, roundId, onClose }: Props) {
         if (cancelled) return;
         if (u) {
           setLichessUser(u);
-          setStatus('ready');
+          setResolvedProfile({ key, status: 'ready' });
           fetchTournamentResults(u.id).then((r) => { if (!cancelled) setTournamentResults(r); }).catch(() => {});
         } else {
-          setStatus('not-found');
+          setResolvedProfile({ key, status: 'not-found' });
         }
       }
     }
 
     loadProfile();
     return () => { cancelled = true; };
-  }, [displayName, roundId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayName, roundIds?.join()]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {

@@ -78,6 +78,7 @@ export function SpxDashboard() {
   const [error, setError] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
   const [smaToggles, setSmaToggles] = useState({ sma20: true, sma50: true, sma200: true });
+  const [showBB, setShowBB] = useState(true);
 
   useEffect(() => {
     fetch("/api/spx-data")
@@ -100,7 +101,7 @@ export function SpxDashboard() {
 
   if (!data) return <Skeleton />;
 
-  const { signals, vix, goldenCross, candles, volume, sma20, sma50, sma200, rsi, macd } = data;
+  const { signals, vix, goldenCross, candles, volume, sma20, sma50, sma200, rsi, macd, bollingerBands } = data;
   const lastCandle = candles[candles.length - 1];
   const lastClose = lastCandle?.close ?? 0;
 
@@ -200,11 +201,14 @@ export function SpxDashboard() {
         sma20={sma20}
         sma50={sma50}
         sma200={sma200}
+        bollingerBands={bollingerBands}
         showSma20={smaToggles.sma20}
         showSma50={smaToggles.sma50}
         showSma200={smaToggles.sma200}
+        showBB={showBB}
         timeRange={timeRange}
         onToggleSma={handleToggleSma}
+        onToggleBB={() => setShowBB((prev) => !prev)}
       />
 
       {/* RSI + MACD panels */}

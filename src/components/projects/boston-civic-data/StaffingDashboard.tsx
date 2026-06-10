@@ -6,6 +6,7 @@ import type {
   DepartmentResult,
 } from "@/app/api/311-departments/route";
 import { DepartmentCard } from "./DepartmentCard";
+import { RequestTypeBreakdown } from "./RequestTypeBreakdown";
 
 function Headline({
   flagged,
@@ -19,7 +20,7 @@ function Headline({
       <p className="font-serif text-[28px] font-medium leading-[1.25] text-ink">
         {flagged === 0
           ? `All ${total} departments operating normally.`
-          : `${flagged} of ${total} department${total === 1 ? "" : "s"} showing staffing pressure.`}
+          : `${flagged} of ${total} department${total === 1 ? "" : "s"} showing operational pressure.`}
       </p>
     </div>
   );
@@ -56,6 +57,7 @@ export function StaffingDashboard() {
   const [data, setData] = useState<DepartmentsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,6 +69,7 @@ export function StaffingDashboard() {
       })
       .then((json: DepartmentsPayload) => {
         setData(json);
+        setSelectedDepartment(json.departments[0]?.department ?? null);
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -103,9 +106,17 @@ export function StaffingDashboard() {
       <Headline flagged={data.flaggedCount} total={data.totalCount} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px]">
         {data.departments.map((dept: DepartmentResult) => (
-          <DepartmentCard key={dept.department} dept={dept} />
+          <DepartmentCard
+            key={dept.department}
+            dept={dept}
+            isSelected={dept.department === selectedDepartment}
+            onClick={() => setSelectedDepartment(dept.department)}
+          />
         ))}
       </div>
+      {selectedDepartment && (
+        <RequestTypeBreakdown department={selectedDepartment} />
+      )}
       <DataFooter lastUpdated={data.lastUpdated} />
     </div>
   );

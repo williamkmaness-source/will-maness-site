@@ -94,15 +94,31 @@ function ClosureSparkline({ dept }: { dept: DepartmentResult }) {
   );
 }
 
-export function DepartmentCard({ dept }: { dept: DepartmentResult }) {
+export function DepartmentCard({
+  dept,
+  isSelected = false,
+  onClick,
+}: {
+  dept: DepartmentResult;
+  isSelected?: boolean;
+  onClick?: () => void;
+}) {
   const latestWeek = dept.weeks[dept.weeks.length - 1];
   const latestNet = latestWeek ? latestWeek.opened - latestWeek.closed : 0;
   const latestMedian = latestWeek?.medianDays ?? 0;
 
   return (
     <div
-      className="border border-line rounded-[6px] p-[16px] flex flex-col gap-[12px]"
+      className={`border rounded-[6px] p-[16px] flex flex-col gap-[12px] transition-colors ${
+        isSelected
+          ? "border-accent bg-accent-soft cursor-pointer"
+          : "border-line cursor-pointer hover:border-line-strong"
+      }`}
       title={dept.tooltip || undefined}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick?.(); }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-[8px]">

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Local AI Stack (Project Sovereign / Viktor)</title>
+<style>
+  :root{--bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:900px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:var(--accent)}
+  p{margin-bottom:12px}
+  a{color:var(--accent)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--bg-soft);border:1px solid var(--line-strong);margin-left:8px;vertical-align:middle}
+  .badge.active{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px}
+  th{text-align:left;padding:8px 12px;background:var(--bg-soft);border-bottom:2px solid var(--line-strong);font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:var(--bg-soft);padding:2px 5px;border-radius:3px}
+  ul{padding-left:20px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .callout{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;margin-bottom:16px;font-size:14px}
+  .warning{border-left-color:var(--clay)}
+  nav{margin-bottom:32px;font-size:13px}
+  nav a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>Local AI Stack (Project Sovereign / Viktor) <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> viktor &nbsp;·&nbsp;
+  <strong>Type:</strong> Local AI agent infrastructure (macOS) &nbsp;·&nbsp;
+  <strong>Workstation:</strong> <code>Claude_OS/Projects/project_viktor/</code> &nbsp;·&nbsp;
+  <strong>Site page:</strong> <a href="https://willmaness.com/work/local-ai-stack" target="_blank">willmaness.com/work/local-ai-stack</a>
+</p>
+
+<h2>Overview</h2>
+<p>A personal AI agent infrastructure running on Will's local machine (named "Viktor"). The project builds a self-hosted morning briefing system: inbox triage, calendar summarization, newsletter story extraction, and daily briefing delivery via email — all orchestrated by Claude agents on a launchd schedule.</p>
+<p>This is a separate workstation in Claude_OS, not embedded in will-maness-site. The site's <code>content/projects/local-ai-stack.mdx</code> provides a public-facing description.</p>
+
+<h2>Key Components</h2>
+<table>
+  <tr><th>Component</th><th>Description</th></tr>
+  <tr><td>Inbox classification</td><td>Gmail triage via Google OAuth — labels and prioritizes incoming mail</td></tr>
+  <tr><td>Calendar summary</td><td>Google Calendar integration — daily agenda digest</td></tr>
+  <tr><td>Newsletter extraction</td><td>Pulls story signals from subscribed newsletters</td></tr>
+  <tr><td>Morning briefing</td><td>Synthesizes all inputs into a single daily brief</td></tr>
+  <tr><td>Self-email delivery</td><td>Sends brief to <code>william.k.maness@gmail.com</code> via Gmail API</td></tr>
+  <tr><td>launchd scheduling</td><td>macOS launchd triggers the pipeline on a daily schedule</td></tr>
+  <tr><td>Push notifications</td><td>ntfy.sh topic <code>viktor-pn4w-1751</code> — curl pattern for phone notifications</td></tr>
+</table>
+
+<h2>Site Integration</h2>
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>Content file</td><td><code>content/projects/local-ai-stack.mdx</code></td></tr>
+  <tr><td>Featured</td><td>Not featured on homepage</td></tr>
+  <tr><td>Embedded app</td><td>None — description-only page</td></tr>
+</table>
+
+<h2>Infrastructure Notes</h2>
+<ul>
+  <li>Runs entirely on the local macOS machine — no cloud hosting</li>
+  <li>Google OAuth tokens require periodic renewal (see issue tracker in <code>project_viktor/_issues/</code>)</li>
+  <li>Issues tracked as markdown files in <code>Claude_OS/Projects/project_viktor/_issues/</code> (not GitHub issues)</li>
+  <li>Tailscale MagicDNS used for local network access</li>
+</ul>
+
+<h2>Agent Notes</h2>
+<div class="callout warning">
+  <strong>Issue tracking is different here.</strong> project_viktor uses markdown issue files in <code>_issues/</code>, NOT GitHub issues. All other projects use GitHub issues via <code>gh</code>.
+</div>
+<div class="callout">
+  This project is managed entirely from the <code>project_viktor</code> workstation in Claude_OS. For architecture detail, check <code>Claude_OS/Projects/project_viktor/MEMORY.md</code> and the <code>_issues/</code> directory.
+</div>
+<ul>
+  <li>To update the public description: edit <code>content/projects/local-ai-stack.mdx</code></li>
+</ul>
+
+</body>
+</html>

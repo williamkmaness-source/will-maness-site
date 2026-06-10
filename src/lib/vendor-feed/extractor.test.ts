@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { stripHtml, extractFromPage, type ExtractedEntities } from "./extractor";
+import { stripHtml, isGitHubReleasesUrl, type ExtractedEntities } from "./extractor";
 import type { RawPage } from "./db";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 
@@ -329,5 +329,62 @@ describe("extractFromPage", () => {
     await _extract(sql, fixtureRawPage, callFn);
 
     expect(inserted.launches).toHaveLength(2);
+  });
+
+  it("regression #188: GitHub releases page preserves per-release dates instead of overriding with page-level canonical date", async () => {
+    const { inserted, markedExtracted } = await setup();
+
+    // Releases page with JSON-LD datePublished for the most-recent release (2025-03-10).
+    // An older release on the same page was published 2025-01-15 — without the fix, that
+    // date would be overridden to 2025-03-10 (the page-level canonical).
+    const releasesPage: RawPage = {
+      id: 99,
+      company: "Prefect",
+      source_url: "https://github.com/PrefectHQ/prefect/releases",
+      raw_content: `<html><head>
+        <script type="application/ld+json">{"datePublished":"2025-03-10"}</script>
+      </head><body>
+        <h2>Prefect 3.2.0 — March 10, 2025</h2><p>New scheduling engine.</p>
+        <h2>Prefect 3.1.0 — January 15, 2025</h2><p>Performance improvements.</p>
+      </body></html>`,
+      scraped_at: new Date("2025-04-01T00:00:00Z"),
+    };
+
+    // Claude returns per-release dates
+    const callFn = vi.fn().mockResolvedValue({
+      feature_launches: [
+        { product_name: "Prefect 3.2.0", description: "New scheduling engine.", release_date: "2025-03-10" },
+        { product_name: "Prefect 3.1.0", description: "Performance improvements.", release_date: "2025-01-15" },
+      ],
+      pricing_changes: [],
+      partnerships: [],
+      architectural_shifts: [],
+    });
+
+    const { extractFromPage: _extract } = await import("./extractor");
+    await _extract(sql, releasesPage, callFn);
+
+    // Both releases inserted with their specific dates (not the page-level 2025-03-10)
+    expect(inserted.launches).toHaveLength(2);
+    const releaseDates = (inserted.launches as Array<{ releaseDate: string }>).map((l) => l.releaseDate);
+    expect(releaseDates).toContain("2025-03-10");
+    expect(releaseDates).toContain("2025-01-15");
+    expect(markedExtracted).toContain(99);
+  });
+});
+
+// ── isGitHubReleasesUrl ───────────────────────────────────────────────────────
+
+describe("isGitHubReleasesUrl", () => {
+  it("returns true for a github.com releases URL", () => {
+    expect(isGitHubReleasesUrl("https://github.com/PrefectHQ/prefect/releases")).toBe(true);
+  });
+
+  it("returns false for a regular blog URL", () => {
+    expect(isGitHubReleasesUrl("https://www.prefect.io/blog/q1-update")).toBe(false);
+  });
+
+  it("returns false for a GitHub URL that is not a releases page", () => {
+    expect(isGitHubReleasesUrl("https://github.com/PrefectHQ/prefect")).toBe(false);
   });
 });

@@ -14,7 +14,9 @@ The bottleneck is synthesis. Translating raw satellite detections and weather re
 
 > Can a deterministic rules engine and a tightly constrained AI layer replace the analyst — not by guessing, but by doing exactly what the analyst would do with the same inputs?
 
-That is the product question. The [live dashboard](/ember) shows current fire activity and conditions for the Lake Tahoe Basin, scored and briefed automatically on a daily cadence.
+That is the product question. The live dashboard below shows current fire activity and conditions for the Lake Tahoe Basin, scored and briefed automatically on a daily cadence.
+
+<EmberDashboard />
 
 ## How it works
 
@@ -53,5 +55,3 @@ The briefing prompt is constructed from the cluster's exact metrics. Claude cann
 Phase 2 priorities: multi-county support with agency boundary routing, an interactive map layer (Mapbox), and push notification delivery via service worker. The insurance vertical is a natural reframe — parcel overlay and structure exposure estimates would make the same pipeline useful for underwriters, not just field commanders.
 
 The north star metric is time-to-brief: minutes from satellite fire detection to a user seeing an actionable briefing. Target is under 15 minutes. The manual analyst baseline is approximately 47 minutes.
-
-[Open the live dashboard →](/ember)

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — will-maness-site (website)</title>
+<style>
+  :root {
+    --bg: #F7F3EC; --bg-soft: #EFE9DD; --ink: #1F1E1A; --muted: #6B665B;
+    --accent: #2D4A3E; --clay: #B85C38; --line: #E5DFD3; --line-strong: #D6CFC0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.6; padding: 40px 24px; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 600; margin-bottom: 4px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); color: var(--accent); }
+  h3 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  p { margin-bottom: 12px; }
+  a { color: var(--accent); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background: var(--bg-soft); border: 1px solid var(--line-strong); margin-left: 8px; vertical-align: middle; }
+  .badge.active { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+  .badge.paused { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; background: var(--bg-soft); border-bottom: 2px solid var(--line-strong); font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  code { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; background: var(--bg-soft); padding: 2px 5px; border-radius: 3px; }
+  pre { background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 6px; padding: 16px; font-size: 13px; font-family: 'SF Mono', Menlo, Consolas, monospace; overflow-x: auto; margin-bottom: 16px; white-space: pre; }
+  ul { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .callout { background: var(--bg-soft); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 4px 4px 0; margin-bottom: 16px; font-size: 14px; }
+  .warning { border-left-color: var(--clay); }
+  details { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 12px; }
+  summary { padding: 10px 14px; cursor: pointer; font-weight: 500; background: var(--bg-soft); border-radius: 5px; }
+  details[open] summary { border-radius: 5px 5px 0 0; border-bottom: 1px solid var(--line); }
+  details > *:not(summary) { padding: 14px; }
+  nav { margin-bottom: 32px; font-size: 13px; color: var(--muted); }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  .toc { list-style: none; padding: 0; }
+  .toc li { padding: 3px 0; }
+  .section-link { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>will-maness-site <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> website &nbsp;·&nbsp;
+  <strong>Live URL:</strong> <a href="https://willmaness.com" target="_blank">willmaness.com</a> &nbsp;·&nbsp;
+  <strong>GitHub:</strong> <a href="https://github.com/williamkmaness-source/will-maness-site" target="_blank">williamkmaness/will-maness-site</a> &nbsp;·&nbsp;
+  <strong>Vercel project:</strong> <code>website</code>
+</p>
+
+<details open>
+  <summary>Table of contents</summary>
+  <div>
+    <ul class="toc">
+      <li><a href="#overview" class="section-link">Overview</a></li>
+      <li><a href="#tech-stack" class="section-link">Tech Stack</a></li>
+      <li><a href="#architecture" class="section-link">Architecture Diagram</a></li>
+      <li><a href="#routes" class="section-link">Routes &amp; Pages</a></li>
+      <li><a href="#data-model" class="section-link">Data Model</a></li>
+      <li><a href="#integrations" class="section-link">External Integrations</a></li>
+      <li><a href="#infrastructure" class="section-link">Infrastructure</a></li>
+      <li><a href="#key-files" class="section-link">Key Files</a></li>
+      <li><a href="#open-issues" class="section-link">Open Issues / Known Gaps</a></li>
+      <li><a href="#agent-notes" class="section-link">Agent Notes</a></li>
+    </ul>
+  </div>
+</details>
+
+<h2 id="overview">Overview</h2>
+<p>
+  Will Maness's personal website, live at <a href="https://willmaness.com">willmaness.com</a>. Built to demonstrate technical fluency to VP-of-Product hiring managers at AI-infrastructure and data-tooling companies. The site is a portfolio artifact — it must feel considered, current, and human, not templated.
+</p>
+<p>
+  The site hosts several embedded interactive projects in addition to static content pages: the Boston 311 Equity Tracker, the Vienna Chess Opening Trainer, the Chess Tournament Tracker, the EmberBrief wildfire dashboard, the Vendor Feed preview, and the S&amp;P 500 Technical Analysis dashboard. Each lives under <code>/work/&lt;slug&gt;</code> or at a dedicated top-level route (<code>/ember</code>).
+</p>
+<p>
+  All human-readable copy lives in MDX files under <code>content/</code>, validated at build time against Zod schemas. No CMS — publishing content means creating a file and pushing.
+</p>
+
+<h2 id="tech-stack">Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>TypeScript, server components by default, file-system routing</td></tr>
+  <tr><td>Styling</td><td>Tailwind CSS v4</td><td>CSS-native <code>@theme</code> block; no <code>tailwind.config.ts</code></td></tr>
+  <tr><td>Design tokens</td><td><code>src/lib/tokens.ts</code></td><td>Single source of truth; mirrored to CSS custom properties in <code>globals.css</code></td></tr>
+  <tr><td>Content</td><td>MDX + <code>@next/mdx</code></td><td>All posts, project pages, and site copy; frontmatter validated with Zod</td></tr>
+  <tr><td>Typeface</td><td>Newsreader (400, 500, normal + italic)</td><td>Self-hosted via <code>next/font/google</code>; zero Google requests at runtime</td></tr>
+  <tr><td>Database</td><td>Neon Postgres</td><td><code>@neondatabase/serverless</code> v1.1; used by 311, ember, pipeline, vendor-feed features</td></tr>
+  <tr><td>Animation</td><td>Framer Motion</td><td>Used sparingly — only where it earns its keep</td></tr>
+  <tr><td>Chess</td><td>react-chessboard + chess.js</td><td>Vienna trainer and Chess Tournament Tracker</td></tr>
+  <tr><td>Charts</td><td>Recharts</td><td>Boston 311 visualizations; <code>lightweight-charts</code> for SPX</td></tr>
+  <tr><td>AI</td><td>Anthropic SDK (<code>@anthropic-ai/sdk</code>)</td><td>EmberBrief Action-tier briefings only; production env only</td></tr>
+  <tr><td>Analytics</td><td>Vercel Web Analytics + Speed Insights</td><td>Mounted in root layout; fires on every route</td></tr>
+  <tr><td>Testing</td><td>Vitest</td><td>Unit and render tests; no Playwright/E2E</td></tr>
+  <tr><td>Package manager</td><td>pnpm</td><td>Use <code>pnpm add</code> — npm crashes with arborist null error</td></tr>
+  <tr><td>Hosting</td><td>Vercel Hobby</td><td>Auto-deploys from GitHub <code>main</code>; Vercel project name is <code>website</code></td></tr>
+</table>
+
+<h2 id="architecture">Architecture Diagram</h2>
+<pre>
+  Browser
+     │
+     ▼
+  Next.js App Router (Vercel Edge + Node)
+  ├── Static routes (server-rendered HTML)
+  │   ├── /                 ← homepage (server component, MDX)
+  │   ├── /work             ← project index (server component)
+  │   ├── /work/[slug]      ← MDX project page + embedded app
+  │   ├── /writing          ← writing index (server component)
+  │   ├── /writing/[slug]   ← MDX post (server component)
+  │   └── /about            ← about page (server component)
+  │
+  ├── Interactive app routes
+  │   ├── /ember            ← EmberBrief dashboard (client components + Neon)
+  │   └── /work/vendor_feed ← Vendor Feed preview (client component + Neon)
+  │
+  └── API routes (Node runtime, force-dynamic)
+      ├── /api/cron/ember-ingest   ← daily pipeline (FIRMS + Synoptic + Claude)
+      ├── /api/ember-data          ← serves ember dashboard
+      ├── /api/311-departments     ← CKAN proxy + Neon upsert
+      ├── /api/pipeline-status     ← reads pipeline_runs table
+      └── /api/spx-data            ← Yahoo Finance proxy + technical indicators
+
+  External dependencies
+  ├── Neon Postgres (DATABASE_URL) ← ember, 311, pipeline, vendor-feed tables
+  ├── NASA FIRMS API (FIRMS_API_KEY)   ← wildfire detection data
+  ├── NOAA Synoptic (SYNOPTIC_API_KEY) ← weather observations
+  ├── Anthropic Claude API (ANTHROPIC_API_KEY, prod only)
+  ├── Lichess Broadcasts API (no auth) ← chess tracker
+  ├── Open Boston CKAN API (no auth)   ← 311 data
+  └── Yahoo Finance (via yahoo-finance2 npm) ← SPX prices
+</pre>
+
+<h2 id="routes">Routes &amp; Pages</h2>
+<table>
+  <tr><th>Route</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>/</code></td><td>Server component</td><td>Homepage — hero, featured projects, writing teasers</td></tr>
+  <tr><td><code>/work</code></td><td>Server component</td><td>All projects index, sourced from <code>content/projects/*.mdx</code></td></tr>
+  <tr><td><code>/work/[slug]</code></td><td>Server component + MDX</td><td>Individual project page with embedded interactive component (if any)</td></tr>
+  <tr><td><code>/writing</code></td><td>Server component</td><td>Writing index, sourced from <code>content/writing/*.mdx</code></td></tr>
+  <tr><td><code>/writing/[slug]</code></td><td>Server component + MDX</td><td>Individual essay/post</td></tr>
+  <tr><td><code>/about</code></td><td>Server component</td><td>About page</td></tr>
+  <tr><td><code>/ember</code></td><td>Client components + Neon</td><td>EmberBrief wildfire dashboard — uses <code>export const dynamic = "force-dynamic"</code></td></tr>
+  <tr><td><code>/work/vendor_feed</code></td><td>Client component + Neon</td><td>Vendor Feed preview — uses <code>force-dynamic</code></td></tr>
+  <tr><td><code>/dev/components</code></td><td>Dev only</td><td>Component playground — not linked in nav</td></tr>
+</table>
+
+<h2 id="data-model">Data Model</h2>
+<p>All tables live in the <code>neondb</code> database on Neon Postgres. No ORM — raw SQL via <code>@neondatabase/serverless</code>.</p>
+
+<details>
+  <summary><strong>ember_fire_clusters</strong> — active wildfire clusters (refreshed daily)</summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>id</td><td>serial PK</td><td>Auto-increment</td></tr>
+      <tr><td>lat, lng</td><td>numeric</td><td>Cluster centroid</td></tr>
+      <tr><td>frp</td><td>numeric</td><td>Fire Radiative Power (MW)</td></tr>
+      <tr><td>detection_count</td><td>integer</td><td>Number of VIIRS pixels in cluster</td></tr>
+      <tr><td>detected_at</td><td>timestamptz</td><td>Most recent satellite pass time</td></tr>
+      <tr><td>risk_score</td><td>numeric</td><td>Weighted composite 0–100</td></tr>
+      <tr><td>tier</td><td>text</td><td>'Monitor' / 'Watch' / 'Action'</td></tr>
+      <tr><td>weather</td><td>jsonb</td><td>Synoptic observation at nearest station</td></tr>
+      <tr><td>briefing</td><td>text / jsonb</td><td>Claude-generated situation briefing (Action tier only)</td></tr>
+      <tr><td>briefing_generated_at</td><td>timestamptz</td><td>When Claude ran</td></tr>
+    </table>
+    <div class="callout">Full table is DELETE + re-INSERT on every cron run. No incremental updates. The prior run's rows are snapshotted before DELETE so trend scoring can compare FRP.</div>
+  </div>
+</details>
+
+<details>
+  <summary><strong>ember_county_conditions</strong> — Lake Tahoe Basin county-level weather</summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>county</td><td>text PK</td><td>Currently only 'Lake Tahoe Basin'</td></tr>
+      <tr><td>wind_speed</td><td>numeric</td><td>mph</td></tr>
+      <tr><td>wind_direction</td><td>text</td><td>Cardinal (N, NNE, etc.)</td></tr>
+      <tr><td>wind_gust_mph</td><td>numeric</td><td>mph</td></tr>
+      <tr><td>humidity</td><td>numeric</td><td>%RH</td></tr>
+      <tr><td>temperature</td><td>numeric</td><td>°F</td></tr>
+      <tr><td>precip_24h_in</td><td>numeric</td><td>Accumulated precipitation (in)</td></tr>
+      <tr><td>red_flag</td><td>boolean</td><td>RH &lt; 15% AND wind &gt; 25 mph</td></tr>
+      <tr><td>forecast</td><td>jsonb</td><td>6-hour outlook from Synoptic</td></tr>
+      <tr><td>observed_at</td><td>timestamptz</td><td>Station observation time</td></tr>
+    </table>
+    <div class="callout">Upserted (ON CONFLICT DO UPDATE) on every cron run. One row per county.</div>
+  </div>
+</details>
+
+<details>
+  <summary><strong>case_events</strong> — Boston 311 individual service request records</summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>case_id</td><td>text PK</td><td>CKAN case_enquiry_id</td></tr>
+      <tr><td>neighborhood</td><td>text</td><td>Boston neighborhood name</td></tr>
+      <tr><td>request_type</td><td>text</td><td>311 reason category</td></tr>
+      <tr><td>department</td><td>text</td><td>Responsible department (nullable)</td></tr>
+      <tr><td>open_date</td><td>date</td><td>Case opened</td></tr>
+      <tr><td>close_date</td><td>date</td><td>Case closed (nullable)</td></tr>
+      <tr><td>days_to_close</td><td>numeric</td><td>Computed; null if open</td></tr>
+      <tr><td>on_time</td><td>boolean</td><td>ONTIME/OVERDUE from CKAN</td></tr>
+      <tr><td>sla_days</td><td>numeric</td><td>SLA target in days</td></tr>
+    </table>
+    <div class="callout">Backfilled from 2024-01-01 (95K rows as of 2026-05-18). Nightly pipeline incrementally upserts. Use <code>sql.query()</code> for parameterized calls — Neon v1.1 dropped the <code>sql(query, params)</code> calling convention.</div>
+  </div>
+</details>
+
+<details>
+  <summary><strong>request_type_meta</strong> — 311 request type categorization</summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>request_type</td><td>text PK</td><td>Matches case_events.request_type</td></tr>
+      <tr><td>department</td><td>text</td><td>Responsible dept name</td></tr>
+      <tr><td>sla_target</td><td>integer</td><td>SLA in days</td></tr>
+      <tr><td>include_in_dashboard</td><td>boolean</td><td>False hides from the staffing dashboard</td></tr>
+    </table>
+  </div>
+</details>
+
+<details>
+  <summary><strong>pipeline_runs</strong> — health tracking for all pipelines</summary>
+  <div>
+    <table>
+      <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+      <tr><td>pipeline</td><td>text PK</td><td>'ember', '311' — one row per pipeline</td></tr>
+      <tr><td>status</td><td>text</td><td>'success' / 'failed'</td></tr>
+      <tr><td>last_success_at</td><td>timestamptz</td><td></td></tr>
+      <tr><td>last_attempt_at</td><td>timestamptz</td><td></td></tr>
+      <tr><td>record_count</td><td>integer</td><td>Rows processed</td></tr>
+      <tr><td>error</td><td>text</td><td>Error message on failure</td></tr>
+    </table>
+    <div class="callout">Every pipeline must upsert <code>pipeline_runs</code> on each run, or the pipeline dashboard shows "Unknown." The 'chess' pipeline row is orphaned — see issue #104.</div>
+  </div>
+</details>
+
+<h2 id="integrations">External Integrations</h2>
+<table>
+  <tr><th>Service</th><th>Env Var</th><th>Environments</th><th>Used by</th></tr>
+  <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code>, <code>DATABASE_URL_UNPOOLED</code></td><td>All</td><td>ember, 311, pipeline, vendor-feed</td></tr>
+  <tr><td>NASA FIRMS NRT</td><td><code>FIRMS_API_KEY</code></td><td>All</td><td>EmberBrief cron ingest</td></tr>
+  <tr><td>NOAA Synoptic</td><td><code>SYNOPTIC_API_KEY</code></td><td>All</td><td>EmberBrief cron ingest</td></tr>
+  <tr><td>Anthropic Claude API</td><td><code>ANTHROPIC_API_KEY</code></td><td>Production only</td><td>EmberBrief Action-tier briefings</td></tr>
+  <tr><td>Lichess Broadcasts API</td><td><em>none — public</em></td><td>—</td><td>Chess Tournament Tracker (client-side)</td></tr>
+  <tr><td>Open Boston CKAN</td><td><em>none — public</em></td><td>—</td><td>Boston 311 API route + backfill script</td></tr>
+  <tr><td>Yahoo Finance</td><td><em>none — npm package</em></td><td>—</td><td>SPX dashboard API route</td></tr>
+</table>
+
+<h2 id="infrastructure">Infrastructure</h2>
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>Hosting</td><td>Vercel Hobby plan — Vercel project name is <code>website</code> (not <code>will-maness-site</code>)</td></tr>
+  <tr><td>Deploy trigger</td><td>Push to <code>main</code> → automatic production deploy; PRs get preview deployments</td></tr>
+  <tr><td>Cron jobs</td><td>1 active: <code>/api/cron/ember-ingest</code> at <code>0 9 * * *</code> (09:00 UTC). Hobby plan max = 2 cron jobs, daily cadence only.</td></tr>
+  <tr><td>Database</td><td>Neon Postgres — project <code>ep-wandering-truth-aqzqy1ft</code> (pooled + unpooled connection strings in <code>.env.local</code>)</td></tr>
+  <tr><td>CI</td><td>None configured — Vercel build is the only gated check</td></tr>
+  <tr><td>Vercel env vars</td><td>Set via REST API (Vercel plugin blocks <code>env add preview</code>); token at <code>~/Library/Application Support/com.vercel.cli/auth.json</code></td></tr>
+</table>
+
+<h2 id="key-files">Key Files</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>src/app/layout.tsx</code></td><td>Root layout — Newsreader font injection, Nav/Footer, Vercel Analytics/SpeedInsights</td></tr>
+  <tr><td><code>src/app/globals.css</code></td><td>Tailwind v4 <code>@theme</code> block + CSS custom properties; the canonical token bridge</td></tr>
+  <tr><td><code>src/lib/tokens.ts</code></td><td>Design token TypeScript constants — single source of truth for all visual values</td></tr>
+  <tr><td><code>src/lib/content.ts</code></td><td>MDX content loader — reads frontmatter, validates with Zod, returns typed content objects</td></tr>
+  <tr><td><code>src/lib/content-schemas.ts</code></td><td>Zod schemas for project and writing frontmatter</td></tr>
+  <tr><td><code>content/site.mdx</code></td><td>Hero copy, "currently" list, contact CTA — the only place to edit site-level voice</td></tr>
+  <tr><td><code>content/projects/*.mdx</code></td><td>One file per project — frontmatter drives cards, <code>featured: true</code> toggles homepage appearance</td></tr>
+  <tr><td><code>content/writing/*.mdx</code></td><td>Essays and posts</td></tr>
+  <tr><td><code>vercel.json</code></td><td>Cron job schedule — ember-ingest at 09:00 UTC</td></tr>
+  <tr><td><code>next.config.ts</code></td><td>MDX plugin config + page extensions</td></tr>
+  <tr><td><code>src/app/api/cron/ember-ingest/route.ts</code></td><td>Daily EmberBrief pipeline — FIRMS → cluster → weather → score → brief → upsert</td></tr>
+  <tr><td><code>src/lib/ember/ember-scoring.ts</code></td><td>Risk score formula (FRP 40% + weather 40% + trend 20%) and tier thresholds</td></tr>
+  <tr><td><code>src/lib/boston-311.ts</code></td><td>CKAN fetch, aggregation logic, case_events upsert helpers</td></tr>
+  <tr><td><code>src/components/projects/chess/BroadcastService.ts</code></td><td>Lichess Broadcasts API wrapper — rate-limit backoff, PGN fetch</td></tr>
+  <tr><td><code>src/components/projects/chess/reducer.ts</code></td><td>Chess tracker state machine (useReducer)</td></tr>
+  <tr><td><code>src/lib/PipelineStatusService.ts</code></td><td>Reads pipeline_runs; drives the pipeline health dashboard</td></tr>
+  <tr><td><code>docs/build-log.md</code></td><td>Chronological record of completed build phases</td></tr>
+  <tr><td><code>_spec/</code></td><td>Design spec files — design-tokens.md, execution-brief.md, mockups</td></tr>
+</table>
+
+<h2 id="open-issues">Open Issues / Known Gaps</h2>
+<ul>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/117" target="_blank">#117</a> — This file (architecture references)</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/115" target="_blank">#115</a> — Delete orphaned <code>will-maness-site</code> Vercel project (human action required)</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/104" target="_blank">#104</a> — Clean up chess rows from <code>pipeline_runs</code> table</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/16" target="_blank">#16</a> — Dark mode support not yet implemented</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/39" target="_blank">#39</a> — Chess move quality classification (Brilliant / Excellent / etc.) not yet implemented</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/38" target="_blank">#38</a> — Chess player profile panel not yet implemented</li>
+  <li><a href="https://github.com/williamkmaness-source/will-maness-site/issues/20" target="_blank">#20</a> — Boston 311 TrendChart deferred (needs 2–4 weeks of nightly pipeline data)</li>
+  <li>No E2E tests — Vitest covers units and render, but no Playwright/Cypress coverage</li>
+  <li>No CI pipeline — Vercel build is the only gated check</li>
+</ul>
+
+<h2 id="agent-notes">Agent Notes</h2>
+<div class="callout warning">
+  <strong>Package manager:</strong> Always use <code>pnpm add</code>, never <code>npm install</code>. npm crashes with an arborist null error due to the <code>.pnpm</code> symlink structure.
+</div>
+<div class="callout warning">
+  <strong>Vercel project name:</strong> The canonical project is <code>website</code>, not <code>will-maness-site</code>. An orphaned duplicate exists on Vercel but has no active GitHub link. Push to <code>main</code> deploys <code>website</code>. Don't reference <code>will-maness-site</code> in deploy commands.
+</div>
+<div class="callout warning">
+  <strong>Neon API v1.1 breaking change:</strong> The <code>sql(query, params)</code> calling convention was dropped. Use <code>sql.query(query, params)</code> for raw parameterized queries. Tagged template literals (<code>sql\`...\`</code>) still work for simple cases.
+</div>
+<div class="callout warning">
+  <strong>DB-backed pages must use <code>force-dynamic</code>:</strong> ISR causes build-time prerender failures on Vercel for any page that hits Neon. Add <code>export const dynamic = "force-dynamic"</code> at the top of the route file.
+</div>
+<div class="callout warning">
+  <strong>Vercel env vars via REST API:</strong> The Vercel CLI plugin blocks <code>vercel env add preview</code>. Use the REST API with the token from <code>~/Library/Application Support/com.vercel.cli/auth.json</code>.
+</div>
+<ul>
+  <li><strong>Design tokens:</strong> All color, spacing, and typography values come from <code>src/lib/tokens.ts</code>. No raw hex in components.</li>
+  <li><strong>Server components default:</strong> Default to server components. Only add <code>"use client"</code> when a component genuinely needs browser state or event listeners.</li>
+  <li><strong>Inline styles bypass Tailwind responsive prefixes:</strong> Use <code>className="grid-cols-*"</code> not <code>style={}</code> on layout containers.</li>
+  <li><strong>MDX content validation:</strong> Frontmatter is Zod-validated at build time. A missing required field or wrong type breaks the build.</li>
+  <li><strong>Migrations before deploying DB features:</strong> Always run any <code>migrate-*.ts</code> script against prod Neon before shipping a new DB-backed page.</li>
+  <li><strong>Cron budget:</strong> Vercel Hobby allows max 2 cron jobs at daily cadence. Currently using 1 (ember-ingest). Do not add a third.</li>
+  <li><strong>Featured projects:</strong> Only Ember, Chess Tracker, Boston 311, and Vendor Feed are featured on the homepage. Toggle via <code>featured:</code> in <code>content/projects/*.mdx</code>.</li>
+  <li><strong>ANTHROPIC_API_KEY:</strong> Present in Vercel Production only — not preview or development. EmberBrief gracefully skips briefing when the key is absent.</li>
+  <li><strong>Run migrations before shipping DB features.</strong></li>
+</ul>
+
+</body>
+</html>

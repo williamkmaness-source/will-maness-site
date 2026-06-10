@@ -161,6 +161,9 @@ export function FeedClient({
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(
     initialTypes as EntityType[]
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [matchingUrls, setMatchingUrls] = useState<Set<string> | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Unique companies present in the data, alphabetically sorted
   const availableCompanies = useMemo(
@@ -199,9 +202,30 @@ export function FeedClient({
     updateParams({ types: next });
   }
 
+  async function handleSearch(q: string) {
+    const trimmed = q.trim();
+    if (!trimmed) {
+      setMatchingUrls(null);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/vendor-feed/search?q=${encodeURIComponent(trimmed)}`);
+      const data = (await res.json()) as { matches?: { sourceUrl: string }[] };
+      const urls = new Set<string>((data.matches ?? []).map((m) => m.sourceUrl));
+      setMatchingUrls(urls);
+    } catch {
+      setMatchingUrls(null);
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
   function clearAll() {
     setSelectedCompanies([]);
     setSelectedTypes([]);
+    setSearchQuery("");
+    setMatchingUrls(null);
     router.replace(pathname, { scroll: false });
   }
 
@@ -212,12 +236,14 @@ export function FeedClient({
           selectedCompanies.length === 0 || selectedCompanies.includes(e.company);
         const typeMatch =
           selectedTypes.length === 0 || selectedTypes.includes(e.entityType);
-        return companyMatch && typeMatch;
+        const searchMatch = matchingUrls === null || matchingUrls.has(e.sourceUrl);
+        return companyMatch && typeMatch && searchMatch;
       }),
-    [entities, selectedCompanies, selectedTypes]
+    [entities, selectedCompanies, selectedTypes, matchingUrls]
   );
 
-  const hasActiveFilters = selectedCompanies.length > 0 || selectedTypes.length > 0;
+  const hasActiveFilters =
+    selectedCompanies.length > 0 || selectedTypes.length > 0 || matchingUrls !== null;
 
   return (
     <div className="mb-[96px]">
@@ -228,6 +254,36 @@ export function FeedClient({
           setSelectedTypes={setSelectedTypes}
         />
       </Suspense>
+
+      {/* Semantic search */}
+      <div className="mb-[24px]">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSearch(searchQuery);
+          }}
+        >
+          <div className="flex gap-[8px]">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!e.target.value.trim()) setMatchingUrls(null);
+              }}
+              placeholder="Search by concept, feature, or company…"
+              className="flex-1 font-mono text-[13px] px-[12px] py-[8px] bg-bg border border-line rounded-sm text-ink placeholder:text-hint focus:outline-none focus:border-accent transition-colors duration-[120ms]"
+            />
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="font-mono text-[12px] px-[14px] py-[8px] bg-bg border border-line rounded-sm text-muted hover:border-accent hover:text-accent transition-colors duration-[120ms] disabled:opacity-50 cursor-pointer"
+            >
+              {isSearching ? "…" : "Search"}
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* Filter controls */}
       <div className="mb-[32px] space-y-[16px]">
@@ -290,7 +346,9 @@ export function FeedClient({
       {filtered.length === 0 ? (
         <div className="py-[60px] text-center">
           <p className="font-serif text-[20px] text-muted mb-[12px]">
-            No entities match these filters.
+            {matchingUrls !== null && matchingUrls.size === 0
+              ? `No results for “${searchQuery}”.`
+              : "No entities match these filters."}
           </p>
           <button
             onClick={clearAll}

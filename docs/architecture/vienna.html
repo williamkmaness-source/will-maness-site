@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Vienna Opening Trainer</title>
+<style>
+  :root{--bg:#F7F3EC;--bg-soft:#EFE9DD;--ink:#1F1E1A;--muted:#6B665B;--accent:#2D4A3E;--clay:#B85C38;--line:#E5DFD3;--line-strong:#D6CFC0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;padding:40px 24px;max-width:900px;margin:0 auto}
+  h1{font-size:28px;font-weight:600;margin-bottom:4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:var(--accent)}
+  p{margin-bottom:12px}
+  a{color:var(--accent)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--bg-soft);border:1px solid var(--line-strong);margin-left:8px;vertical-align:middle}
+  .badge.active{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px}
+  th{text-align:left;padding:8px 12px;background:var(--bg-soft);border-bottom:2px solid var(--line-strong);font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:var(--bg-soft);padding:2px 5px;border-radius:3px}
+  pre{background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:6px;padding:16px;font-size:13px;font-family:'SF Mono',Menlo,Consolas,monospace;overflow-x:auto;margin-bottom:16px;white-space:pre}
+  ul{padding-left:20px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .callout{background:var(--bg-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 4px 4px 0;margin-bottom:16px;font-size:14px}
+  .warning{border-left-color:var(--clay)}
+  nav{margin-bottom:32px;font-size:13px}
+  nav a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← Architecture index</a></nav>
+
+<h1>Vienna Opening Trainer <span class="badge active">active</span></h1>
+<p class="meta">
+  <strong>Slug:</strong> vienna &nbsp;·&nbsp;
+  <strong>Live:</strong> <a href="https://willmaness.com/work/vienna-trainer" target="_blank">willmaness.com/work/vienna-trainer</a> &nbsp;·&nbsp;
+  <strong>Route:</strong> <code>/work/vienna-trainer</code> (embedded via MDX) &nbsp;·&nbsp;
+  <strong>No database — fully client-side</strong>
+</p>
+
+<h2>Overview</h2>
+<p>An interactive chess opening trainer for the Vienna Game. Presents positions from a curated opening tree and asks the user to find the correct move. Correct moves advance through the theory; incorrect moves show a hint and let the user retry. All state is local — no server, no database, no auth.</p>
+<p>The opening theory lives in <code>content/projects/vienna-trainer/theory.json</code> — a hand-curated JSON tree of positions and candidate moves. Updating the theory means editing that file.</p>
+
+<h2>Tech Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Theory data</td><td><code>content/projects/vienna-trainer/theory.json</code></td><td>Static JSON opening tree; shipped with the build</td></tr>
+  <tr><td>Board rendering</td><td>react-chessboard</td><td>Interactive — handles piece drag, click-to-move</td></tr>
+  <tr><td>Move logic</td><td>chess.js</td><td>Move validation, FEN generation, legal move checking</td></tr>
+  <tr><td>State</td><td><code>useReducer</code> in <code>ViennaTrainer.tsx</code></td><td>Fully local; no external store</td></tr>
+  <tr><td>Styling</td><td>Tailwind CSS v4</td><td>Uses site design tokens</td></tr>
+</table>
+
+<h2>Architecture Diagram</h2>
+<pre>
+  Build time: theory.json bundled as static asset
+
+  Browser (client-side only)
+       │
+       ├─ ViennaTrainer component (useReducer)
+       │      │
+       │      ├─ theory.json  → opening tree (positions + candidate moves)
+       │      ├─ chess.js     → move validation, FEN per position
+       │      └─ react-chessboard → interactive board (drag + click)
+       │
+       ├─ User clicks/drags a move
+       │      ├─ Correct → advance to next node in theory tree
+       │      └─ Incorrect → show hint; stay on current position
+       │
+       └─ reducer.ts — all state transitions (correct/incorrect/reset/hint)
+</pre>
+
+<h2>Key Files</h2>
+<table>
+  <tr><th>File</th><th>Owns</th></tr>
+  <tr><td><code>content/projects/vienna-trainer/theory.json</code></td><td>The opening tree — positions, correct moves, annotations. Edit this to update theory coverage.</td></tr>
+  <tr><td><code>src/components/projects/vienna-trainer/ViennaTrainer.tsx</code></td><td>Main trainer component — board + feedback UI</td></tr>
+  <tr><td><code>src/components/projects/vienna-trainer/reducer.ts</code></td><td>State transitions for all trainer events</td></tr>
+  <tr><td><code>src/components/projects/vienna-trainer/types.ts</code></td><td>Shared TypeScript types for the opening tree and trainer state</td></tr>
+  <tr><td><code>src/components/projects/vienna-trainer/ViennaTrainerSkeleton.tsx</code></td><td>Loading skeleton shown before the trainer hydrates</td></tr>
+</table>
+
+<h2>Open Issues / Known Gaps</h2>
+<ul>
+  <li>Theory tree coverage is manually curated — not exhaustive; only the main Vienna lines are included</li>
+  <li>No spaced-repetition or progress tracking — session resets on page reload</li>
+  <li>No dark mode support (deferred site-wide)</li>
+</ul>
+
+<h2>Agent Notes</h2>
+<div class="callout">
+  <strong>No backend at all.</strong> This component has zero server-side code. Updating theory content = editing <code>theory.json</code> and pushing. No migration, no DB, no API route.
+</div>
+<ul>
+  <li><strong>Closest existing pattern for chess features:</strong> The Vienna trainer was built before the Chess Tournament Tracker. When implementing chess-adjacent features, review both — the Vienna trainer is simpler (no API polling, no PGN replay), while the Chess Tracker adds BroadcastService and the reducer pattern for async state.</li>
+  <li><strong>react-chessboard + chess.js pairing:</strong> react-chessboard handles rendering and user input; chess.js handles legality. Keep these responsibilities separate — don't put chess logic in the board component.</li>
+  <li><strong>theory.json schema:</strong> Each node in the tree has: FEN, expected move (in SAN or UCI), annotation text, and child nodes. Adding a new line = adding a new branch in the JSON tree.</li>
+</ul>
+
+</body>
+</html>

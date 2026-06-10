@@ -8,6 +8,7 @@ import type { MDXComponents } from "mdx/types";
 import { StackList } from "@/components/ui/StackList";
 import { ViennaTrainer } from "@/components/projects/vienna-trainer";
 import { StaffingDashboard } from "@/components/projects/boston-civic-data";
+import { EmberDashboard } from "@/components/projects/ember/EmberDashboard";
 import { ChessTracker } from "@/components/projects/chess";
 import { PipelineDashboard } from "@/components/projects/pipeline-dashboard";
 import { VendorFeedPreview } from "@/components/projects/vendor-feed/VendorFeedPreview";
@@ -54,6 +55,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     StackList,
     ViennaTrainer,
     StaffingDashboard,
+    EmberDashboard,
     ChessTracker,
     PipelineDashboard,
     VendorFeedPreview,
