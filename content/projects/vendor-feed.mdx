@@ -45,7 +45,21 @@ The [live feed](/work/vendor_feed) shows everything the pipeline has extracted. 
 
 ## What's next
 
-The pipeline is accumulating daily. A few things are planned for phase 2:
+### Phase 2 — Article-level crawling
+
+The current pipeline fetches one page per company — a blog index or RSS feed — which means Claude extracts entities from excerpt blurbs rather than full article text. The result is missing dates, partial descriptions, and lower confidence on partnerships and architectural shifts. Phase 2 replaces the index-page scrape with full article ingestion.
+
+**Design decisions, resolved:**
+
+- **Discovery strategy** — RSS-first. Companies with `rss_url` configured get article-level crawling; companies without RSS fall back to the existing single-page blog index scrape until a feed is found. GitHub releases pages stay as single-page scrapes — they already render full release content inline.
+- **Recency window** — Only articles published within the last 90 days are fetched. Older items are filtered during RSS parsing, before any HTTP requests are made.
+- **Pipeline shape** — Discovery folds into the scrape step. The external pipeline shape (scrape → extract → embed) stays unchanged; `scrapeCompany()` internally parses the RSS feed, collects article URLs, and fetches them in the same pass.
+- **Concurrency** — Article fetches run with a global cap of 5 concurrent requests to avoid rate-limiting vendor servers. Steady-state daily volume (10–20 new articles across all companies) makes this mostly a first-run concern.
+- **Index pages dropped** — Blog index pages are no longer stored in `vf_raw_pages`. They're used transiently to discover article URLs and discarded. One row per article, keyed on article URL.
+- **Clean migration** — Existing entity data was extracted from index blurbs and is lower quality. A dedicated `migrate-vendor-feed-reset.ts` script truncates all entity tables and clears `vf_raw_pages` before the first article-crawl run. Everything re-extracts from full article text.
+- **Model** — Stays on Claude Haiku. The quality improvement from full articles outweighs any gain from a larger model on the same structured extraction task.
+
+**Also planned:**
 
 - **Payload cap** — the feed query is currently uncapped; a LIMIT + total count label will keep the RSC payload bounded as the dataset grows.
 - **Pipeline status card** — the existing [Pipeline Dashboard](/work/pipeline-dashboard) will get a vendor feed card showing last run time, entity count, and health.

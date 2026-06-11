@@ -11,6 +11,8 @@ import { Tag } from "@/components/ui/Tag";
 import { getAllProjects, getProject, getAdjacentProjects } from "@/lib/content";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
