@@ -120,6 +120,55 @@ const rawCompanies = [
     rss_url: "https://estuary.dev/blog/rss.xml",
     github_releases_url: "https://github.com/estuary/flow/releases",
   },
+  {
+    name: "Starburst",
+    blog_url: "https://www.starburst.io/blog",
+    github_org: "starburstdata",
+  },
+  {
+    name: "Confluent",
+    blog_url: "https://www.confluent.io/blog",
+    github_org: "confluentinc",
+    rss_url: "https://www.confluent.io/rss.xml",
+    github_releases_url:
+      "https://github.com/confluentinc/confluent-kafka-python/releases",
+  },
+  {
+    name: "dltHub",
+    blog_url: "https://dlthub.com/docs/blog",
+    github_org: "dlt-hub",
+    rss_url: "https://dlthub.com/blog/rss.xml",
+    github_releases_url: "https://github.com/dlt-hub/dlt/releases",
+  },
+  {
+    name: "Soda",
+    blog_url: "https://www.soda.io/blog",
+    github_org: "sodadata",
+    github_releases_url: "https://github.com/sodadata/soda-core/releases",
+  },
+  {
+    name: "ClickHouse",
+    blog_url: "https://clickhouse.com/blog",
+    github_org: "ClickHouse",
+    github_releases_url: "https://github.com/ClickHouse/ClickHouse/releases",
+  },
+  {
+    name: "Alation",
+    blog_url: "https://www.alation.com/blog",
+    github_org: "Alation",
+  },
+  {
+    name: "Collibra",
+    blog_url: "https://www.collibra.com/blog",
+    github_org: "collibra",
+  },
+  {
+    name: "Atlan",
+    blog_url: "https://blog.atlan.com",
+    github_org: "atlanhq",
+    rss_url: "https://blog.atlan.com/rss.xml",
+    github_releases_url: "https://github.com/atlanhq/atlan-java/releases",
+  },
 ];
 
 export function loadCompanies(raw: unknown[] = rawCompanies): Company[] {
