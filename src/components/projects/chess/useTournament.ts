@@ -114,7 +114,6 @@ export function useTournament(): UseTournamentReturn {
       clearTimeout(timeoutId);
     };
     // fetchSeq re-runs this effect when retry() or selectTournament() is called.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchSeq]);
 
   const retry = useCallback(() => {
