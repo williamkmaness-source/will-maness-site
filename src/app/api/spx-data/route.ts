@@ -1,7 +1,7 @@
 // route.ts — SPX Technical Analysis data API.
-// Fetches ~14 months of SPY OHLC + current ^VIX via yahoo-finance2,
+// Fetches ~14 months of OHLC + current ^VIX for the requested ticker via yahoo-finance2,
 // computes SMA 20/50/200, RSI(14), MACD(12-26-9) server-side,
-// and returns a single pre-typed SpxData response cached for 24 hours.
+// and returns a pre-typed SpxData response cached per-ticker for 24 hours.
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,14 @@ import { deriveSignals } from "@/lib/spx-signals";
 import type { SpxData, SpxCandle, SpxSeries } from "@/lib/spx-types";
 
 const CACHE_HEADER = "s-maxage=86400, stale-while-revalidate";
+
+// Allowlist of symbols the API will serve. BRK-B uses Yahoo Finance notation.
+export const TICKER_ALLOWLIST = new Set([
+  "SPY",
+  "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
+  "BRK-B", "JPM", "LLY", "V", "UNH", "XOM", "COST", "MA", "NFLX",
+  "HD", "PG", "ORCL", "JNJ", "BAC", "WMT", "ABBV", "CRM", "IBM",
+]);
 
 // Minimal local interfaces for the yahoo-finance2 responses we use.
 // The package's exports map omits a `types` condition so TypeScript resolves
@@ -40,7 +48,14 @@ function alignedSeries(dates: string[], values: number[]): SpxSeries[] {
   return values.map((value, i) => ({ time: dates[offset + i], value }));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const ticker = searchParams.get("ticker") ?? "SPY";
+
+  if (!TICKER_ALLOWLIST.has(ticker)) {
+    return Response.json({ error: `Unknown ticker: ${ticker}` }, { status: 400 });
+  }
+
   try {
     // Fetch ~14 months to guarantee 200+ trading days for SMA(200)
     const period1 = new Date(Date.now() - 420 * 24 * 60 * 60 * 1000);
@@ -49,7 +64,7 @@ export async function GET() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const yf = yahooFinance as any;
     const [chartRaw, vixQuoteRaw]: [YfChartResult, YfQuote] = await Promise.all([
-      yf.chart("SPY", { period1, period2, interval: "1d" }),
+      yf.chart(ticker, { period1, period2, interval: "1d" }),
       yf.quote("^VIX"),
     ]);
     const quotesRaw = chartRaw.quotes;
