@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import pLimit from "p-limit";
 import type { Company } from "./config";
 import { companies } from "./config";
-import { upsertRawPage, type UpsertAction } from "./db";
+import { upsertRawPage, recordFeedError, type UpsertAction } from "./db";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 
 export function hashContent(content: string): string {
@@ -16,8 +16,12 @@ export function getSourceUrls(company: Company): string[] {
 }
 
 /**
- * Parse article URLs from RSS 2.0 XML, filtering to items published within
- * `cutoffDays` days of the reference date (defaults: 90 days, now).
+ * Parse article URLs from RSS 2.0 or Atom XML, filtering to items/entries
+ * published within `cutoffDays` days of the reference date (defaults: 90 days, now).
+ *
+ * RSS 2.0: matches <item> blocks, reads <pubDate> for the date filter.
+ * Atom:    matches <entry> blocks, reads <published> (falling back to <updated>)
+ *          for the date filter. Feed-level <updated> is never used as an entry date.
  */
 export function parseRssArticleUrls(
   xml: string,
@@ -27,32 +31,45 @@ export function parseRssArticleUrls(
   const cutoff = new Date(referenceDate.getTime() - cutoffDays * 24 * 60 * 60 * 1000);
   const urls: string[] = [];
 
-  // Match each <item>…</item> block (greedy-safe with non-greedy [\s\S]*?)
-  const itemPattern = /<item(?:[^>]*)>([\s\S]*?)<\/item>/gi;
+  // Returns true if the block should be included: no parseable date (include by default),
+  // or the first parseable date among the given tags is within the cutoff window.
+  function isWithinCutoff(block: string, ...dateTags: string[]): boolean {
+    for (const tag of dateTags) {
+      const m = new RegExp(`<${tag}>([^<]+)</${tag}>`, "i").exec(block);
+      if (m) {
+        const d = new Date(m[1].trim());
+        if (!isNaN(d.getTime())) return d >= cutoff;
+      }
+    }
+    return true;
+  }
+
+  // Extracts the article URL from an <item> or <entry> block.
+  // Tries RSS 2.0 <link>URL</link> first, then Atom <link href="URL"/>.
+  function extractUrl(block: string): string | null {
+    const rssLink = /<link>(?:<!\[CDATA\[)?(https?[^<\]]+?)(?:\]\]>)?<\/link>/i.exec(block);
+    if (rssLink) return rssLink[1].trim();
+    const atomLink = /<link[^>]+href="(https?[^"]+)"/i.exec(block);
+    if (atomLink) return atomLink[1].trim();
+    return null;
+  }
+
   let match: RegExpExecArray | null;
 
+  // RSS 2.0: <item> blocks — date tag: pubDate
+  const itemPattern = /<item(?:[^>]*)>([\s\S]*?)<\/item>/gi;
   while ((match = itemPattern.exec(xml)) !== null) {
-    const item = match[1];
+    if (!isWithinCutoff(match[1], "pubDate")) continue;
+    const url = extractUrl(match[1]);
+    if (url) urls.push(url);
+  }
 
-    // Apply 90-day filter when pubDate is present and parseable
-    const pubDateMatch = /<pubDate>([^<]+)<\/pubDate>/i.exec(item);
-    if (pubDateMatch) {
-      const pubDate = new Date(pubDateMatch[1].trim());
-      if (!isNaN(pubDate.getTime()) && pubDate < cutoff) continue;
-    }
-
-    // RSS 2.0: <link>URL</link>  — strip CDATA if present
-    const rssLink = /<link>(?:<!\[CDATA\[)?(https?[^<\]]+?)(?:\]\]>)?<\/link>/i.exec(item);
-    if (rssLink) {
-      urls.push(rssLink[1].trim());
-      continue;
-    }
-
-    // Atom-in-RSS: <link href="URL" .../>
-    const atomLink = /<link[^>]+href="(https?[^"]+)"/i.exec(item);
-    if (atomLink) {
-      urls.push(atomLink[1].trim());
-    }
+  // Atom: <entry> blocks — date tags: published (preferred), updated (fallback)
+  const entryPattern = /<entry(?:[^>]*)>([\s\S]*?)<\/entry>/gi;
+  while ((match = entryPattern.exec(xml)) !== null) {
+    if (!isWithinCutoff(match[1], "published", "updated")) continue;
+    const url = extractUrl(match[1]);
+    if (url) urls.push(url);
   }
 
   return urls;
@@ -99,10 +116,28 @@ export async function scrapeCompany(
   const results: ScrapeResult[] = [];
 
   if (company.rss_url) {
-    // RSS path: discover article URLs from the feed, then fetch each concurrently
+    // RSS/Atom path: discover article URLs from the feed, then fetch each concurrently.
+    // Falls back to the blog index when the feed errors or yields 0 in-window articles.
+    let articleUrls: string[] = [];
+    let rssFetchFailed = false;
+
     try {
       const rssXml = await fetch(company.rss_url);
-      const articleUrls = parseRssArticleUrls(rssXml);
+      articleUrls = parseRssArticleUrls(rssXml);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      console.error(`[scraper] error fetching RSS ${company.rss_url}: ${error}`);
+      results.push({ url: company.rss_url, action: "error", error });
+      rssFetchFailed = true;
+      // Record the broken feed in the DB for diagnostic visibility — fire-and-forget.
+      try {
+        await recordFeedError(sql, company.name, company.rss_url, error);
+      } catch {
+        // Never block the scrape pipeline on an observability write.
+      }
+    }
+
+    if (articleUrls.length > 0) {
       const articleResults = await Promise.all(
         articleUrls.map((url) =>
           limit(async () => {
@@ -118,13 +153,25 @@ export async function scrapeCompany(
         )
       );
       results.push(...articleResults);
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      console.error(`[scraper] error fetching RSS ${company.rss_url}: ${error}`);
-      results.push({ url: company.rss_url, action: "error", error });
+    } else {
+      // RSS errored or returned 0 in-window articles — fall back to the blog index
+      // so the vendor is never silently absent from raw pages.
+      if (!rssFetchFailed) {
+        console.info(
+          `[scraper] RSS returned 0 in-window articles for ${company.name}, falling back to blog index`
+        );
+      }
+      try {
+        const content = await fetch(company.blog_url);
+        results.push(await upsertPage(sql, upsert, company.name, company.blog_url, content));
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        console.error(`[scraper] error fetching blog fallback ${company.blog_url}: ${error}`);
+        results.push({ url: company.blog_url, action: "error", error });
+      }
     }
   } else {
-    // Fallback path: fetch blog index as a single page
+    // No RSS URL — fetch blog index as a single page.
     try {
       const content = await fetch(company.blog_url);
       results.push(await upsertPage(sql, upsert, company.name, company.blog_url, content));
@@ -135,7 +182,7 @@ export async function scrapeCompany(
     }
   }
 
-  // GitHub releases: always fetch directly (unchanged)
+  // GitHub releases: always fetch directly (unchanged).
   if (company.github_releases_url) {
     try {
       const content = await fetch(company.github_releases_url);

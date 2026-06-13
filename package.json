@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vendor-feed:freshness": "tsx scripts/vendor-feed-freshness.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",

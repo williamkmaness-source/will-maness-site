@@ -20,8 +20,8 @@ const companyWithReleasesOnly: Company = {
   github_releases_url: "https://github.com/acme-inc/acme/releases",
 };
 
-// Minimal sql mock — passed through to upsert which we also mock
-const sql = {} as NeonQueryFunction<false, false>;
+// sql mock supports tagged template literals; recordFeedError calls it directly on RSS errors.
+const sql = vi.fn().mockResolvedValue([]) as unknown as NeonQueryFunction<false, false>;
 
 // ── hashContent ─────────────────────────────────────────────────────────────
 
@@ -121,6 +121,73 @@ describe("parseRssArticleUrls", () => {
     const urls = parseRssArticleUrls(RSS_FIXTURE, 1, referenceDate);
     expect(urls).toContain("https://acme.com/blog/fresh");
     expect(urls).not.toContain("https://acme.com/blog/atom"); // 2026-06-08, 2 days old
+  });
+});
+
+// ── parseRssArticleUrls — Atom feeds ────────────────────────────────────────
+
+const ATOM_FIXTURE = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>dltHub Blog</title>
+  <updated>2026-06-11T00:00:00Z</updated>
+  <entry>
+    <title>Recent Atom Article</title>
+    <link href="https://dlthub.com/blog/recent" rel="alternate"/>
+    <published>2026-05-15T10:00:00Z</published>
+    <updated>2026-05-16T10:00:00Z</updated>
+  </entry>
+  <entry>
+    <title>Old Atom Article</title>
+    <link href="https://dlthub.com/blog/old" rel="alternate"/>
+    <published>2025-01-01T10:00:00Z</published>
+    <updated>2025-01-02T10:00:00Z</updated>
+  </entry>
+  <entry>
+    <title>No Date Atom Article</title>
+    <link href="https://dlthub.com/blog/no-date" rel="alternate"/>
+  </entry>
+  <entry>
+    <title>Updated-only Article</title>
+    <link href="https://dlthub.com/blog/updated-only" rel="alternate"/>
+    <updated>2026-06-01T10:00:00Z</updated>
+  </entry>
+</feed>`;
+
+describe("parseRssArticleUrls — Atom feeds", () => {
+  const referenceDate = new Date("2026-06-10T00:00:00Z");
+
+  it("extracts URLs from Atom <entry> blocks", () => {
+    const urls = parseRssArticleUrls(ATOM_FIXTURE, 90, referenceDate);
+    expect(urls).toContain("https://dlthub.com/blog/recent");
+  });
+
+  it("applies 90-day filter to Atom entries using <published>", () => {
+    const urls = parseRssArticleUrls(ATOM_FIXTURE, 90, referenceDate);
+    expect(urls).not.toContain("https://dlthub.com/blog/old");
+  });
+
+  it("includes Atom entries with no date", () => {
+    const urls = parseRssArticleUrls(ATOM_FIXTURE, 90, referenceDate);
+    expect(urls).toContain("https://dlthub.com/blog/no-date");
+  });
+
+  it("falls back to <updated> when <published> is absent in an entry", () => {
+    const urls = parseRssArticleUrls(ATOM_FIXTURE, 90, referenceDate);
+    expect(urls).toContain("https://dlthub.com/blog/updated-only");
+  });
+
+  it("does not use the feed-level <updated> as an entry date", () => {
+    // Feed has <updated>2026-06-11</updated> at top level; old entry has published=2025-01-01.
+    // If the feed-level tag leaked into entry parsing the old article would wrongly pass.
+    const urls = parseRssArticleUrls(ATOM_FIXTURE, 90, referenceDate);
+    expect(urls).not.toContain("https://dlthub.com/blog/old");
+  });
+
+  it("returns empty array for an Atom feed with no entries in window", () => {
+    const allOld = `<feed xmlns="http://www.w3.org/2005/Atom">
+      <entry><link href="https://x.com/1"/><published>2020-01-01T00:00:00Z</published></entry>
+    </feed>`;
+    expect(parseRssArticleUrls(allOld, 90, referenceDate)).toHaveLength(0);
   });
 });
 
@@ -239,18 +306,24 @@ describe("scrapeCompany", () => {
     );
   });
 
-  it("RSS path: returns error when RSS fetch fails, still attempts github releases", async () => {
+  it("RSS path: falls back to blog index and fetches github releases after RSS fetch fails", async () => {
     const mockFetch = vi.fn()
-      .mockRejectedValueOnce(new Error("RSS fetch failed"))
-      .mockResolvedValueOnce("releases content");
+      .mockRejectedValueOnce(new Error("RSS fetch failed"))   // RSS
+      .mockResolvedValueOnce("<html>blog index</html>")        // blog fallback
+      .mockResolvedValueOnce("releases content");              // github releases
     const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
 
     const results = await scrapeCompany(companyWithAll, mockUpsert, sql, mockFetch);
 
+    // RSS error is surfaced
     expect(results[0].action).toBe("error");
     expect(results[0].url).toBe("https://acme.com/feed.xml");
-    // github releases still runs
+    // Blog fallback succeeds
     expect(results[1].action).toBe("inserted");
+    expect(results[1].url).toBe("https://acme.com/blog");
+    // GitHub releases still runs
+    expect(results[2].action).toBe("inserted");
+    expect(results[2].url).toBe("https://github.com/acme-inc/acme/releases");
   });
 
   it("RSS path: article fetch errors are isolated — other articles still upsert", async () => {
@@ -271,6 +344,42 @@ describe("scrapeCompany", () => {
     const actions = results.map((r) => r.action);
     expect(actions).toContain("error");
     expect(actions).toContain("inserted");
+  });
+
+  it("RSS path: falls back to blog index when RSS yields 0 in-window articles", async () => {
+    const emptyRss = `<rss><channel></channel></rss>`;
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(emptyRss)             // RSS — no articles
+      .mockResolvedValueOnce("<html>blog</html>"); // blog fallback
+    const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
+
+    const company: Company = { ...baseCompany, rss_url: "https://acme.com/feed.xml" };
+    const results = await scrapeCompany(company, mockUpsert, sql, mockFetch);
+
+    expect(mockFetch).toHaveBeenCalledWith("https://acme.com/feed.xml");
+    expect(mockFetch).toHaveBeenCalledWith("https://acme.com/blog");
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://acme.com/blog");
+    expect(results[0].action).toBe("inserted");
+  });
+
+  it("RSS path: records dead feed in DB and falls back to blog index when RSS fetch fails", async () => {
+    const mockFetch = vi.fn()
+      .mockRejectedValueOnce(new Error("HTTP 404 from https://acme.com/feed.xml"))
+      .mockResolvedValueOnce("<html>blog index</html>");
+    const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
+
+    const company: Company = { ...baseCompany, rss_url: "https://acme.com/feed.xml" };
+    const results = await scrapeCompany(company, mockUpsert, sql, mockFetch);
+
+    // RSS error is surfaced as the first result
+    expect(results[0].action).toBe("error");
+    expect(results[0].url).toBe("https://acme.com/feed.xml");
+    // Blog fallback succeeds
+    expect(results[1].action).toBe("inserted");
+    expect(results[1].url).toBe("https://acme.com/blog");
+    // sql was called to record the dead feed error
+    expect(sql).toHaveBeenCalled();
   });
 
   it("RSS path: concurrency is bounded — fetch calls do not exceed limit", async () => {

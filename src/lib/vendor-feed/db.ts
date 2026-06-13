@@ -222,3 +222,21 @@ export async function resetFailedToPending(
   `;
   return rows.length;
 }
+
+// Records a broken/unreachable feed URL as a failed row so it appears in
+// diagnostic queries. Uses the feed URL as the source_url key.
+export async function recordFeedError(
+  sql: NeonQueryFunction<false, false>,
+  company: string,
+  feedUrl: string,
+  errorMessage: string
+): Promise<void> {
+  await sql`
+    INSERT INTO vf_raw_pages (company, source_url, content_hash, raw_content, status, error_message)
+    VALUES (${company}, ${feedUrl}, '', '', 'failed', ${errorMessage})
+    ON CONFLICT (source_url) DO UPDATE
+      SET status        = 'failed',
+          error_message = ${errorMessage},
+          scraped_at    = now()
+  `;
+}

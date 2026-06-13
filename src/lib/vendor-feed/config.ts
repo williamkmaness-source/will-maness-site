@@ -25,11 +25,15 @@ const rawCompanies = [
     github_releases_url: "https://github.com/airbytehq/airbyte/releases",
   },
   {
+    // Listing-page-only: Stitch was acquired by Talend → Qlik; blog has low activity.
+    // To fix: verify if stitchdata.com/blog/feed exists; otherwise remove this entry.
     name: "Stitch",
     blog_url: "https://www.stitchdata.com/blog",
     github_org: "stitchdata",
   },
   {
+    // Listing-page-only: no verified RSS URL found.
+    // To fix: check https://www.matillion.com/blog/feed or /rss.xml and add rss_url.
     name: "Matillion",
     blog_url: "https://www.matillion.com/blog",
     github_org: "matillion",
@@ -60,6 +64,8 @@ const rawCompanies = [
     github_releases_url: "https://github.com/astronomer/astro-cli/releases",
   },
   {
+    // Listing-page-only: no verified RSS URL found.
+    // To fix: check https://www.mage.ai/blog/feed or /rss.xml and add rss_url.
     name: "Mage",
     blog_url: "https://www.mage.ai/blog",
     github_org: "mage-ai",
@@ -141,6 +147,8 @@ const rawCompanies = [
     github_releases_url: "https://github.com/dlt-hub/dlt/releases",
   },
   {
+    // Listing-page-only: no verified RSS URL found.
+    // To fix: check https://www.soda.io/blog/feed or /rss.xml and add rss_url.
     name: "Soda",
     blog_url: "https://www.soda.io/blog",
     github_org: "sodadata",
