@@ -113,8 +113,6 @@ export function SpxDashboard() {
   const [showBB, setShowBB] = useState(true);
 
   useEffect(() => {
-    setData(null);
-    setError(false);
     fetch(`/api/spx-data?ticker=${ticker}`)
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setData)
@@ -145,7 +143,11 @@ export function SpxDashboard() {
       <div>
         <select
           value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
+          onChange={(e) => {
+            setData(null);
+            setError(false);
+            setTicker(e.target.value);
+          }}
           className="font-mono text-[12px] px-[10px] py-[6px] rounded-[4px] border cursor-pointer"
           style={{
             borderColor: colors.line,
