@@ -40,6 +40,37 @@ const CHIP_VALUES: Record<string, string> = {
 
 const TIME_RANGES: TimeRange[] = ["3M", "6M", "1Y"];
 
+// Top 25 S&P 500 constituents by market cap (as of 2026-06) + IBM. SPY is the default.
+const TICKER_OPTIONS = [
+  { label: "S&P 500 (SPY)", symbol: "SPY" },
+  { label: "NVDA · Nvidia",          symbol: "NVDA" },
+  { label: "MSFT · Microsoft",       symbol: "MSFT" },
+  { label: "AAPL · Apple",           symbol: "AAPL" },
+  { label: "AMZN · Amazon",          symbol: "AMZN" },
+  { label: "GOOGL · Alphabet",       symbol: "GOOGL" },
+  { label: "META · Meta",            symbol: "META" },
+  { label: "TSLA · Tesla",           symbol: "TSLA" },
+  { label: "AVGO · Broadcom",        symbol: "AVGO" },
+  { label: "BRK-B · Berkshire",      symbol: "BRK-B" },
+  { label: "JPM · JPMorgan",         symbol: "JPM" },
+  { label: "LLY · Eli Lilly",        symbol: "LLY" },
+  { label: "V · Visa",               symbol: "V" },
+  { label: "UNH · UnitedHealth",     symbol: "UNH" },
+  { label: "XOM · ExxonMobil",       symbol: "XOM" },
+  { label: "COST · Costco",          symbol: "COST" },
+  { label: "MA · Mastercard",        symbol: "MA" },
+  { label: "NFLX · Netflix",         symbol: "NFLX" },
+  { label: "HD · Home Depot",        symbol: "HD" },
+  { label: "PG · Procter & Gamble",  symbol: "PG" },
+  { label: "ORCL · Oracle",          symbol: "ORCL" },
+  { label: "JNJ · Johnson & Johnson",symbol: "JNJ" },
+  { label: "BAC · Bank of America",  symbol: "BAC" },
+  { label: "WMT · Walmart",          symbol: "WMT" },
+  { label: "ABBV · AbbVie",          symbol: "ABBV" },
+  { label: "CRM · Salesforce",       symbol: "CRM" },
+  { label: "IBM",                     symbol: "IBM" },
+];
+
 function vixZone(vix: number): string {
   if (vix < 20) return "Calm";
   if (vix <= 30) return "Elevated";
@@ -74,6 +105,7 @@ function Skeleton() {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export function SpxDashboard() {
+  const [ticker, setTicker] = useState("SPY");
   const [data, setData] = useState<SpxData | null>(null);
   const [error, setError] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
@@ -81,11 +113,11 @@ export function SpxDashboard() {
   const [showBB, setShowBB] = useState(true);
 
   useEffect(() => {
-    fetch("/api/spx-data")
+    fetch(`/api/spx-data?ticker=${ticker}`)
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setData)
       .catch(() => setError(true));
-  }, []);
+  }, [ticker]);
 
   function handleToggleSma(key: SmaKey) {
     setSmaToggles((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -107,6 +139,31 @@ export function SpxDashboard() {
 
   return (
     <div className="space-y-[20px]">
+      {/* Ticker selector */}
+      <div>
+        <select
+          value={ticker}
+          onChange={(e) => {
+            setData(null);
+            setError(false);
+            setTicker(e.target.value);
+          }}
+          className="font-mono text-[12px] px-[10px] py-[6px] rounded-[4px] border cursor-pointer"
+          style={{
+            borderColor: colors.line,
+            background: colors.bgSoft,
+            color: colors.ink,
+            fontFamily: fontFamilies.mono,
+          }}
+        >
+          {TICKER_OPTIONS.map((opt) => (
+            <option key={opt.symbol} value={opt.symbol}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Signal summary chips */}
       <div className="flex gap-[6px] flex-wrap">
         {(Object.keys(CHIP_LABELS) as (keyof SpxSignals)[]).map((key) => {
@@ -171,7 +228,7 @@ export function SpxDashboard() {
             {goldenCross ? "Golden Cross" : "Death Cross"}
           </p>
           <p className="font-mono text-[11px] text-muted">
-            SPY last close <span className="text-ink">${lastClose.toFixed(2)}</span>
+            {ticker} last close <span className="text-ink">${lastClose.toFixed(2)}</span>
           </p>
         </div>
       </div>
