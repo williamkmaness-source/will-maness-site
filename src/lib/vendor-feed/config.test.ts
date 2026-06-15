@@ -53,6 +53,44 @@ describe("loadCompanies", () => {
       ])
     ).toThrow(/Invalid company config at index 0/);
   });
+
+  it("parses optional sitemap_url when provided", () => {
+    const result = loadCompanies([
+      {
+        name: "Acme",
+        blog_url: "https://acme.com/blog",
+        github_org: "acme-inc",
+        sitemap_url: "https://acme.com/sitemap.xml",
+      },
+    ]);
+    expect(result[0].sitemap_url).toBe("https://acme.com/sitemap.xml");
+  });
+
+  it("parses optional sitemap_path_filter when provided", () => {
+    const result = loadCompanies([
+      {
+        name: "Acme",
+        blog_url: "https://acme.com/blog",
+        github_org: "acme-inc",
+        sitemap_url: "https://acme.com/sitemap.xml",
+        sitemap_path_filter: "/blog/",
+      },
+    ]);
+    expect(result[0].sitemap_path_filter).toBe("/blog/");
+  });
+
+  it("throws on invalid sitemap_url format", () => {
+    expect(() =>
+      loadCompanies([
+        {
+          name: "Acme",
+          blog_url: "https://acme.com/blog",
+          github_org: "acme",
+          sitemap_url: "not-a-url",
+        },
+      ])
+    ).toThrow(/Invalid company config at index 0/);
+  });
 });
 
 describe("companies (built-in config)", () => {

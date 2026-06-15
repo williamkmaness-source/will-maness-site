@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { hashContent, getSourceUrls, parseRssArticleUrls, scrapeCompany } from "./scraper";
+import { hashContent, getSourceUrls, parseRssArticleUrls, parseSitemapUrls, scrapeCompany } from "./scraper";
 import type { Company } from "./config";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 
@@ -188,6 +188,43 @@ describe("parseRssArticleUrls — Atom feeds", () => {
       <entry><link href="https://x.com/1"/><published>2020-01-01T00:00:00Z</published></entry>
     </feed>`;
     expect(parseRssArticleUrls(allOld, 90, referenceDate)).toHaveLength(0);
+  });
+});
+
+// ── parseSitemapUrls ─────────────────────────────────────────────────────────
+
+const SITEMAP_FIXTURE = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.llamaindex.ai/blog/intro</loc><lastmod>2026-01-01</lastmod></url>
+  <url><loc>https://www.llamaindex.ai/blog/deep-dive</loc></url>
+  <url><loc>https://www.llamaindex.ai/about</loc></url>
+  <url><loc>https://www.llamaindex.ai/pricing</loc></url>
+</urlset>`;
+
+describe("parseSitemapUrls", () => {
+  it("extracts all <loc> URLs when no path filter is given", () => {
+    const urls = parseSitemapUrls(SITEMAP_FIXTURE);
+    expect(urls).toHaveLength(4);
+    expect(urls).toContain("https://www.llamaindex.ai/blog/intro");
+    expect(urls).toContain("https://www.llamaindex.ai/pricing");
+  });
+
+  it("applies path filter — includes only matching paths", () => {
+    const urls = parseSitemapUrls(SITEMAP_FIXTURE, "/blog/");
+    expect(urls).toHaveLength(2);
+    expect(urls).toContain("https://www.llamaindex.ai/blog/intro");
+    expect(urls).toContain("https://www.llamaindex.ai/blog/deep-dive");
+    expect(urls).not.toContain("https://www.llamaindex.ai/about");
+    expect(urls).not.toContain("https://www.llamaindex.ai/pricing");
+  });
+
+  it("returns empty array for empty sitemap", () => {
+    expect(parseSitemapUrls("<urlset></urlset>")).toHaveLength(0);
+  });
+
+  it("ignores non-http <loc> entries", () => {
+    const xml = "<urlset><url><loc>ftp://bad.url/path</loc></url></urlset>";
+    expect(parseSitemapUrls(xml)).toHaveLength(0);
   });
 });
 
@@ -404,6 +441,84 @@ describe("scrapeCompany", () => {
     const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
 
     const company: Company = { ...baseCompany, rss_url: "https://acme.com/feed.xml" };
+    await scrapeCompany(company, mockUpsert, sql, mockFetch);
+
+    expect(maxConcurrent).toBeLessThanOrEqual(5);
+  });
+
+  it("sitemap path: fetches sitemap, parses URLs with path filter, upserts each article", async () => {
+    const sitemapXml = `<urlset>
+      <url><loc>https://llama.ai/blog/post-1</loc></url>
+      <url><loc>https://llama.ai/blog/post-2</loc></url>
+      <url><loc>https://llama.ai/about</loc></url>
+    </urlset>`;
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(sitemapXml)
+      .mockResolvedValue("<html>article</html>");
+    const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
+
+    const company: Company = { ...baseCompany, sitemap_url: "https://llama.ai/sitemap-0.xml", sitemap_path_filter: "/blog/" };
+    const results = await scrapeCompany(company, mockUpsert, sql, mockFetch);
+
+    expect(mockFetch).toHaveBeenCalledWith("https://llama.ai/sitemap-0.xml");
+    expect(mockUpsert).toHaveBeenCalledWith(sql, expect.objectContaining({ sourceUrl: "https://llama.ai/blog/post-1" }));
+    expect(mockUpsert).toHaveBeenCalledWith(sql, expect.objectContaining({ sourceUrl: "https://llama.ai/blog/post-2" }));
+    // /about is excluded by path filter
+    expect(mockUpsert).not.toHaveBeenCalledWith(sql, expect.objectContaining({ sourceUrl: "https://llama.ai/about" }));
+    expect(results).toHaveLength(2);
+  });
+
+  it("sitemap path: falls back to blog index when sitemap fetch fails", async () => {
+    const mockFetch = vi.fn()
+      .mockRejectedValueOnce(new Error("HTTP 404"))
+      .mockResolvedValueOnce("<html>blog index</html>");
+    const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
+
+    const company: Company = { ...baseCompany, sitemap_url: "https://llama.ai/sitemap-0.xml" };
+    const results = await scrapeCompany(company, mockUpsert, sql, mockFetch);
+
+    expect(results[0].action).toBe("error");
+    expect(results[0].url).toBe("https://llama.ai/sitemap-0.xml");
+    expect(results[1].action).toBe("inserted");
+    expect(results[1].url).toBe("https://acme.com/blog");
+  });
+
+  it("sitemap path: falls back to blog index when sitemap yields 0 matching URLs", async () => {
+    const sitemapXml = `<urlset><url><loc>https://llama.ai/about</loc></url></urlset>`;
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(sitemapXml)
+      .mockResolvedValueOnce("<html>blog</html>");
+    const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
+
+    const company: Company = { ...baseCompany, sitemap_url: "https://llama.ai/sitemap-0.xml", sitemap_path_filter: "/blog/" };
+    const results = await scrapeCompany(company, mockUpsert, sql, mockFetch);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://acme.com/blog");
+    expect(results[0].action).toBe("inserted");
+  });
+
+  it("sitemap path: respects the global concurrency cap", async () => {
+    const items = Array.from({ length: 8 }, (_, i) =>
+      `<url><loc>https://llama.ai/blog/post-${i}</loc></url>`
+    ).join("\n");
+    const sitemapXml = `<urlset>${items}</urlset>`;
+
+    let activeConcurrent = 0;
+    let maxConcurrent = 0;
+
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith("sitemap-0.xml")) return sitemapXml;
+      activeConcurrent++;
+      maxConcurrent = Math.max(maxConcurrent, activeConcurrent);
+      await new Promise((r) => setTimeout(r, 10));
+      activeConcurrent--;
+      return "<html>article</html>";
+    });
+
+    const mockUpsert = vi.fn().mockResolvedValue({ action: "inserted", id: 1 });
+
+    const company: Company = { ...baseCompany, sitemap_url: "https://llama.ai/sitemap-0.xml" };
     await scrapeCompany(company, mockUpsert, sql, mockFetch);
 
     expect(maxConcurrent).toBeLessThanOrEqual(5);

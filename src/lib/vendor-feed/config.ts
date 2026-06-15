@@ -5,6 +5,8 @@ export const CompanySchema = z.object({
   blog_url: z.string().url(),
   github_org: z.string().min(1),
   rss_url: z.string().url().optional(),
+  sitemap_url: z.string().url().optional(),
+  sitemap_path_filter: z.string().optional(),
   github_releases_url: z.string().url().optional(),
 });
 
@@ -88,6 +90,8 @@ const rawCompanies = [
     name: "LlamaIndex",
     blog_url: "https://www.llamaindex.ai/blog",
     github_org: "run-llama",
+    sitemap_url: "https://www.llamaindex.ai/sitemap-0.xml",
+    sitemap_path_filter: "/blog/",
     github_releases_url: "https://github.com/run-llama/llama_index/releases",
   },
   {
