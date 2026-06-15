@@ -75,6 +75,29 @@ export function parseRssArticleUrls(
   return urls;
 }
 
+/**
+ * Parse article URLs from an XML sitemap, optionally filtering to paths that
+ * start with `pathFilter` (e.g. "/blog/"). Only absolute http(s) <loc> entries
+ * are returned; malformed entries are silently skipped.
+ */
+export function parseSitemapUrls(xml: string, pathFilter?: string): string[] {
+  const urls: string[] = [];
+  const locPattern = /<loc>(https?[^<]+)<\/loc>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = locPattern.exec(xml)) !== null) {
+    const url = match[1].trim();
+    if (pathFilter) {
+      try {
+        if (!new URL(url).pathname.startsWith(pathFilter)) continue;
+      } catch {
+        continue;
+      }
+    }
+    urls.push(url);
+  }
+  return urls;
+}
+
 export async function fetchUrl(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { "User-Agent": "vendor-feed-bot/1.0 (github.com/williamkmaness-source/will-maness-site)" },
@@ -170,8 +193,56 @@ export async function scrapeCompany(
         results.push({ url: company.blog_url, action: "error", error });
       }
     }
+  } else if (company.sitemap_url) {
+    // Sitemap path: discover article URLs from the sitemap, then fetch each concurrently.
+    // No pre-fetch date filter — the sitemap has no reliable date metadata, so recency
+    // filtering runs downstream in the extractor (isStale()).
+    let articleUrls: string[] = [];
+    let sitemapFailed = false;
+
+    try {
+      const sitemapXml = await fetch(company.sitemap_url);
+      articleUrls = parseSitemapUrls(sitemapXml, company.sitemap_path_filter);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      console.error(`[scraper] error fetching sitemap ${company.sitemap_url}: ${error}`);
+      results.push({ url: company.sitemap_url, action: "error", error });
+      sitemapFailed = true;
+    }
+
+    if (articleUrls.length > 0) {
+      const articleResults = await Promise.all(
+        articleUrls.map((url) =>
+          limit(async () => {
+            try {
+              const content = await fetch(url);
+              return await upsertPage(sql, upsert, company.name, url, content);
+            } catch (err) {
+              const error = err instanceof Error ? err.message : String(err);
+              console.error(`[scraper] error fetching ${url}: ${error}`);
+              return { url, action: "error" as const, error };
+            }
+          })
+        )
+      );
+      results.push(...articleResults);
+    } else {
+      if (!sitemapFailed) {
+        console.info(
+          `[scraper] sitemap returned 0 matching URLs for ${company.name}, falling back to blog index`
+        );
+      }
+      try {
+        const content = await fetch(company.blog_url);
+        results.push(await upsertPage(sql, upsert, company.name, company.blog_url, content));
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        console.error(`[scraper] error fetching blog fallback ${company.blog_url}: ${error}`);
+        results.push({ url: company.blog_url, action: "error", error });
+      }
+    }
   } else {
-    // No RSS URL — fetch blog index as a single page.
+    // No RSS or sitemap URL — fetch blog index as a single page.
     try {
       const content = await fetch(company.blog_url);
       results.push(await upsertPage(sql, upsert, company.name, company.blog_url, content));
