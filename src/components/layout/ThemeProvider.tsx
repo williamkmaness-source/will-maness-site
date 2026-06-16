@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
 } from 'react';
 
@@ -33,16 +32,13 @@ function applyTheme(preference: ThemePreference) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
-
-  // Sync from localStorage on mount (after the no-FOUC script has already
-  // applied the class, this keeps React state consistent).
-  useEffect(() => {
+  const [preference, setPreferenceState] = useState<ThemePreference>(() => {
+    if (typeof window === 'undefined') return 'system';
     const stored = localStorage.getItem(STORAGE_KEY) as ThemePreference | null;
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      setPreferenceState(stored);
-    }
-  }, []);
+    return stored === 'light' || stored === 'dark' || stored === 'system'
+      ? stored
+      : 'system';
+  });
 
   const setPreference = useCallback((p: ThemePreference) => {
     setPreferenceState(p);

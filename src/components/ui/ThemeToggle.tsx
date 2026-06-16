@@ -23,6 +23,7 @@ export function ThemeToggle() {
       aria-label={`Switch theme (currently ${LABELS[preference]})`}
       title={`Theme: ${LABELS[preference]}`}
       className="font-mono text-[11px] tracking-[0.04em] uppercase text-hint hover:text-ink transition-colors duration-[120ms] cursor-pointer select-none"
+      suppressHydrationWarning
     >
       {preference === 'dark' ? '◐' : preference === 'light' ? '○' : '◑'}
     </button>

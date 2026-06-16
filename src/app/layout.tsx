@@ -39,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={newsreader.variable}>
+    <html lang="en" className={newsreader.variable} suppressHydrationWarning>
       <head>
         {/* No-FOUC: read localStorage before first paint and set .dark / .light on <html>. */}
         <script
