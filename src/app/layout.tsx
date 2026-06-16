@@ -13,6 +13,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -39,10 +40,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={newsreader.variable}>
+      <head>
+        {/* No-FOUC: read localStorage before first paint and set .dark / .light on <html>. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem('theme-preference');if(p==='dark')document.documentElement.classList.add('dark');else if(p==='light')document.documentElement.classList.add('light');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="bg-bg text-ink font-sans antialiased flex flex-col min-h-dvh">
-        <Nav />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <ThemeProvider>
+          <Nav />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
       </body>
