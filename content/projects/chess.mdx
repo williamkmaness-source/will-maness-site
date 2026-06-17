@@ -2,7 +2,7 @@
 title: "Chess Tournament Tracker"
 eyebrow: "Engineering · Chess"
 year: "2026"
-status: "in-progress"
+status: "complete"
 tags: ["engineering"]
 summary: "A live grandmaster tournament tracker embedded in this site — auto-discovers the current top Lichess Broadcast, shows standings and pairings, and lets you replay completed games move-by-move."
 featured: false
@@ -10,16 +10,30 @@ featured: false
 
 <ChessTracker />
 
-The tracker pulls data from the [Lichess Broadcasts API](https://lichess.org/api#tag/Broadcasts) — the same feed that powers coverage of events like the Candidates and Norway Chess. No API key required; it polls every 60 seconds and backs off automatically if the rate limit gets tight.
+The tracker pulls data from the [Lichess Broadcasts API](https://lichess.org/api#tag/Broadcasts) — the same feed that powers coverage of events like the Candidates and Norway Chess. No API key required; it polls every 60 seconds and backs off automatically when the rate limit gets tight.
 
 ## What's here
 
-The current phase shows the active tournament name and round. Standings, pairings, and game replay are coming in subsequent slices — tracked as open issues on GitHub.
+**Standings.** A round-robin table computed from every played round's PGN — points, wins, draws, and losses for each player. Updates automatically as games finish.
+
+**Pairings.** All matchups for the active round. Completed games are clickable; games still in progress or not yet started are displayed as inert rows.
+
+**Game replay.** Click any completed pairing to open the full game in a modal. The board steps through moves one at a time, with an eval bar sourced from Lichess cloud analysis and a quality dot on each landing square (brilliant · good · inaccuracy · mistake · blunder). Use the prev/next buttons or ← → arrow keys to navigate; jump to the start or end with a single click. Move list on the right auto-scrolls to the active move. On mobile the modal goes full-screen.
+
+**Live game updates.** For games still in progress, the modal polls for new moves at the same 60-second interval as the main tracker. A "Jump to latest" banner appears when new moves arrive while you're reviewing earlier positions.
+
+**Player profiles.** Click any player name — in the standings, pairings, or game modal — to pull up their Lichess profile: rating, title, country, and recent performance.
+
+**Multi-tournament dropdown.** When multiple elite events run simultaneously, a dropdown appears so you can switch between them without leaving the page.
+
+**Empty and error states.** If no qualifying broadcast is active, the tracker shows the next upcoming event and its start date. If the Lichess API is unreachable, a retry button resets the polling loop.
 
 ## How it's built
 
-**Pure data layer.** `BroadcastService` is a dependency-free async module: it fetches, parses rate-limit headers, and returns a structured result. The React layer never calls `fetch` directly. This keeps the polling logic fully unit-testable with a mocked fetch.
+**Pure data layer.** `BroadcastService` is a dependency-free async module — it fetches, parses rate-limit headers, computes standings from raw PGN, and returns a structured result. The React layer never calls `fetch` directly. This keeps the polling logic fully unit-testable with a mocked fetch.
 
-**`useReducer` for state.** All state lives in a single `useReducer` at the top of the component tree — no external store. The reducer is a plain `(state, action) → state` function, the same pattern as the Vienna trainer, and equally straightforward to test in isolation.
+**`useReducer` for state.** All state lives in a single `useReducer` at the top of the component tree — no external store. The reducer is a plain `(state, action) → state` function, identical in structure to the Vienna trainer, and equally straightforward to test in isolation.
 
-**Rate-limit back-off.** Every response carries an `X-RateLimit-Remaining` header. When it drops below 10, the polling interval switches from 60 seconds to 5 minutes automatically — no manual configuration needed.
+**Rate-limit back-off.** Every response carries an `X-RateLimit-Remaining` header. When it drops below 10, the polling interval switches from 60 seconds to 5 minutes automatically.
+
+**PGN parsing.** Standings are computed client-side from the raw PGN for every played round. Move quality requires the FEN before each move, which chess.js derives by replaying the game from the starting position. Lichess's comment annotations (`[%eval]`, `[%clk]`) are extracted in a separate pass before the comment blocks are stripped, so clock times and engine evaluations survive the normalization step.
