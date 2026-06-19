@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import {
-  getPendingRawPages,
+  getPendingRawPageIds,
+  getRawPageById,
   deleteEntitiesForPage,
   insertFeatureLaunch,
   insertPricingChange,
@@ -380,9 +381,11 @@ export async function runExtractor(
   sql: NeonQueryFunction<false, false>,
   callFn: CallClaudeFn = callClaude
 ): Promise<void> {
-  const pages = await getPendingRawPages(sql);
-  console.log(`[extractor] processing ${pages.length} pending page(s)`);
-  for (const page of pages) {
+  const ids = await getPendingRawPageIds(sql);
+  console.log(`[extractor] processing ${ids.length} pending page(s)`);
+  for (const id of ids) {
+    const page = await getRawPageById(sql, id);
+    if (!page) continue; // row vanished between id fetch and load
     await extractFromPage(sql, page, callFn);
   }
 }
