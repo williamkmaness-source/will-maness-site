@@ -1,7 +1,12 @@
 import { Index } from "@upstash/vector";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import { stripHtml } from "./extractor";
-import { getUnembeddedRawPages, markEmbedded, type RawPage } from "./db";
+import {
+  getUnembeddedRawPageIds,
+  getRawPageById,
+  markEmbedded,
+  type RawPage,
+} from "./db";
 
 const CHUNK_SIZE = 1500;
 
@@ -44,9 +49,9 @@ export async function embedPage(index: Index, page: RawPage): Promise<void> {
 export async function runEmbedder(
   sql: NeonQueryFunction<false, false>
 ): Promise<void> {
-  const pages = await getUnembeddedRawPages(sql);
-  console.log(`[embedder] processing ${pages.length} page(s)`);
-  if (pages.length === 0) return;
+  const ids = await getUnembeddedRawPageIds(sql);
+  console.log(`[embedder] processing ${ids.length} page(s)`);
+  if (ids.length === 0) return;
 
   const index = new Index({
     url: process.env.UPSTASH_VECTOR_REST_URL!,
@@ -56,7 +61,9 @@ export async function runEmbedder(
   let embedded = 0;
   let errors = 0;
 
-  for (const page of pages) {
+  for (const id of ids) {
+    const page = await getRawPageById(sql, id);
+    if (!page) continue; // row vanished between id fetch and load
     try {
       await embedPage(index, page);
       await markEmbedded(sql, page.id);

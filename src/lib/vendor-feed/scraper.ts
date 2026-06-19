@@ -3,10 +3,16 @@ import pLimit from "p-limit";
 import type { Company } from "./config";
 import { companies } from "./config";
 import { upsertRawPage, recordFeedError, type UpsertAction } from "./db";
+import { stripHtml } from "./extractor";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 
+// Hash the stripped article text, not raw HTML. Raw HTML churns on every fetch
+// (Next.js buildId in <script>, nonces, cache-busted asset URLs in attributes),
+// which defeated content-hash dedup and forced ~600 unchanged pages to be
+// re-extracted daily. Stripping to visible text makes the hash stable for
+// genuinely-unchanged articles. Raw HTML is still stored in raw_content.
 export function hashContent(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
+  return createHash("sha256").update(stripHtml(content)).digest("hex");
 }
 
 export function getSourceUrls(company: Company): string[] {

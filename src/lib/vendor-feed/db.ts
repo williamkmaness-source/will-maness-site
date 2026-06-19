@@ -45,29 +45,45 @@ export interface RawPage {
   scraped_at: Date;
 }
 
-export async function getPendingRawPages(
+// Fetch only the ids for pending/unembedded pages, then load each page's
+// raw_content one at a time via getRawPageById. Selecting raw_content for every
+// row at once blows past Neon's 64MB serverless response cap (HTTP 507) once a
+// few hundred full-article pages accumulate.
+export async function getPendingRawPageIds(
   sql: NeonQueryFunction<false, false>
-): Promise<RawPage[]> {
+): Promise<number[]> {
   const rows = await sql`
-    SELECT id, company, source_url, raw_content, scraped_at
+    SELECT id
     FROM vf_raw_pages
     WHERE status = 'pending'
     ORDER BY scraped_at ASC
   `;
-  return rows as RawPage[];
+  return (rows as { id: number }[]).map((r) => r.id);
 }
 
-export async function getUnembeddedRawPages(
+export async function getUnembeddedRawPageIds(
   sql: NeonQueryFunction<false, false>
-): Promise<RawPage[]> {
+): Promise<number[]> {
   const rows = await sql`
-    SELECT id, company, source_url, raw_content, scraped_at
+    SELECT id
     FROM vf_raw_pages
     WHERE status = 'extracted'
       AND (embedded_at IS NULL OR embedded_at < scraped_at)
     ORDER BY scraped_at ASC
   `;
-  return rows as RawPage[];
+  return (rows as { id: number }[]).map((r) => r.id);
+}
+
+export async function getRawPageById(
+  sql: NeonQueryFunction<false, false>,
+  id: number
+): Promise<RawPage | null> {
+  const rows = await sql`
+    SELECT id, company, source_url, raw_content, scraped_at
+    FROM vf_raw_pages
+    WHERE id = ${id}
+  `;
+  return (rows[0] as RawPage) ?? null;
 }
 
 // ── Feature launches ─────────────────────────────────────────────────────────
