@@ -9,6 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Container } from "./Container";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const navLinks = [
   { href: "/work", label: "Work" },
@@ -34,27 +35,30 @@ export function Nav() {
             Will Maness
           </Link>
 
-          <ul className="flex gap-[32px] list-none m-0 p-0" role="list">
-            {navLinks.map(({ href, label }) => {
-              const isActive =
-                href === "/about#say-hi"
-                  ? false
-                  : pathname === href || pathname.startsWith(href + "/");
-              return (
-                <li key={href}>
-                  <Link
-                    href={href}
-                    className={cn(
-                      "font-sans text-[14px] font-normal no-underline transition-colors duration-[120ms]",
-                      isActive ? "text-accent" : "text-ink hover:text-accent"
-                    )}
-                  >
-                    {label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="flex items-center gap-[32px]">
+            <ul className="flex gap-[32px] list-none m-0 p-0" role="list">
+              {navLinks.map(({ href, label }) => {
+                const isActive =
+                  href === "/about#say-hi"
+                    ? false
+                    : pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      className={cn(
+                        "font-sans text-[14px] font-normal no-underline transition-colors duration-[120ms]",
+                        isActive ? "text-accent" : "text-ink hover:text-accent"
+                      )}
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <ThemeToggle />
+          </div>
         </nav>
       </Container>
     </header>
