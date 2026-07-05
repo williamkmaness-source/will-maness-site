@@ -10,7 +10,7 @@ featured: false
 
 Personal color analysis tells you which colors flatter you — a "season" like Light Summer or Dull Winter. Knowing your season is not the same as knowing what to wear. This tool starts from one color you already like and builds outfit palettes that are guaranteed to stay inside your season, so nothing off-season ever gets suggested.
 
-This first slice is the walking skeleton: a color goes in, and it snaps to the nearest shade inside the season's palette. Try a hex — a saturated one like `#c81e5a` shows the idea best.
+Give it a hex — a saturated one like `#c81e5a` shows the idea best. Your color is snapped into the season to become the Base, and from there the app assembles a four-role outfit palette: Base, Secondary, Neutral, and Accent, every color guaranteed to stay in-season.
 
 <SeasonalPalette />
 
@@ -18,6 +18,6 @@ This first slice is the walking skeleton: a color goes in, and it snaps to the n
 
 **Season-constrained, not generic color theory.** A normal color-wheel tool will happily hand you a "correct" complementary color that is wrong for your season. Here every color passes through a gamut-snap step first: it's matched to the perceptually nearest member of the season's real palette. The season's color set is the single source of truth — it doubles as both the constraint gamut and (in a later slice) the swatch picker.
 
-**A small, pure logic core.** The engine is plain functions with no React or app state, so it's trivially unit-testable. `color-math` wraps [culori](https://culorijs.org/) for hex parsing, OKLCH conversion, and CIEDE2000 perceptual distance; `gamut-snap` returns the nearest in-season color; `season-data` holds one typed entry per season so adding the remaining ten seasons is a data-only change. Sixteen tests cover the core — identical colors at zero distance, distance growing monotonically with visible difference, and snapping always returning an in-gamut member.
+**A small, pure logic core.** The engine is plain functions with no React or app state, so it's trivially unit-testable. `color-math` wraps [culori](https://culorijs.org/) for hex parsing, OKLCH conversion, and CIEDE2000 perceptual distance; `gamut-snap` returns the nearest in-season color; `harmony` rotates hue in OKLCH to find a scheme's partner colors; `palette-assembler` composes the four roles — Base is the snapped anchor, Secondary is the harmony partner snapped back in-season, Neutral is the season's lowest-chroma tone, and Accent is the color with the most contrast from Base. `season-data` holds one typed entry per season so adding the remaining ten is a data-only change.
 
-**What's next.** From this anchor the engine will generate harmony schemes (complementary, analogous, triadic, split-complementary), snap each result back into the season, and assemble four-role outfit palettes — Base, Secondary, Neutral, Accent. Then a season selector (Light Summer and Dull Winter, with the exact palettes validated by hand), a swatch picker, and polish. Only the walking skeleton is live here for now.
+**What's next.** Right now a single scheme (complementary) drives one palette. Next the engine will run all four schemes (complementary, analogous, triadic, split-complementary), de-duplicate near-identical results, and surface a small curated set of palettes. Then a season selector (Light Summer and Dull Winter, with the exact palettes validated by hand), a swatch picker, and polish.

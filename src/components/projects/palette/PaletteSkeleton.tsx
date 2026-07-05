@@ -1,51 +1,26 @@
 "use client";
 
-// PaletteSkeleton.tsx — walking-skeleton UI for the seasonal palette app (issue #221).
-// Proves the full pipeline end-to-end: a hex input is normalized, snapped to the nearest
-// color in the season's gamut, and rendered as the in-season "Base" swatch. Deliberately
-// minimal — harmony schemes, roles, the season selector, and polish arrive in later slices.
+// PaletteSkeleton.tsx — interactive UI for the seasonal palette app. A hex input is
+// normalized, snapped into the season's gamut, and assembled into a four-role outfit
+// palette (Base / Secondary / Neutral / Accent) via the complementary harmony scheme.
+// Multiple schemes, the season selector, and polish arrive in later slices (#224, #223).
 
 import { useMemo, useState } from "react";
 import type { Season } from "@/lib/palette/season-data";
 import { normalizeHex } from "@/lib/palette/color-math";
-import { nearestInGamut } from "@/lib/palette/gamut-snap";
-import { SectionLabel } from "@/components/ui/SectionLabel";
+import { assemblePalette } from "@/lib/palette/palette-assembler";
+import { PaletteCard } from "./PaletteCard";
 
 interface PaletteSkeletonProps {
   season: Season;
-}
-
-// A single labeled color chip. Colors are data (hex from the season set / user input),
-// so they render via inline style; all chrome stays on design tokens.
-function Swatch({
-  hex,
-  label,
-  size = 96,
-}: {
-  hex: string;
-  label: string;
-  size?: number;
-}) {
-  return (
-    <div className="flex flex-col items-start gap-[8px]">
-      <div
-        className="rounded-md border border-line-strong"
-        style={{ backgroundColor: hex, width: size, height: size }}
-      />
-      <div className="flex flex-col">
-        <SectionLabel>{label}</SectionLabel>
-        <span className="font-mono text-[13px] text-muted tabular-nums">{hex}</span>
-      </div>
-    </div>
-  );
 }
 
 export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
   const [input, setInput] = useState("#7fb0d0");
 
   const normalized = useMemo(() => normalizeHex(input), [input]);
-  const base = useMemo(
-    () => (normalized ? nearestInGamut(normalized, season.colors) : null),
+  const palette = useMemo(
+    () => (normalized ? assemblePalette(normalized, season.colors) : null),
     [normalized, season.colors]
   );
 
@@ -87,18 +62,16 @@ export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
       </div>
 
       <div className="flex flex-col gap-[16px]">
-        <div className="flex flex-col gap-[4px]">
-          <SectionLabel>Base — snapped to {season.name}</SectionLabel>
-          <p className="font-sans text-[14px] text-hint max-w-[520px]">
-            Your color, moved to the nearest shade inside the {season.name} palette. Every
-            color the app suggests starts from this in-season anchor.
-          </p>
-        </div>
-        {base ? (
-          <Swatch hex={base} label="Base" />
+        <p className="font-sans text-[14px] text-hint max-w-[520px]">
+          Your color becomes the <strong className="text-ink-soft font-medium">Base</strong>,
+          snapped to its nearest shade in {season.name}. From it the app builds a four-role
+          outfit palette — every color guaranteed to stay in-season.
+        </p>
+        {palette ? (
+          <PaletteCard palette={palette} />
         ) : (
           <p className="font-serif text-[18px] text-muted">
-            Enter a valid hex to see its in-season anchor.
+            Enter a valid hex to build an in-season palette.
           </p>
         )}
       </div>
