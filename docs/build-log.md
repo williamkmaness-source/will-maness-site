@@ -6,7 +6,7 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ## 2026-07-05 — Issue #221: Seasonal palette — walking skeleton
 
-**Slice.** Built the tracer-bullet first slice of the seasonal color palette app at `/work/palette`: a hex color in, snapped to its nearest shade inside a hardcoded Light Summer gamut, rendered as the in-season "Base" swatch. Proves the full pipeline (input → color math → gamut snap → UI) end-to-end and deploys via the normal build.
+**Slice.** Built the tracer-bullet first slice of the seasonal color palette app: a hex color in, snapped to its nearest shade inside a hardcoded Light Summer gamut, rendered as the in-season "Base" swatch. Proves the full pipeline (input → color math → gamut snap → UI) end-to-end and deploys via the normal build. Shipped as a project page the standard way — `content/projects/seasonal-palette.mdx` embeds the `<SeasonalPalette />` widget (registered in `mdx-components.tsx`), so it appears in the `/work` index and lives at `/work/seasonal-palette` via the `[slug]` template, matching the vienna-trainer pattern.
 
 **Modules.** Added the pure logic core under `src/lib/palette/`: `color-math.ts` (culori-backed hex normalize, OKLCH conversion, CIEDE2000 perceptual distance), `gamut-snap.ts` (nearest-in-season), and `season-data.ts` (typed `Season`, one entry per season so adding seasons is data-only). Client UI in `src/components/projects/palette/PaletteSkeleton.tsx` keeps all chrome on design tokens; seasonal colors render as data via inline styles.
 
