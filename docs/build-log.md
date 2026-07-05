@@ -4,6 +4,16 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-05 — Issue #221: Seasonal palette — walking skeleton
+
+**Slice.** Built the tracer-bullet first slice of the seasonal color palette app: a hex color in, snapped to its nearest shade inside a hardcoded Light Summer gamut, rendered as the in-season "Base" swatch. Proves the full pipeline (input → color math → gamut snap → UI) end-to-end and deploys via the normal build. Shipped as a project page the standard way — `content/projects/seasonal-palette.mdx` embeds the `<SeasonalPalette />` widget (registered in `mdx-components.tsx`), so it appears in the `/work` index and lives at `/work/seasonal-palette` via the `[slug]` template, matching the vienna-trainer pattern.
+
+**Modules.** Added the pure logic core under `src/lib/palette/`: `color-math.ts` (culori-backed hex normalize, OKLCH conversion, CIEDE2000 perceptual distance), `gamut-snap.ts` (nearest-in-season), and `season-data.ts` (typed `Season`, one entry per season so adding seasons is data-only). Client UI in `src/components/projects/palette/PaletteSkeleton.tsx` keeps all chrome on design tokens; seasonal colors render as data via inline styles.
+
+**Dependencies.** Added `culori` and `@types/culori`. **Tests.** 16 unit tests for color-math and gamut-snap (identical→0 distance, monotonic distance, snap returns an in-gamut member, invalid input handled). Full suite (435) green; `pnpm build` clean; page verified in a headless browser (`#c81e5a` → `#C77E99`). Light Summer hexes here are a reasonable standard set — the validated two-season data is owned by issue #223.
+
+---
+
 ## 2026-05-08 — Vercel Web Analytics + Speed Insights
 
 **Tracking.** Added `@vercel/analytics` and `@vercel/speed-insights` (both Next.js entries) and mounted `<Analytics />` and `<SpeedInsights />` in the root layout after `<Footer />`. Analytics captures pageviews; Speed Insights captures real-user Core Web Vitals (LCP, INP, CLS) — relevant given the Lighthouse 95+ goal in the spec. Both are privacy-friendly and cookieless. Data flow requires each product to be toggled on for the project in the Vercel dashboard (Settings → Analytics, Settings → Speed Insights) — packages alone do nothing until the toggles are flipped. Both toggles enabled 2026-05-09; data ingestion now active.

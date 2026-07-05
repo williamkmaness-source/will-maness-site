@@ -1,0 +1,23 @@
+---
+title: "Seasonal Color Palette"
+eyebrow: "Engineering · Color"
+year: "2026"
+status: "in-progress"
+tags: ["engineering"]
+summary: "For people who already know their color season: give it one color you like and it builds outfit palettes that stay inside your seasonal gamut. This is the first working slice."
+featured: false
+---
+
+Personal color analysis tells you which colors flatter you — a "season" like Light Summer or Dull Winter. Knowing your season is not the same as knowing what to wear. This tool starts from one color you already like and builds outfit palettes that are guaranteed to stay inside your season, so nothing off-season ever gets suggested.
+
+This first slice is the walking skeleton: a color goes in, and it snaps to the nearest shade inside the season's palette. Try a hex — a saturated one like `#c81e5a` shows the idea best.
+
+<SeasonalPalette />
+
+## How it's built
+
+**Season-constrained, not generic color theory.** A normal color-wheel tool will happily hand you a "correct" complementary color that is wrong for your season. Here every color passes through a gamut-snap step first: it's matched to the perceptually nearest member of the season's real palette. The season's color set is the single source of truth — it doubles as both the constraint gamut and (in a later slice) the swatch picker.
+
+**A small, pure logic core.** The engine is plain functions with no React or app state, so it's trivially unit-testable. `color-math` wraps [culori](https://culorijs.org/) for hex parsing, OKLCH conversion, and CIEDE2000 perceptual distance; `gamut-snap` returns the nearest in-season color; `season-data` holds one typed entry per season so adding the remaining ten seasons is a data-only change. Sixteen tests cover the core — identical colors at zero distance, distance growing monotonically with visible difference, and snapping always returning an in-gamut member.
+
+**What's next.** From this anchor the engine will generate harmony schemes (complementary, analogous, triadic, split-complementary), snap each result back into the season, and assemble four-role outfit palettes — Base, Secondary, Neutral, Accent. Then a season selector (Light Summer and Dull Winter, with the exact palettes validated by hand), a swatch picker, and polish. Only the walking skeleton is live here for now.

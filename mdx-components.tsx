@@ -13,6 +13,7 @@ import { ChessTracker } from "@/components/projects/chess";
 import { PipelineDashboard } from "@/components/projects/pipeline-dashboard";
 import { VendorFeedPreview } from "@/components/projects/vendor-feed/VendorFeedPreview";
 import { SpxDashboard } from "@/components/projects/spx/SpxDashboard";
+import { SeasonalPalette } from "@/components/projects/palette";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -60,6 +61,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     PipelineDashboard,
     VendorFeedPreview,
     SpxDashboard,
+    SeasonalPalette,
     ...components,
   };
 }
