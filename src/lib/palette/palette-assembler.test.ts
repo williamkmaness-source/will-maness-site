@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assemblePalette } from "./palette-assembler";
+import { assemblePalette, buildPalettes } from "./palette-assembler";
 import { toOklchColor, perceptualDistance } from "./color-math";
 import { nearestInGamut } from "./gamut-snap";
 import { LIGHT_SUMMER } from "./season-data";
@@ -45,5 +45,33 @@ describe("assemblePalette", () => {
 
   it("is deterministic for the same inputs", () => {
     expect(assemblePalette("#c81e5a", gamut)).toEqual(assemblePalette("#c81e5a", gamut));
+  });
+});
+
+describe("buildPalettes", () => {
+  it("returns multiple distinct palettes for a real season", () => {
+    const palettes = buildPalettes("#c81e5a", gamut);
+    expect(palettes.length).toBeGreaterThan(1);
+    const keys = palettes.map((p) => `${p.base}|${p.secondary}|${p.neutral}|${p.accent}`);
+    expect(new Set(keys).size).toBe(palettes.length); // all distinct
+  });
+
+  it("leads with the complementary scheme", () => {
+    expect(buildPalettes("#c81e5a", gamut)[0].scheme).toBe("complementary");
+  });
+
+  it("keeps every palette fully in-gamut", () => {
+    for (const p of buildPalettes("#7fb0d0", gamut)) {
+      for (const color of [p.base, p.secondary, p.neutral, p.accent]) {
+        expect(gamut).toContain(color);
+      }
+    }
+  });
+
+  it("collapses near-identical palettes to one when the gamut forces the same colors", () => {
+    // A single-color gamut forces every scheme to the same palette; de-dup → one result.
+    const palettes = buildPalettes("#123456", ["#7fb0d0"]);
+    expect(palettes).toHaveLength(1);
+    expect(palettes[0].base).toBe("#7fb0d0");
   });
 });

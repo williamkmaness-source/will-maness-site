@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import type { Season } from "@/lib/palette/season-data";
 import { normalizeHex } from "@/lib/palette/color-math";
-import { assemblePalette } from "@/lib/palette/palette-assembler";
+import { buildPalettes } from "@/lib/palette/palette-assembler";
 import { PaletteCard } from "./PaletteCard";
 
 interface PaletteSkeletonProps {
@@ -19,8 +19,8 @@ export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
   const [input, setInput] = useState("#7fb0d0");
 
   const normalized = useMemo(() => normalizeHex(input), [input]);
-  const palette = useMemo(
-    () => (normalized ? assemblePalette(normalized, season.colors) : null),
+  const palettes = useMemo(
+    () => (normalized ? buildPalettes(normalized, season.colors) : []),
     [normalized, season.colors]
   );
 
@@ -64,14 +64,18 @@ export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
       <div className="flex flex-col gap-[16px]">
         <p className="font-sans text-[14px] text-hint max-w-[520px]">
           Your color becomes the <strong className="text-ink-soft font-medium">Base</strong>,
-          snapped to its nearest shade in {season.name}. From it the app builds a four-role
-          outfit palette — every color guaranteed to stay in-season.
+          snapped to its nearest shade in {season.name}. From it the app builds a few four-role
+          outfit palettes — one per harmony scheme — every color guaranteed to stay in-season.
         </p>
-        {palette ? (
-          <PaletteCard palette={palette} />
+        {palettes.length > 0 ? (
+          <div className="flex flex-col gap-[20px]">
+            {palettes.map((palette) => (
+              <PaletteCard key={palette.scheme} palette={palette} />
+            ))}
+          </div>
         ) : (
           <p className="font-serif text-[18px] text-muted">
-            Enter a valid hex to build an in-season palette.
+            Enter a valid hex to build in-season palettes.
           </p>
         )}
       </div>

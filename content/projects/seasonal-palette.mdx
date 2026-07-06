@@ -10,7 +10,7 @@ featured: false
 
 Personal color analysis tells you which colors flatter you — a "season" like Light Summer or Dull Winter. Knowing your season is not the same as knowing what to wear. This tool starts from one color you already like and builds outfit palettes that are guaranteed to stay inside your season, so nothing off-season ever gets suggested.
 
-Give it a hex — a saturated one like `#c81e5a` shows the idea best. Your color is snapped into the season to become the Base, and from there the app assembles a four-role outfit palette: Base, Secondary, Neutral, and Accent, every color guaranteed to stay in-season.
+Give it a hex — a saturated one like `#c81e5a` shows the idea best. Your color is snapped into the season to become the Base, and from there the app assembles a few four-role outfit palettes — one per harmony scheme — each with a Base, Secondary, Neutral, and Accent, every color guaranteed to stay in-season.
 
 <SeasonalPalette />
 
@@ -20,4 +20,6 @@ Give it a hex — a saturated one like `#c81e5a` shows the idea best. Your color
 
 **A small, pure logic core.** The engine is plain functions with no React or app state, so it's trivially unit-testable. `color-math` wraps [culori](https://culorijs.org/) for hex parsing, OKLCH conversion, and CIEDE2000 perceptual distance; `gamut-snap` returns the nearest in-season color; `harmony` rotates hue in OKLCH to find a scheme's partner colors; `palette-assembler` composes the four roles — Base is the snapped anchor, Secondary is the harmony partner snapped back in-season, Neutral is the season's lowest-chroma tone, and Accent is the color with the most contrast from Base. `season-data` holds one typed entry per season so adding the remaining ten is a data-only change.
 
-**What's next.** Right now a single scheme (complementary) drives one palette. Next the engine will run all four schemes (complementary, analogous, triadic, split-complementary), de-duplicate near-identical results, and surface a small curated set of palettes. Then a season selector (Light Summer and Dull Winter, with the exact palettes validated by hand), a swatch picker, and polish.
+**Several schemes, de-duplicated.** The engine runs all four harmony schemes — complementary, analogous, triadic, split-complementary — and assembles a palette from each. Because every color is snapped into a finite season, two schemes whose partners land on the same shade produce identical palettes; those collapse, so each card you see is genuinely distinct. You get a small curated set rather than an overwhelming grid.
+
+**What's next.** A season selector (Light Summer and Dull Winter, with the exact palettes validated by hand), a swatch picker so you can start from a season color instead of a hex, and a polish pass — copy-to-clipboard, graceful handling of bad input, and mobile layout.

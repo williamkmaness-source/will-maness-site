@@ -4,7 +4,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
-## 2026-07-05 — Issue #222: Seasonal palette — four-role card
+## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
+
+**Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
+
+**Modules.** Added `buildPalettes(anchor, gamut)` to `palette-assembler.ts`: runs all schemes via the existing `assemblePalette`, keys each result by its four snapped colors, and collapses duplicates (keeping the more classic scheme). `PaletteSkeleton.tsx` now maps the result set to a stack of `PaletteCard`s. 4 new unit tests (distinctness, complementary-first ordering, in-gamut, single-color-gamut collapse → one). Palette suite 32, full suite green; lint + build clean.
 
 **Slice.** Extended the palette engine from a single Base swatch to a full four-role outfit palette (Base / Secondary / Neutral / Accent) rendered as a card on `/work/seasonal-palette`. Base is the snapped anchor, Secondary is the complementary partner snapped back in-season, Neutral is the season's lowest-chroma tone, and Accent is the highest-contrast color from Base — all guaranteed in-gamut.
 
