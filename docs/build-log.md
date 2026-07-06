@@ -4,7 +4,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
-## 2026-07-05 — Issue #221: Seasonal palette — walking skeleton
+## 2026-07-05 — Issue #222: Seasonal palette — four-role card
+
+**Slice.** Extended the palette engine from a single Base swatch to a full four-role outfit palette (Base / Secondary / Neutral / Accent) rendered as a card on `/work/seasonal-palette`. Base is the snapped anchor, Secondary is the complementary partner snapped back in-season, Neutral is the season's lowest-chroma tone, and Accent is the highest-contrast color from Base — all guaranteed in-gamut.
+
+**Modules.** Added `src/lib/palette/harmony.ts` (OKLCH hue rotation; all four schemes implemented, complementary wired for now) and `palette-assembler.ts` (pure `assemblePalette(color, gamut, scheme)` → `RolePalette`). New `PaletteCard.tsx` presentational component; `PaletteSkeleton.tsx` now assembles and renders it. 12 new unit tests (harmony hue math + role assignment invariants), 28 in the palette suite; full suite green, build + lint clean. Multiple schemes and de-dup are next in #224.
 
 **Slice.** Built the tracer-bullet first slice of the seasonal color palette app: a hex color in, snapped to its nearest shade inside a hardcoded Light Summer gamut, rendered as the in-season "Base" swatch. Proves the full pipeline (input → color math → gamut snap → UI) end-to-end and deploys via the normal build. Shipped as a project page the standard way — `content/projects/seasonal-palette.mdx` embeds the `<SeasonalPalette />` widget (registered in `mdx-components.tsx`), so it appears in the `/work` index and lives at `/work/seasonal-palette` via the `[slug]` template, matching the vienna-trainer pattern.
 
