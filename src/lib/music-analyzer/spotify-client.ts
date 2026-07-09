@@ -27,44 +27,44 @@ const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const API_BASE_URL = "https://api.spotify.com/v1";
 const TOKEN_TTL_MS = 55 * 60 * 1000; // Spotify tokens last 1 hour; refresh a few minutes early.
 
-let cachedToken: { accessToken: string; expiresAt: number } | null = null;
-
-async function fetchAccessToken(clientId: string, clientSecret: string): Promise<string> {
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-
-  if (!res.ok) throw new Error(`Spotify token request failed with HTTP ${res.status}`);
-
-  const data = (await res.json()) as { access_token: string };
-  return data.access_token;
-}
-
-async function getAccessToken(clientId: string, clientSecret: string): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now()) {
-    return cachedToken.accessToken;
-  }
-
-  const accessToken = await fetchAccessToken(clientId, clientSecret);
-  cachedToken = { accessToken, expiresAt: Date.now() + TOKEN_TTL_MS };
-  return accessToken;
-}
-
 export class SpotifyClient {
+  private cachedToken: { accessToken: string; expiresAt: number } | null = null;
+
   constructor(
     private readonly clientId: string,
     private readonly clientSecret: string
   ) {}
 
+  private async fetchAccessToken(): Promise<string> {
+    const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64");
+
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+
+    if (!res.ok) throw new Error(`Spotify token request failed with HTTP ${res.status}`);
+
+    const data = (await res.json()) as { access_token: string };
+    return data.access_token;
+  }
+
+  private async getAccessToken(): Promise<string> {
+    if (this.cachedToken && this.cachedToken.expiresAt > Date.now()) {
+      return this.cachedToken.accessToken;
+    }
+
+    const accessToken = await this.fetchAccessToken();
+    this.cachedToken = { accessToken, expiresAt: Date.now() + TOKEN_TTL_MS };
+    return accessToken;
+  }
+
   private async request<T>(path: string): Promise<T> {
-    const token = await getAccessToken(this.clientId, this.clientSecret);
+    const token = await this.getAccessToken();
 
     const res = await fetch(`${API_BASE_URL}${path}`, {
       headers: { Authorization: `Bearer ${token}` },

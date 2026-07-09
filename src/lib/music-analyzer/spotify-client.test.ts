@@ -43,15 +43,18 @@ describe("SpotifyClient", () => {
   });
 
   it("searchTrack maps Spotify results to a flat track list", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      jsonResponse({
-        tracks: {
-          items: [
-            { id: "abc123", name: "Test Song", artists: [{ name: "Test Artist" }] },
-          ],
-        },
-      })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ access_token: "token-1" }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          tracks: {
+            items: [
+              { id: "abc123", name: "Test Song", artists: [{ name: "Test Artist" }] },
+            ],
+          },
+        })
+      );
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const client = new SpotifyClient("id", "secret");
@@ -62,6 +65,9 @@ describe("SpotifyClient", () => {
 
   it("getTrackFeatures returns typed audio features and sections", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("accounts.spotify.com/api/token")) {
+        return Promise.resolve(jsonResponse({ access_token: "token-1" }));
+      }
       if (url.includes("/audio-features/")) {
         return Promise.resolve(jsonResponse({ key: 2, mode: 0, tempo: 128 }));
       }
@@ -82,7 +88,10 @@ describe("SpotifyClient", () => {
   });
 
   it("throws when the Spotify API returns a non-ok response", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({}, false, 429));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ access_token: "token-1" }))
+      .mockResolvedValueOnce(jsonResponse({}, false, 429));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const client = new SpotifyClient("id", "secret");
