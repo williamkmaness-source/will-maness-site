@@ -1,8 +1,8 @@
 // app/about/page.tsx — about page. Replicates site-about-page.html exactly.
 // Structured data (currently list, say-hi copy) from content/site.mdx frontmatter.
 // Bio prose from content/site.mdx MDX body, imported as a React component.
-// The topographic SVG is a placeholder; Will replaces it with a headshot later.
 
+import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import { ClayDot } from "@/components/ui/ClayDot";
@@ -27,26 +27,16 @@ export default function AboutPage() {
           className="grid gap-[48px] items-start mb-[64px]"
           style={{ gridTemplateColumns: "200px 1fr" }}
         >
-          {/* Topographic SVG placeholder — will be replaced with a portrait */}
           <div>
-            <svg
-              viewBox="0 0 200 200"
-              xmlns="http://www.w3.org/2000/svg"
-              width="200"
-              height="200"
-              aria-hidden="true"
-            >
-              <circle cx="100" cy="100" r="100" fill="#EFE9DD" />
-              <path d="M22,138 Q60,118 100,128 T180,120" stroke="#2D4A3E" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.32" />
-              <path d="M22,114 Q66,92 110,106 T180,96" stroke="#2D4A3E" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.45" />
-              <path d="M22,90 Q72,68 118,82 T180,72" stroke="#2D4A3E" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.6" />
-              <path d="M30,66 Q82,46 126,60 T180,48" stroke="#2D4A3E" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.78" />
-              <path d="M40,42 Q90,26 134,38 T180,28" stroke="#2D4A3E" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.92" />
-              <circle cx="108" cy="104" r="4.5" fill="#B85C38" />
-            </svg>
-            <p className="font-mono text-[11px] text-hint mt-[14px] leading-[1.5] tracking-[0.02em] max-w-[200px]">
-              placeholder mark — final art TBD; portrait or commissioned illustration
-            </p>
+            <Image
+              src="/will-maness-headshot.jpg"
+              alt="Will Maness"
+              width={200}
+              height={200}
+              className="rounded-full object-cover"
+              style={{ width: "200px", height: "200px" }}
+              priority
+            />
           </div>
 
           <div>
