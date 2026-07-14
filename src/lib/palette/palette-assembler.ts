@@ -16,6 +16,14 @@ export interface RolePalette {
   accent: string;
 }
 
+// Schemes tried when building the full result set, ordered from most classic to least.
+const ALL_SCHEMES: HarmonyScheme[] = [
+  "complementary",
+  "analogous",
+  "triadic",
+  "split-complementary",
+];
+
 /** The season color with the lowest OKLCH chroma — the most neutral, grounding tone. */
 function lowestChroma(gamut: string[]): string {
   let best = gamut[0];
@@ -61,4 +69,30 @@ export function assemblePalette(
   const neutral = lowestChroma(gamut);
   const accent = highestContrastFrom(base, gamut);
   return { scheme, base, secondary, neutral, accent };
+}
+
+/** Identity of a palette by its four snapped colors, ignoring which scheme produced it. */
+function roleKey(p: RolePalette): string {
+  return `${p.base}|${p.secondary}|${p.neutral}|${p.accent}`;
+}
+
+/**
+ * Build a curated set of palettes for `anchorHex` — one per harmony scheme, then collapse
+ * near-identical results. Because every color is snapped into the finite gamut, two schemes
+ * whose harmony partners land on the same season color yield identical palettes; those are
+ * de-duplicated so each surfaced card is clearly distinct. Keeps the first (more classic)
+ * scheme when duplicates collide. Order follows ALL_SCHEMES.
+ */
+export function buildPalettes(anchorHex: string, gamut: string[]): RolePalette[] {
+  const seen = new Set<string>();
+  const palettes: RolePalette[] = [];
+  for (const scheme of ALL_SCHEMES) {
+    const palette = assemblePalette(anchorHex, gamut, scheme);
+    const key = roleKey(palette);
+    if (!seen.has(key)) {
+      seen.add(key);
+      palettes.push(palette);
+    }
+  }
+  return palettes;
 }
