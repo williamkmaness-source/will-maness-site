@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #02: noindex the standalone /ember dashboard
+
+**Fix.** `/ember` — the standalone server-rendered EmberBrief dashboard — returned HTTP 200 with no robots directive, so it was an indexable duplicate of the canonical `/work/ember` project page (a duplicate-content signal on a site whose project pages are the SEO surface). Added `robots: { index: false, follow: true }` to the route's metadata. Chose noindex over a 301 redirect or deletion because `content/projects/ember.mdx` documents the dashboard as living at `/ember`, so the URL should stay reachable — it just shouldn't be indexed twice.
+
+**Verified.** `pnpm build` clean; started the production server and confirmed `/ember` now emits `<meta name="robots" content="noindex, follow">`, `/work/ember` still has no robots directive (stays indexable), `/ember` still returns 200, and only the canonical `/work/ember` appears in the sitemap. Third of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
