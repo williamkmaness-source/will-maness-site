@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #04: live-data widgets no longer leak raw error strings
+
+**Fix.** `StaffingDashboard`, `EmberDashboard`, and `RequestTypeBreakdown` each rendered the raw thrown fetch message (e.g. `API error 503`) straight to the visitor when their backing API failed — developer-facing copy on exactly the widgets most likely to be mid-failure when a hiring manager clicks through (they depend on external pipelines and a Neon Postgres that can cold-start). Each now logs the raw error to the console and renders a fixed, user-facing sentence instead ("temporarily unavailable — check back shortly" / the existing Ember fallback), keeping the thrown message out of the render path.
+
+**Verified.** Typecheck, lint, and `pnpm build` clean. Drove `/work/boston-civic-data` and `/work/ember` in headless Chromium with no DB configured (both APIs 503): confirmed the friendly copy renders and no `API error NNN` string appears anywhere. Second of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
