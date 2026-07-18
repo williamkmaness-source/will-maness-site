@@ -17,6 +17,10 @@ matters for discoverability. It also shares the same unguarded Postgres fetch
 as the `/work/vendor_feed` issue, so it's a second surface for the same
 crash-on-DB-hiccup failure mode.
 
+**Update (2026-07-18 re-check):** still reproduces identically — `/ember`
+still returns 200 with no `noindex`, `/work/ember` still the intended
+canonical.
+
 ## Suggested fix
 
 Delete `src/app/ember/page.tsx` and its route (superseded by

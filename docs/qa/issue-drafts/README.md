@@ -1,10 +1,14 @@
-# QA issue drafts — 2026-07-11
+# QA issue drafts — 2026-07-11 (re-confirmed 2026-07-18)
 
 Draft GitHub issues from the hiring-manager QA pass in
 `docs/qa/2026-07-11-hiring-manager-qa.md`. Nothing here has been filed as a
 real issue yet — review and approve in this PR first, then file whichever
 ones you want tracked (title/labels are in each file's frontmatter, ready to
 copy into `gh issue create` or the GitHub UI).
+
+**2026-07-18 follow-up:** re-verified all 9 against current `main` — see
+`docs/qa/2026-07-18-hiring-manager-qa.md`. All still open and unfixed; 04 and
+05 picked up new detail (each file has a dated "Update" note inline).
 
 | # | Title | Priority |
 | - | ----- | -------- |
