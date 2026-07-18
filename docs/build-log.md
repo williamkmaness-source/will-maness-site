@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #08: refresh MEMORY.md and add the missing Phase 1 quiz
+
+**Fix.** `MEMORY.md`'s status table still read Phase 1 as "Ready to start" (last touched 2026-05-06) while Phases 1–3 had all shipped and five post-MVP projects had gone live; it also listed the stack as Next.js 15 (actually 16) and an open headshot question that was since resolved. Updated the phase table to reflect reality, added a note listing the post-MVP projects, corrected the Next.js version, and closed the headshot open-question. Separately, `docs/quizzes/` had `phase-0.md` and `phase-2.md` but no `phase-1.md` (required by the execution brief's teaching-overlay process) — wrote it in the same format as the others, with 8 questions grounded in the real Phase 1 code (content collections, the `[slug]` route + `generateStaticParams`, `notFound()`, per-slug OG images, the derived sitemap, per-route noindex, server-component/Lighthouse reasoning, and prev/next adjacency ordering).
+
+**Verified.** Docs-only change (no runtime surface); quiz answers cross-checked against `content.ts`, the `[slug]` template, `sitemap.ts`, and `robots.ts`. Eighth of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
