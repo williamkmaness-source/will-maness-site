@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #03: About page rendered two h1 elements
+
+**Fix.** The closing line of `content/site.mdx`'s bio began with a stray `# `, so MDX rendered it as a second `<h1>` on `/about` — invisible in QA because `mdx-components.tsx` styles `h2` but not `h1`, and Tailwind's preflight strips default heading sizing, so it looked like a paragraph while being a real second top-level heading (an accessibility and minor SEO smell). Removed the leading `#`; the sentence now renders as a styled `<p>`, matching how it reads in the rest of the block.
+
+**Verified.** `pnpm build` clean; against a production server `/about` now has exactly one `<h1>` ("About") and the outreach sentence renders as `<p class="... text-prose ...">`. Fifth of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
