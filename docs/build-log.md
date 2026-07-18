@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #05: status indicators on work cards
+
+**Fix.** The execution brief requires the `/work` index to show status indicators (in progress / complete / forthcoming), but `WorkCard` only ever acted on `status` to dim `forthcoming` cards — `in-progress` (7 of 10 projects) rendered visually identical to `complete`, with no label or dot anywhere. Added a `StatusIndicator` to the card meta row: `in-progress` shows a small active moss dot + "In progress" (on-system mono/muted status-label styling), `forthcoming` shows a "Forthcoming" label plus the existing dim, and `complete` stays unmarked so its absence is the distinction. Deliberately avoided `ClayDot` here — clay is reserved for sparing personal-mark moments, not 7 cards.
+
+**Verified.** Typecheck, lint, and `pnpm build` clean. Rendered `/work` in headless Chromium: exactly 7 "In progress" labels (matching the 7 in-progress projects), the 3 complete cards clean, and every label single-line (18px, no wrap) including the tag-crowded Sable card. Fourth of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
