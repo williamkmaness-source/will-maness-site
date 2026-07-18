@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #06: custom 404 page
+
+**Fix.** Any unmatched route fell through to Next's bare default 404 ("This page could not be found." — no nav, no footer, no site chrome), the one place the site broke visual continuity. Added `src/app/not-found.tsx` reusing `Container` and the standard page-header type scale, rendering inside the global `Nav`/`Footer` frame with a "404" eyebrow, a one-line message, and an accent "← Back home" link.
+
+**Verified.** Typecheck, lint, and `pnpm build` clean. Against a production server, an unmatched route (`/this-does-not-exist`) returns HTTP **404** with the custom heading, the back-home link, and both the global nav and footer present (confirmed via curl + a headless screenshot). Sixth of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
