@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   title: "EmberBrief — Lake Tahoe Basin Fire Dashboard | Will Maness",
   description:
     "Live satellite fire detection for the Lake Tahoe Basin — clusters, risk scores, and current weather conditions updated daily.",
+  // This standalone dashboard shares substantial content with the canonical
+  // /work/ember project page. Keep the URL reachable (it's the dashboard's home)
+  // but noindex it so search engines don't treat the two as duplicate content.
+  robots: { index: false, follow: true },
 };
 
 function ZeroDetectionState({ redFlag }: { redFlag: boolean }) {
