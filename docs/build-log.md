@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #07: remove create-next-app scaffold assets
+
+**Fix.** `public/` still carried the five default `create-next-app` scaffold icons (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`), none referenced anywhere in `src/` or `content/`. Harmless functionally, but the repo is explicitly part of the credibility pitch, so leftover boilerplate is exactly what a technical reviewer browsing the code notices. Confirmed zero references (grep across `src`, `content`, and root config), then removed all five; `public/` now holds only the headshot.
+
+**Verified.** `grep` for each filename across the codebase returned nothing before deletion; `pnpm build` clean afterward. Seventh of the 9 findings in PR #233.
+
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
 **Slice.** The palette widget now surfaces several four-role palettes at once — one per harmony scheme (complementary, analogous, triadic, split-complementary) — instead of a single card. Because every color is snapped into a finite season, schemes whose partners land on the same shade yield identical palettes; those are de-duplicated so each card is clearly distinct (a typical input yields three).
