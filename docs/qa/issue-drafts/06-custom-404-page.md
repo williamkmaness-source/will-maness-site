@@ -18,6 +18,9 @@ expected as-is. Filing separately because it's currently the one place on the
 site that breaks visual continuity by design, and — unlike the rest of Phase
 4's scope — it's a small, self-contained fix.
 
+**Update (2026-07-18 re-check):** `src/app/not-found.tsx` still doesn't
+exist; behavior unchanged.
+
 ## Suggested fix
 
 Add `src/app/not-found.tsx` reusing the existing `Container`, and rendering
