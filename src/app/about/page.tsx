@@ -33,8 +33,7 @@ export default function AboutPage() {
               alt="Will Maness"
               width={200}
               height={200}
-              className="rounded-full object-cover"
-              style={{ width: "200px", height: "200px" }}
+              className="rounded-full object-cover w-[200px] h-[200px]"
               priority
             />
           </div>
