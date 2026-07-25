@@ -21,6 +21,9 @@ site that breaks visual continuity by design, and — unlike the rest of Phase
 **Update (2026-07-18 re-check):** `src/app/not-found.tsx` still doesn't
 exist; behavior unchanged.
 
+**Update (2026-07-25 re-check):** still unaddressed. A fix is now ready in
+**PR #239** (green CI, unreviewed).
+
 ## Suggested fix
 
 Add `src/app/not-found.tsx` reusing the existing `Container`, and rendering

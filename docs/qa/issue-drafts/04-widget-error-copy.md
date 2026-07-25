@@ -64,6 +64,10 @@ error state (e.g. "Live data temporarily unavailable — check back shortly")
 and keep the raw thrown message out of the render path — log it to the
 console or an error-tracking call instead.
 
+**Update (2026-07-25 re-check):** still reproduces in all three components,
+unchanged. A fix is now ready in **PR #235** (green CI, unreviewed). `#210`
+(expired Ember weather API key) is also still open.
+
 ## Repro
 
 1. Run without `DATABASE_URL`/relevant env vars set (or throttle/kill the DB)
