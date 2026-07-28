@@ -23,6 +23,9 @@ This isn't a bug — it's a legitimate editorial choice (range of interests can
 be a feature, not a bug, in a personal site) — flagging for a deliberate call
 rather than fixing unprompted.
 
+**Update (2026-07-18 re-check):** `project-stellar.mdx` frontmatter
+unchanged (`game design`/`writing`/`art direction` tags, not `featured`).
+
 ## Options to consider
 
 1. Leave as-is — intentional range/personality signal.

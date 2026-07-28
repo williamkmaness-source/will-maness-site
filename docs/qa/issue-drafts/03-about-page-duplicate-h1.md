@@ -38,6 +38,10 @@ engines use `<h1>` as a strong topical signal). Practically, it's a sign the
 sentence was authored as a heading unintentionally — it reads as a normal
 paragraph everywhere else in the same block.
 
+**Update (2026-07-18 re-check):** still reproduces — `content/site.mdx` is
+unchanged since the original report, `mdx-components.tsx` still has no `h1`
+override.
+
 ## Suggested fix
 
 In `content/site.mdx`, change the leading `#` to plain text, or wrap the

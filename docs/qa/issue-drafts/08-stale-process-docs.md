@@ -26,6 +26,12 @@ overlay" process this repo is explicitly built to demonstrate (per
 this brief" section), and it's the kind of gap a technical reviewer poking at
 a public repo notices.
 
+**Update (2026-07-18 re-check):** `MEMORY.md` is unchanged — still dated
+2026-05-06, still shows Phase 1 as "Ready to start" — and the roster gap
+widened: 7 of 10 projects are now in-progress (Seasonal Color Palette and
+This site joined the live set since the original count), none reflected in
+the doc. `docs/quizzes/phase-1.md` still doesn't exist.
+
 ## Suggested fix
 
 - Update `MEMORY.md`'s phase status table to reflect current reality.

@@ -9,6 +9,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 **Fix.** `StaffingDashboard`, `EmberDashboard`, and `RequestTypeBreakdown` each rendered the raw thrown fetch message (e.g. `API error 503`) straight to the visitor when their backing API failed — developer-facing copy on exactly the widgets most likely to be mid-failure when a hiring manager clicks through (they depend on external pipelines and a Neon Postgres that can cold-start). Each now logs the raw error to the console and renders a fixed, user-facing sentence instead ("temporarily unavailable — check back shortly" / the existing Ember fallback), keeping the thrown message out of the render path.
 
 **Verified.** Typecheck, lint, and `pnpm build` clean. Drove `/work/boston-civic-data` and `/work/ember` in headless Chromium with no DB configured (both APIs 503): confirmed the friendly copy renders and no `API error NNN` string appears anywhere. Second of the 9 findings in PR #233.
+## 2026-07-18 — QA #07: remove create-next-app scaffold assets
+
+**Fix.** `public/` still carried the five default `create-next-app` scaffold icons (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`), none referenced anywhere in `src/` or `content/`. Harmless functionally, but the repo is explicitly part of the credibility pitch, so leftover boilerplate is exactly what a technical reviewer browsing the code notices. Confirmed zero references (grep across `src`, `content`, and root config), then removed all five; `public/` now holds only the headshot.
+
+**Verified.** `grep` for each filename across the codebase returned nothing before deletion; `pnpm build` clean afterward. Seventh of the 9 findings in PR #233.
 
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
