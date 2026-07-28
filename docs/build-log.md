@@ -4,6 +4,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #06: custom 404 page
+
+**Fix.** Any unmatched route fell through to Next's bare default 404 ("This page could not be found." — no nav, no footer, no site chrome), the one place the site broke visual continuity. Added `src/app/not-found.tsx` reusing `Container` and the standard page-header type scale, rendering inside the global `Nav`/`Footer` frame with a "404" eyebrow, a one-line message, and an accent "← Back home" link.
+
+**Verified.** Typecheck, lint, and `pnpm build` clean. Against a production server, an unmatched route (`/this-does-not-exist`) returns HTTP **404** with the custom heading, the back-home link, and both the global nav and footer present (confirmed via curl + a headless screenshot). Sixth of the 9 findings in PR #233.
 ## 2026-07-18 — QA #07: remove create-next-app scaffold assets
 
 **Fix.** `public/` still carried the five default `create-next-app` scaffold icons (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`), none referenced anywhere in `src/` or `content/`. Harmless functionally, but the repo is explicitly part of the credibility pitch, so leftover boilerplate is exactly what a technical reviewer browsing the code notices. Confirmed zero references (grep across `src`, `content`, and root config), then removed all five; `public/` now holds only the headshot.
