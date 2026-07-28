@@ -102,7 +102,7 @@ export function ColorInput({
           </div>
           {invalid && (
             <span role="status" className="font-sans text-[13px] text-clay">
-              Not a color I can read — try a hex like{" "}
+              Not a color I can read — still showing your last one. Try a hex like{" "}
               <span className="font-mono">#7fb0d0</span>.
             </span>
           )}
