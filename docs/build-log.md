@@ -9,6 +9,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 **Fix.** The execution brief requires the `/work` index to show status indicators (in progress / complete / forthcoming), but `WorkCard` only ever acted on `status` to dim `forthcoming` cards — `in-progress` (7 of 10 projects) rendered visually identical to `complete`, with no label or dot anywhere. Added a `StatusIndicator` to the card meta row: `in-progress` shows a small active moss dot + "In progress" (on-system mono/muted status-label styling), `forthcoming` shows a "Forthcoming" label plus the existing dim, and `complete` stays unmarked so its absence is the distinction. Deliberately avoided `ClayDot` here — clay is reserved for sparing personal-mark moments, not 7 cards.
 
 **Verified.** Typecheck, lint, and `pnpm build` clean. Rendered `/work` in headless Chromium: exactly 7 "In progress" labels (matching the 7 in-progress projects), the 3 complete cards clean, and every label single-line (18px, no wrap) including the tag-crowded Sable card. Fourth of the 9 findings in PR #233.
+## 2026-07-18 — QA #07: remove create-next-app scaffold assets
+
+**Fix.** `public/` still carried the five default `create-next-app` scaffold icons (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`), none referenced anywhere in `src/` or `content/`. Harmless functionally, but the repo is explicitly part of the credibility pitch, so leftover boilerplate is exactly what a technical reviewer browsing the code notices. Confirmed zero references (grep across `src`, `content`, and root config), then removed all five; `public/` now holds only the headshot.
+
+**Verified.** `grep` for each filename across the codebase returned nothing before deletion; `pnpm build` clean afterward. Seventh of the 9 findings in PR #233.
 
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
