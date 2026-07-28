@@ -9,6 +9,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 **Fix.** `/work/vendor_feed` (the live Vendor Intelligence feed, linked from the `vendor-feed` writeup and the homepage preview) read Postgres at request time with no guard, so a missing connection string or any transient DB issue — Neon cold start, pool exhaustion, credential rotation — crashed the public URL with an unstyled Next.js 500. Wrapped the `getFeedEntities()` call in try/catch and degraded to a designed fallback ("temporarily unavailable") rendered inside the normal nav/footer frame, mirroring the pattern `/ember/page.tsx` already uses. Chose graceful handling over the issue-draft's "just delete it" because the route is the actual live feed and is actively linked — deletion would break those links.
 
 **Verified.** `pnpm build` clean; started the production server with no DB env vars (the exact failing condition) — `curl /work/vendor_feed` now returns HTTP 200 with the fallback copy and site chrome instead of a 500. Typecheck and build green. Top-ranked of the 9 open findings re-verified in PR #233.
+## 2026-07-18 — QA #07: remove create-next-app scaffold assets
+
+**Fix.** `public/` still carried the five default `create-next-app` scaffold icons (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`), none referenced anywhere in `src/` or `content/`. Harmless functionally, but the repo is explicitly part of the credibility pitch, so leftover boilerplate is exactly what a technical reviewer browsing the code notices. Confirmed zero references (grep across `src`, `content`, and root config), then removed all five; `public/` now holds only the headshot.
+
+**Verified.** `grep` for each filename across the codebase returned nothing before deletion; `pnpm build` clean afterward. Seventh of the 9 findings in PR #233.
 
 ## 2026-07-05 — Issue #224: Seasonal palette — all schemes + curated results
 
