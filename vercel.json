@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/ember-ingest",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/music-ingest",
+      "schedule": "0 10 * * *"
     }
   ]
 }

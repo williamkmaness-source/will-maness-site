@@ -4,6 +4,14 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-28 — Issue #215: music analyzer Billboard pipeline + weekly cron
+
+**Pipeline.** Built the data backbone for the music analyzer: `billboard-scraper.ts` parses the public Hot 100 chart page into ranked `{rank, title, artist}` entries (no API exists, so the markup is the interface — one function is the fix site if Billboard redesigns), and `popularity-scorer.ts` is a pure function rating every feature value hot / trending / emerging / indie by its share of the pool. Share-based rather than count-based, so ratings stay honest when fewer than 100 tracks resolve on Spotify.
+
+**Orchestration.** `music-pipeline.ts` holds the three DB-facing steps (`scrape` → `extract` → `score`), each independently runnable and idempotent per snapshot week, with `snapshotWeekFor()` as the single definition of "which week" so the steps can never disagree. `scripts/pipeline-music.ts` is a thin command dispatcher (the `pipeline-vendor-feed.ts` pattern) and `/api/cron/music-ingest` runs the same functions on Vercel — no-op 200 on non-Monday runs, since Billboard publishes weekly but Hobby bills per cron entry. Both paths upsert `pipeline_runs`. Second cron slot now filled (`vercel.json`: 2 entries).
+
+**Verified.** 49 new unit tests (79 in the music-analyzer suite, 530 repo-wide, all green); typecheck, lint, and `pnpm build` clean. `parseHot100` was validated against a real fetched chart page — 100 entries, ranks 1–100 in order, every title and artist populated. Live DB/Spotify verification is still blocked on #212 (credentials not yet in Vercel).
+
 ## 2026-07-18 — QA #06: custom 404 page
 
 **Fix.** Any unmatched route fell through to Next's bare default 404 ("This page could not be found." — no nav, no footer, no site chrome), the one place the site broke visual continuity. Added `src/app/not-found.tsx` reusing `Container` and the standard page-header type scale, rendering inside the global `Nav`/`Footer` frame with a "404" eyebrow, a one-line message, and an accent "← Back home" link.
