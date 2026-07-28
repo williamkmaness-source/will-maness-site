@@ -35,9 +35,11 @@ export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
     [input]
   );
 
-  // Recomputes whenever the accepted color or the season's gamut changes.
+  // Recomputes whenever the accepted color or the season's gamut changes. A season with no
+  // colors is guarded here rather than left to the assembler, which throws on an empty
+  // gamut — the empty result falls through to the message below.
   const palettes = useMemo(
-    () => buildPalettes(resolved, season.colors),
+    () => (season.colors.length > 0 ? buildPalettes(resolved, season.colors) : []),
     [resolved, season.colors]
   );
 

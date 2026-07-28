@@ -81,12 +81,8 @@ export function ColorInput({
           <div className="flex items-center gap-[12px]">
             <div
               aria-hidden
-              className="rounded-sm border border-line-strong shrink-0"
-              style={{
-                backgroundColor: resolved ?? "transparent",
-                width: 40,
-                height: 40,
-              }}
+              className="w-[40px] h-[40px] rounded-sm border border-line-strong shrink-0"
+              style={{ backgroundColor: resolved ?? "transparent" }}
             />
             <input
               id={fieldId}
