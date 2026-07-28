@@ -4,6 +4,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #04: live-data widgets no longer leak raw error strings
+
+**Fix.** `StaffingDashboard`, `EmberDashboard`, and `RequestTypeBreakdown` each rendered the raw thrown fetch message (e.g. `API error 503`) straight to the visitor when their backing API failed — developer-facing copy on exactly the widgets most likely to be mid-failure when a hiring manager clicks through (they depend on external pipelines and a Neon Postgres that can cold-start). Each now logs the raw error to the console and renders a fixed, user-facing sentence instead ("temporarily unavailable — check back shortly" / the existing Ember fallback), keeping the thrown message out of the render path.
+
+**Verified.** Typecheck, lint, and `pnpm build` clean. Drove `/work/boston-civic-data` and `/work/ember` in headless Chromium with no DB configured (both APIs 503): confirmed the friendly copy renders and no `API error NNN` string appears anywhere. Second of the 9 findings in PR #233.
 ## 2026-07-18 — QA #01: `/work/vendor_feed` no longer 500s on a DB hiccup
 
 **Fix.** `/work/vendor_feed` (the live Vendor Intelligence feed, linked from the `vendor-feed` writeup and the homepage preview) read Postgres at request time with no guard, so a missing connection string or any transient DB issue — Neon cold start, pool exhaustion, credential rotation — crashed the public URL with an unstyled Next.js 500. Wrapped the `getFeedEntities()` call in try/catch and degraded to a designed fallback ("temporarily unavailable") rendered inside the normal nav/footer frame, mirroring the pattern `/ember/page.tsx` already uses. Chose graceful handling over the issue-draft's "just delete it" because the route is the actual live feed and is actively linked — deletion would break those links.
