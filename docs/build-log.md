@@ -4,6 +4,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #01: `/work/vendor_feed` no longer 500s on a DB hiccup
+
+**Fix.** `/work/vendor_feed` (the live Vendor Intelligence feed, linked from the `vendor-feed` writeup and the homepage preview) read Postgres at request time with no guard, so a missing connection string or any transient DB issue — Neon cold start, pool exhaustion, credential rotation — crashed the public URL with an unstyled Next.js 500. Wrapped the `getFeedEntities()` call in try/catch and degraded to a designed fallback ("temporarily unavailable") rendered inside the normal nav/footer frame, mirroring the pattern `/ember/page.tsx` already uses. Chose graceful handling over the issue-draft's "just delete it" because the route is the actual live feed and is actively linked — deletion would break those links.
+
+**Verified.** `pnpm build` clean; started the production server with no DB env vars (the exact failing condition) — `curl /work/vendor_feed` now returns HTTP 200 with the fallback copy and site chrome instead of a 500. Typecheck and build green. Top-ranked of the 9 open findings re-verified in PR #233.
 ## 2026-07-18 — QA #06: custom 404 page
 
 **Fix.** Any unmatched route fell through to Next's bare default 404 ("This page could not be found." — no nav, no footer, no site chrome), the one place the site broke visual continuity. Added `src/app/not-found.tsx` reusing `Container` and the standard page-header type scale, rendering inside the global `Nav`/`Footer` frame with a "404" eyebrow, a one-line message, and an accent "← Back home" link.
