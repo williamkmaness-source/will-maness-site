@@ -62,6 +62,16 @@ describe("decodeEntities", () => {
   it("leaves unknown entities untouched rather than dropping characters", () => {
     expect(decodeEntities("a &notarealentity; b")).toBe("a &notarealentity; b");
   });
+
+  it("leaves an out-of-range numeric entity intact instead of throwing", () => {
+    // String.fromCodePoint throws RangeError above U+10FFFF; malformed markup must not kill the scrape.
+    expect(decodeEntities("Song &#1114112; Title")).toBe("Song &#1114112; Title");
+    expect(decodeEntities("Song &#xFFFFFFFF; Title")).toBe("Song &#xFFFFFFFF; Title");
+  });
+
+  it("still decodes the highest valid code point", () => {
+    expect(decodeEntities("&#x10FFFF;")).toBe(String.fromCodePoint(0x10ffff));
+  });
 });
 
 describe("stripTags", () => {

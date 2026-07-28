@@ -38,14 +38,22 @@ const NAMED_ENTITIES: Record<string, string> = {
   ldquo: "“",
 };
 
+const MAX_CODE_POINT = 0x10ffff;
+
+/** `String.fromCodePoint` throws on anything outside the Unicode range, so bad input degrades to the raw entity. */
+function codePointToString(codePoint: number, raw: string): string {
+  if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > MAX_CODE_POINT) return raw;
+  return String.fromCodePoint(codePoint);
+}
+
 /** Decode the HTML entities Billboard emits in titles and artist names (e.g. `Choosin&#039; Texas`). */
 export function decodeEntities(text: string): string {
   return text.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);/g, (match, entity: string) => {
     if (entity.startsWith("#x") || entity.startsWith("#X")) {
-      return String.fromCodePoint(parseInt(entity.slice(2), 16));
+      return codePointToString(parseInt(entity.slice(2), 16), match);
     }
     if (entity.startsWith("#")) {
-      return String.fromCodePoint(parseInt(entity.slice(1), 10));
+      return codePointToString(parseInt(entity.slice(1), 10), match);
     }
     return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
   });
