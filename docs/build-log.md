@@ -4,6 +4,12 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #02: noindex the standalone /ember dashboard
+
+**Fix.** `/ember` — the standalone server-rendered EmberBrief dashboard — returned HTTP 200 with no robots directive, so it was an indexable duplicate of the canonical `/work/ember` project page (a duplicate-content signal on a site whose project pages are the SEO surface). Added `robots: { index: false, follow: true }` to the route's metadata. Chose noindex over a 301 redirect or deletion because `content/projects/ember.mdx` documents the dashboard as living at `/ember`, so the URL should stay reachable — it just shouldn't be indexed twice.
+
+**Verified.** `pnpm build` clean; started the production server and confirmed `/ember` now emits `<meta name="robots" content="noindex, follow">`, `/work/ember` still has no robots directive (stays indexable), `/ember` still returns 200, and only the canonical `/work/ember` appears in the sitemap. Third of the 9 findings in PR #233.
+
 ## 2026-07-18 — QA #04: live-data widgets no longer leak raw error strings
 
 **Fix.** `StaffingDashboard`, `EmberDashboard`, and `RequestTypeBreakdown` each rendered the raw thrown fetch message (e.g. `API error 503`) straight to the visitor when their backing API failed — developer-facing copy on exactly the widgets most likely to be mid-failure when a hiring manager clicks through (they depend on external pipelines and a Neon Postgres that can cold-start). Each now logs the raw error to the console and renders a fixed, user-facing sentence instead ("temporarily unavailable — check back shortly" / the existing Ember fallback), keeping the thrown message out of the render path.
