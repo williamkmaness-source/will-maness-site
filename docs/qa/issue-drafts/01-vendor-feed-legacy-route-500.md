@@ -32,6 +32,9 @@ Next's bare default error page — no nav, no footer, no brand. The route isn't
 linked anywhere on the site and isn't in the sitemap, but it is publicly
 reachable and only carries `noindex`, not a redirect or removal.
 
+**Update (2026-07-18 re-check):** still reproduces identically one week
+later against a fresh `pnpm build && pnpm start` — unchanged.
+
 ## Suggested fix
 
 Delete `src/app/work/vendor_feed/` entirely — it's fully superseded by the
