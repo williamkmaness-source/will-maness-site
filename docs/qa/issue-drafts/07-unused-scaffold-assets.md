@@ -13,6 +13,9 @@ Public GitHub — codebase is part of the credibility pitch"), and a technical
 reviewer browsing the repo — not just the live site — will see boilerplate
 that was never cleaned up.
 
+**Update (2026-07-18 re-check):** all five files still present in `public/`,
+still unreferenced.
+
 ## Suggested fix
 
 ```
