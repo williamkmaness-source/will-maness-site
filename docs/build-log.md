@@ -4,6 +4,14 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-28 — Palette Slices 5 & 6: swatch-picker input and polish pass
+
+**Built.** Split the palette app's color input into two tabs behind a new `ColorInput` — the existing hex field, and a new `SwatchGrid` rendering every color in the active season's `colors[]`. Both modes report through one `onChange`, so a tapped swatch and a typed hex are indistinguishable to the engine. Added `use-copy-hex`, a shared copy-with-feedback hook keyed by caller-supplied id (so a color appearing in two swatches only confirms on the one clicked); result-card blocks copy on click, and in the picker the swatch selects while its hex caption copies, since one tap can't do both.
+
+**Fixed.** `PaletteSkeleton` now holds the last *accepted* color separately from the raw field text. Previously any unparseable keystroke drove `buildPalettes` to `[]` and blanked the cards mid-edit — typing toward `#7fb0d0` cleared the screen at `#7fb0`. Results are memoized on `(acceptedColor, season.colors)`, which is also what makes them refresh when the season changes. Grid columns and 44px swatch targets scale down for phones.
+
+**Scope.** Closes #225 and #226 (PR #244). The season *selector* is still #223 (HITL — the Light Summer / Dull Winter hex sets need visual sign-off); everything here reads from the `season` prop, so it follows a selector the moment one exists. Season blurb deliberately left out — that's a #223 criterion. Build, lint, `tsc`, and 471 tests all clean.
+
 ## 2026-07-18 — QA #08: refresh MEMORY.md and add the missing Phase 1 quiz
 
 **Fix.** `MEMORY.md`'s status table still read Phase 1 as "Ready to start" (last touched 2026-05-06) while Phases 1–3 had all shipped and five post-MVP projects had gone live; it also listed the stack as Next.js 15 (actually 16) and an open headshot question that was since resolved. Updated the phase table to reflect reality, added a note listing the post-MVP projects, corrected the Next.js version, and closed the headshot open-question. Separately, `docs/quizzes/` had `phase-0.md` and `phase-2.md` but no `phase-1.md` (required by the execution brief's teaching-overlay process) — wrote it in the same format as the others, with 8 questions grounded in the real Phase 1 code (content collections, the `[slug]` route + `generateStaticParams`, `notFound()`, per-slug OG images, the derived sitemap, per-route noindex, server-component/Lighthouse reasoning, and prev/next adjacency ordering).
