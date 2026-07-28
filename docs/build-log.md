@@ -4,6 +4,11 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-07-18 — QA #08: refresh MEMORY.md and add the missing Phase 1 quiz
+
+**Fix.** `MEMORY.md`'s status table still read Phase 1 as "Ready to start" (last touched 2026-05-06) while Phases 1–3 had all shipped and five post-MVP projects had gone live; it also listed the stack as Next.js 15 (actually 16) and an open headshot question that was since resolved. Updated the phase table to reflect reality, added a note listing the post-MVP projects, corrected the Next.js version, and closed the headshot open-question. Separately, `docs/quizzes/` had `phase-0.md` and `phase-2.md` but no `phase-1.md` (required by the execution brief's teaching-overlay process) — wrote it in the same format as the others, with 8 questions grounded in the real Phase 1 code (content collections, the `[slug]` route + `generateStaticParams`, `notFound()`, per-slug OG images, the derived sitemap, per-route noindex, server-component/Lighthouse reasoning, and prev/next adjacency ordering).
+
+**Verified.** Docs-only change (no runtime surface); quiz answers cross-checked against `content.ts`, the `[slug]` template, `sitemap.ts`, and `robots.ts`. Eighth of the 9 findings in PR #233.
 ## 2026-07-18 — QA #03: About page rendered two h1 elements
 
 **Fix.** The closing line of `content/site.mdx`'s bio began with a stray `# `, so MDX rendered it as a second `<h1>` on `/about` — invisible in QA because `mdx-components.tsx` styles `h2` but not `h1`, and Tailwind's preflight strips default heading sizing, so it looked like a paragraph while being a real second top-level heading (an accessibility and minor SEO smell). Removed the leading `#`; the sentence now renders as a styled `<p>`, matching how it reads in the rest of the block.
