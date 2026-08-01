@@ -3,6 +3,11 @@ title: "Work index doesn't show in-progress status, as required by the execution
 labels: enhancement, content
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #237 — `WorkCard.tsx` now renders
+a moss dot + "In progress" label (and a plain "Forthcoming" label) tied to
+`project.status`. Confirmed on `/work` and the homepage against today's
+`main`. No longer needs to be filed as a real issue. Kept here for the record.
+
 ## Problem
 
 `_spec/execution-brief.md` (Phase 1 definition of done) requires:

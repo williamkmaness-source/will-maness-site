@@ -3,6 +3,11 @@ title: "About page renders two `<h1>` elements"
 labels: bug, accessibility, content
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #238 — the stray heading line in
+`content/site.mdx` now renders as a plain paragraph. Confirmed exactly one
+`<h1>` in the `/about` DOM on today's `main`. No longer needs to be filed as a
+real issue. Kept here for the record.
+
 ## Problem
 
 `content/site.mdx`'s bio text ends with a line that's literal Markdown
