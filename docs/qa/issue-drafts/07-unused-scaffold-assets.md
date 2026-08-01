@@ -3,6 +3,10 @@ title: "Remove unused create-next-app placeholder assets from public/"
 labels: chore, low-priority
 ---
 
+**RESOLVED (merged 2026-07-19, #240).** `public/` now contains only
+`will-maness-headshot.jpg`. Confirmed against today's (2026-08-01) `main`. No
+longer needs to be filed as a real issue. Kept here for the record.
+
 ## Problem
 
 `public/file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, and `window.svg`

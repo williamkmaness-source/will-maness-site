@@ -3,6 +3,11 @@ title: "`/ember` is an indexable duplicate of `/work/ember`"
 labels: bug, seo, high-priority
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #236 — `/ember` now ships
+`robots: { index: false, follow: true }`; confirmed the `noindex` meta tag in
+the response on today's `main`. No longer needs to be filed as a real issue.
+Kept here for the record.
+
 ## Problem
 
 `src/app/ember/page.tsx` is a standalone page that duplicates the canonical,

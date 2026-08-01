@@ -3,6 +3,11 @@ title: "`/work/vendor_feed` legacy route crashes with an unhandled 500"
 labels: bug, high-priority
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #234 — `/work/vendor_feed` now
+guards its Postgres read in a try/catch and degrades to the page's designed
+fallback instead of a 500. Re-verified against today's `main`; no longer
+needs to be filed as a real issue. Kept here for the record.
+
 ## Problem
 
 `src/app/work/vendor_feed/page.tsx` is a standalone server component left

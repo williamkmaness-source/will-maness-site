@@ -3,6 +3,14 @@ title: "MEMORY.md is stale and Phase 1 quiz is missing"
 labels: docs, chore, low-priority
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #241 — `MEMORY.md`'s status
+table now reflects Phases 0–3 as done and the post-MVP project roster;
+`docs/quizzes/phase-1.md` exists. No longer needs to be filed as a real
+issue. Kept here for the record. (Minor note: `MEMORY.md` is dated 2026-07-18
+and doesn't yet mention the music-analyzer pipeline work or the palette
+polish pass merged since — much smaller gap than the original finding, not
+worth a separate issue.)
+
 ## Problem
 
 `docs/MEMORY.md`'s status table still reads:

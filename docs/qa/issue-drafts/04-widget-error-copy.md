@@ -3,6 +3,12 @@ title: "Live-data project widgets show a raw error string instead of designed fa
 labels: bug, polish
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #235 — `StaffingDashboard`,
+`EmberDashboard`, and `RequestTypeBreakdown` all now log the raw error to
+`console.error` and render a fixed user-facing sentence instead. Confirmed in
+source and by screenshot against today's `main`. No longer needs to be filed
+as a real issue. Kept here for the record.
+
 ## Problem
 
 `StaffingDashboard` (Boston civic data) and `EmberDashboard` (EmberBrief) both

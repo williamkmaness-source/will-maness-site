@@ -3,6 +3,11 @@ title: "Add a custom 404 page"
 labels: enhancement, polish, low-priority
 ---
 
+**RESOLVED 2026-08-01.** Fixed and merged in #239 — `src/app/not-found.tsx`
+now exists and renders inside the normal nav/footer frame. Confirmed by
+screenshot against today's `main`. No longer needs to be filed as a real
+issue. Kept here for the record.
+
 ## Problem
 
 Any unmatched route (e.g. a mistyped URL, or a stale inbound link) falls
