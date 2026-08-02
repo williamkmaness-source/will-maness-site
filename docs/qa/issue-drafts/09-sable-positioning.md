@@ -26,6 +26,10 @@ rather than fixing unprompted.
 **Update (2026-07-18 re-check):** `project-stellar.mdx` frontmatter
 unchanged (`game design`/`writing`/`art direction` tags, not `featured`).
 
+**Update (2026-07-25 re-check):** still unchanged. No fix PR expected here
+— this is an editorial call, not a bug; needs Will to pick one of the
+options below rather than a proposed diff.
+
 ## Options to consider
 
 1. Leave as-is — intentional range/personality signal.

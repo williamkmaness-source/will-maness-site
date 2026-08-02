@@ -35,6 +35,10 @@ reachable and only carries `noindex`, not a redirect or removal.
 **Update (2026-07-18 re-check):** still reproduces identically one week
 later against a fresh `pnpm build && pnpm start` — unchanged.
 
+**Update (2026-07-25 re-check):** still reproduces identically. A fix is
+now ready in **PR #234** (green CI, unreviewed) — this draft can likely be
+closed once that PR merges rather than filed as a separate tracked issue.
+
 ## Suggested fix
 
 Delete `src/app/work/vendor_feed/` entirely — it's fully superseded by the

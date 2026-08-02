@@ -32,6 +32,9 @@ widened: 7 of 10 projects are now in-progress (Seasonal Color Palette and
 This site joined the live set since the original count), none reflected in
 the doc. `docs/quizzes/phase-1.md` still doesn't exist.
 
+**Update (2026-07-25 re-check):** still unaddressed on `main`. A fix is now
+ready in **PR #241** (green CI, unreviewed).
+
 ## Suggested fix
 
 - Update `MEMORY.md`'s phase status table to reflect current reality.

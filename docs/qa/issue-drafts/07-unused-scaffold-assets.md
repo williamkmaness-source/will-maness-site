@@ -16,6 +16,10 @@ that was never cleaned up.
 **Update (2026-07-18 re-check):** all five files still present in `public/`,
 still unreferenced.
 
+**Update (2026-07-25 re-check): fixed.** Merged in **PR #240**
+(2026-07-19) — `public/` now holds only `will-maness-headshot.jpg`. No
+further action needed on this draft.
+
 ## Suggested fix
 
 ```
