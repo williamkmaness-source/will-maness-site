@@ -3,11 +3,11 @@
 // MusicAnalyzerTabs.tsx — the analyzer's three views behind one tablist (issue #216).
 // Each panel keeps its own state while mounted, so switching tabs and coming back doesn't
 // discard a lookup. Tab styling matches the palette project's ColorInput tablist.
-// Top 100 lands in #218; it is stubbed here.
 
 import { useId, useState } from "react";
 import { SongLookup } from "./SongLookup";
 import { SongCompare } from "./SongCompare";
+import { Top100Dashboard } from "./Top100Dashboard";
 import { cn } from "@/lib/utils";
 
 type ViewId = "lookup" | "compare" | "top100";
@@ -17,8 +17,6 @@ const VIEWS: { id: ViewId; label: string }[] = [
   { id: "compare", label: "Compare" },
   { id: "top100", label: "Top 100" },
 ];
-
-const COMING_SOON = "Coming soon.";
 
 export function MusicAnalyzerTabs() {
   const [view, setView] = useState<ViewId>("lookup");
@@ -58,9 +56,7 @@ export function MusicAnalyzerTabs() {
       >
         {view === "lookup" && <SongLookup />}
         {view === "compare" && <SongCompare />}
-        {view === "top100" && (
-          <p className="font-sans text-[14px] text-muted py-[40px]">{COMING_SOON}</p>
-        )}
+        {view === "top100" && <Top100Dashboard />}
       </div>
     </div>
   );

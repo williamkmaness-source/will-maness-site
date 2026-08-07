@@ -4,6 +4,14 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-08-07 — Music analyzer: lookup, compare, and top 100 views
+
+**Built.** The analyzer's three read-side views on top of the #213 schema and the #214 extractor/Spotify client already on `main`. `music-queries` adds the only two DB reads the views need — the latest weekly `music_feature_scores` snapshot and the latest top 100 with its precomputed features. `song-breakdown` composes one track's four features and their hot-to-indie ratings, and is shared by `/api/music/song` and `/api/music/compare` so a song can never be rated one way in the lookup tab and differently in compare. `/api/music/top100` serves the snapshot straight from Postgres with no Spotify calls at read time. UI is `FeatureRatingBadge` → `SongBreakdown` → `SongSearchPanel`, composed into `SongLookup`, `SongCompare`, and `Top100Dashboard` behind `MusicAnalyzerTabs`, reachable at `/work/music_analyzer` with the narrative page at `/work/music-analyzer`.
+
+**Degradation.** Every path assumes the weekly pipeline may never have run, because it hasn't: a missing scores snapshot yields null ratings and a "no trend data" line rather than an error, an empty top 100 renders the empty state, and absent Spotify credentials (#212) return a 503 the UI shows as designed copy. Each compare column owns its own `useSongSearch` instance with a request-id guard, so searching one column neither resets the other nor lets a slow response overwrite a fast one.
+
+**Scope.** Closes #216, #217, #218. Left `featured: false` in `music-analyzer.mdx` — flipping it is #219, which is explicitly gated on a production pipeline run. Build, lint, `tsc`, and 471 tests all clean.
+
 ## 2026-07-28 — Palette Slices 5 & 6: swatch-picker input and polish pass
 
 **Built.** Split the palette app's color input into two tabs behind a new `ColorInput` — the existing hex field, and a new `SwatchGrid` rendering every color in the active season's `colors[]`. Both modes report through one `onChange`, so a tapped swatch and a typed hex are indistinguishable to the engine. Added `use-copy-hex`, a shared copy-with-feedback hook keyed by caller-supplied id (so a color appearing in two swatches only confirms on the one clicked); result-card blocks copy on click, and in the picker the swatch selects while its hex caption copies, since one tap can't do both.
