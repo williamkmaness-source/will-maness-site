@@ -51,10 +51,18 @@ function featureValue(track: DashboardTrack, name: FeatureName): ScoredFeature |
   return track.features.find((f) => f.name === name);
 }
 
+// snapshot_week is a Postgres `date` serialized as "YYYY-MM-DD", which Date parses as
+// UTC midnight. Formatting in the viewer's local zone would render the previous day for
+// anyone west of UTC, so the date is formatted in UTC to match the stored chart week.
 function formatWeek(week: string): string {
   const d = new Date(week);
   if (isNaN(d.getTime())) return week;
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function Top100Dashboard() {

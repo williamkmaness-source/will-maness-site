@@ -15,7 +15,9 @@ export const FEATURE_NAMES = [
 export type FeatureName = (typeof FEATURE_NAMES)[number];
 
 /** Hot-to-indie rating bands, ordered most to least common in the top 100. */
-export type FeatureRating = "hot" | "trending" | "emerging" | "indie";
+export const FEATURE_RATINGS = ["hot", "trending", "emerging", "indie"] as const;
+
+export type FeatureRating = (typeof FEATURE_RATINGS)[number];
 
 export interface FeatureScore {
   featureName: FeatureName;
@@ -53,6 +55,12 @@ function isFeatureName(value: string): value is FeatureName {
   return (FEATURE_NAMES as readonly string[]).includes(value);
 }
 
+// `music_feature_scores.rating` is an unconstrained text column, so a value outside the
+// four bands would otherwise reach the UI and render an unstyled, unlabelled badge.
+function isFeatureRating(value: string): value is FeatureRating {
+  return (FEATURE_RATINGS as readonly string[]).includes(value);
+}
+
 /**
  * The most recent week the pipeline scored, or null if it has never run.
  * On-demand song lookups are always rated against this snapshot.
@@ -76,14 +84,21 @@ export async function getLatestFeatureScores(): Promise<FeatureScoreSnapshot | n
 
   return {
     snapshotWeek: rows[0].snapshot_week,
-    scores: rows
-      .filter((row) => isFeatureName(row.feature_name))
-      .map((row) => ({
-        featureName: row.feature_name as FeatureName,
-        featureValue: row.feature_value,
-        count: Number(row.count),
-        rating: row.rating as FeatureRating,
-      })),
+    // Rows the type system can't vouch for are dropped rather than cast through:
+    // findScore then returns null for them and the UI shows "no trend data", which is
+    // the same degradation path an absent snapshot already takes.
+    scores: rows.flatMap((row) => {
+      const { feature_name: featureName, rating } = row;
+      if (!isFeatureName(featureName) || !isFeatureRating(rating)) return [];
+      return [
+        {
+          featureName,
+          featureValue: row.feature_value,
+          count: Number(row.count),
+          rating,
+        },
+      ];
+    }),
   };
 }
 
