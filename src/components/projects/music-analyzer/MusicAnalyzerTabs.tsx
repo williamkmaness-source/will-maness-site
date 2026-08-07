@@ -3,10 +3,11 @@
 // MusicAnalyzerTabs.tsx — the analyzer's three views behind one tablist (issue #216).
 // Each panel keeps its own state while mounted, so switching tabs and coming back doesn't
 // discard a lookup. Tab styling matches the palette project's ColorInput tablist.
-// Compare and top 100 land in #217 and #218; they are stubbed here.
+// Top 100 lands in #218; it is stubbed here.
 
 import { useId, useState } from "react";
 import { SongLookup } from "./SongLookup";
+import { SongCompare } from "./SongCompare";
 import { cn } from "@/lib/utils";
 
 type ViewId = "lookup" | "compare" | "top100";
@@ -55,9 +56,9 @@ export function MusicAnalyzerTabs() {
         id={`${baseId}-panel-${view}`}
         aria-labelledby={`${baseId}-tab-${view}`}
       >
-        {view === "lookup" ? (
-          <SongLookup />
-        ) : (
+        {view === "lookup" && <SongLookup />}
+        {view === "compare" && <SongCompare />}
+        {view === "top100" && (
           <p className="font-sans text-[14px] text-muted py-[40px]">{COMING_SOON}</p>
         )}
       </div>
