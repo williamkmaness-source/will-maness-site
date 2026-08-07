@@ -1,0 +1,27 @@
+---
+title: "Music pattern analyzer"
+eyebrow: "Data · Engineering · Music"
+year: "2026"
+status: "in-progress"
+tags: ["data", "engineering"]
+summary: "Look up any song and see the four musical choices behind it — key and mode, tempo band, song structure, chord flavor — each rated hot to indie against this week's Billboard Hot 100."
+featured: false
+---
+
+A bedroom producer can hear that a track works without being able to name why. The analyzer names it. Search a song and it comes back as four decisions — what key and mode it sits in, roughly how fast it moves, how many distinct sections it's built from, and whether it stays in one key or wanders. Each of those is then rated against the current Billboard Hot 100: how many of this week's hundred biggest songs made the same choice.
+
+<MusicAnalyzer />
+
+## What the ratings mean
+
+A feature is **hot** when a quarter or more of the top 100 share it, **trending** between ten and twenty-four percent, **emerging** between four and nine, and **indie** at three or below. The point isn't that hot is good and indie is bad — it's that you can see where your song sits relative to what's currently crowding the chart, and make that a choice instead of an accident.
+
+## How it's built
+
+**Spotify for the raw signal, four pure functions for the meaning.** Spotify's audio-features and audio-analysis endpoints return key, mode, tempo, and a section-by-section breakdown. `feature-extractor` turns that into the four human-readable dimensions with no network or database access of its own, which makes it trivially testable — the bucket boundaries are just table-driven cases.
+
+**Ratings come from a weekly snapshot, not a live count.** A cron job scrapes the Hot 100 once a week, extracts features for every track, and precomputes the share each feature value holds. On-demand lookups read that snapshot rather than hitting Spotify a hundred times, so a search is two API calls and one indexed query. Before the first run there is simply no snapshot: features still render, ratings show as "no trend data" rather than the page breaking.
+
+**Three views, one scoring path.** Lookup, compare, and the top 100 dashboard all route through the same breakdown builder, so a song can't be rated one way in one tab and differently in another. The compare view diffs two breakdowns client-side and highlights the rows that disagree — which is usually the answer to why two songs that seem similar don't feel the same.
+
+[Open the analyzer →](/work/music_analyzer)

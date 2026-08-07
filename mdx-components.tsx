@@ -14,6 +14,7 @@ import { PipelineDashboard } from "@/components/projects/pipeline-dashboard";
 import { VendorFeedPreview } from "@/components/projects/vendor-feed/VendorFeedPreview";
 import { SpxDashboard } from "@/components/projects/spx/SpxDashboard";
 import { SeasonalPalette } from "@/components/projects/palette";
+import { MusicAnalyzer } from "@/components/projects/music-analyzer";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -62,6 +63,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     VendorFeedPreview,
     SpxDashboard,
     SeasonalPalette,
+    MusicAnalyzer,
     ...components,
   };
 }
