@@ -1,24 +1,39 @@
 "use client";
 
-// PaletteSkeleton.tsx — interactive UI for the seasonal palette app. A color arrives from
-// either input mode (hex field or swatch grid), is snapped into the season's gamut, and is
-// assembled into four-role outfit palettes across every harmony scheme. Results track the
-// last color the engine accepted, so a half-typed hex never blanks the cards.
+// PaletteSkeleton.tsx — interactive UI for the seasonal palette app. The user picks a season,
+// a color arrives from either input mode (hex field or swatch grid), is snapped into that
+// season's gamut, and is assembled into four-role outfit palettes across every harmony
+// scheme. Results track the last color the engine accepted, so a half-typed hex never blanks
+// the cards. Seasons come in as data — this component never names one.
 
 import { useCallback, useMemo, useState } from "react";
-import type { Season } from "@/lib/palette/season-data";
+import type { Season, SeasonId } from "@/lib/palette/season-data";
 import { normalizeHex } from "@/lib/palette/color-math";
 import { buildPalettes } from "@/lib/palette/palette-assembler";
 import { ColorInput } from "./ColorInput";
 import { PaletteCard } from "./PaletteCard";
+import { SeasonSelector } from "./SeasonSelector";
 
 const DEFAULT_COLOR = "#7fb0d0";
 
 interface PaletteSkeletonProps {
-  season: Season;
+  /** Every selectable season, in display order. */
+  seasons: Season[];
+  /** Which season is active on first render. Falls back to the first entry. */
+  initialSeasonId?: SeasonId;
 }
 
-export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
+export function PaletteSkeleton({ seasons, initialSeasonId }: PaletteSkeletonProps) {
+  const [seasonId, setSeasonId] = useState<SeasonId>(
+    () => initialSeasonId ?? seasons[0].id
+  );
+  // Guard against an initialSeasonId that isn't in `seasons` so the UI can't land on a
+  // season with no data.
+  const season = useMemo(
+    () => seasons.find((entry) => entry.id === seasonId) ?? seasons[0],
+    [seasons, seasonId]
+  );
+
   const [input, setInput] = useState(DEFAULT_COLOR);
   // The last color that actually parsed. Held separately from the raw field text so an
   // in-progress or invalid entry leaves the current results standing.
@@ -45,6 +60,12 @@ export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
 
   return (
     <div className="flex flex-col gap-[36px]">
+      <SeasonSelector
+        seasons={seasons}
+        activeId={season.id}
+        onSelect={setSeasonId}
+      />
+
       <ColorInput
         season={season}
         value={input}

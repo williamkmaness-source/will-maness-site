@@ -4,6 +4,14 @@ A running record of meaningful units of work. Each entry is two to four sentence
 
 ---
 
+## 2026-08-08 — Palette Slice 4: two-season data model and season selector
+
+**Built.** Added Dull Winter (26 hexes) alongside Light Summer in `season-data`, and with it the pieces that make seasons real data rather than a hardcode: `SEASONS` is now an exhaustive `Record<SeasonId, Season>` (it was cast, so the missing Dull Winter key type-checked while resolving to `undefined` at runtime), plus `SEASON_LIST`, `DEFAULT_SEASON_ID`, and `getSeason`. New `SeasonSelector` renders one option per season with the active season's blurb; `PaletteSkeleton` holds the active id and re-runs `buildPalettes` against the new gamut on switch, which the existing `(acceptedColor, season.colors)` memo already handled. `index.tsx` passes `SEASON_LIST` instead of naming `LIGHT_SUMMER`, so no component or engine module mentions a specific season anymore.
+
+**Tested.** New `season-data.test.ts` walks `SEASONS` generically — ids match their keys, `SEASON_LIST` covers each once, every hex is a parseable 6-digit value, no duplicates, and each set falls in the 20–40 range now exported as `SEASON_COLOR_COUNT`. A season added later is covered with no test change. 484 tests pass (was 471); build, lint, and `tsc` clean.
+
+**Scope.** Addresses #223. The hex sets come from a standard 12-season reference and still need the owner's visual sign-off before locking — that one acceptance criterion is HITL and stays unchecked. Refreshed `seasonal-palette.mdx`, which still described the season selector *and* the already-shipped swatch picker as forthcoming.
+
 ## 2026-07-28 — Palette Slices 5 & 6: swatch-picker input and polish pass
 
 **Built.** Split the palette app's color input into two tabs behind a new `ColorInput` — the existing hex field, and a new `SwatchGrid` rendering every color in the active season's `colors[]`. Both modes report through one `onChange`, so a tapped swatch and a typed hex are indistinguishable to the engine. Added `use-copy-hex`, a shared copy-with-feedback hook keyed by caller-supplied id (so a color appearing in two swatches only confirms on the one clicked); result-card blocks copy on click, and in the picker the swatch selects while its hex caption copies, since one tap can't do both.

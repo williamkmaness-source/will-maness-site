@@ -4,22 +4,24 @@ eyebrow: "Engineering · Color"
 year: "2026"
 status: "in-progress"
 tags: ["engineering"]
-summary: "For people who already know their color season: give it one color you like and it builds outfit palettes that stay inside your seasonal gamut. This is the first working slice."
+summary: "For people who already know their color season: give it one color you like and it builds outfit palettes that stay inside your seasonal gamut. Ships with Light Summer and Dull Winter."
 featured: false
 ---
 
 Personal color analysis tells you which colors flatter you — a "season" like Light Summer or Dull Winter. Knowing your season is not the same as knowing what to wear. This tool starts from one color you already like and builds outfit palettes that are guaranteed to stay inside your season, so nothing off-season ever gets suggested.
 
-Give it a hex — a saturated one like `#c81e5a` shows the idea best. Your color is snapped into the season to become the Base, and from there the app assembles a few four-role outfit palettes — one per harmony scheme — each with a Base, Secondary, Neutral, and Accent, every color guaranteed to stay in-season.
+Pick your season, then give it a color — type a hex (a saturated one like `#c81e5a` shows the idea best) or tap a swatch from the season's own set. Your color is snapped into the season to become the Base, and from there the app assembles a few four-role outfit palettes — one per harmony scheme — each with a Base, Secondary, Neutral, and Accent, every color guaranteed to stay in-season.
 
 <SeasonalPalette />
 
 ## How it's built
 
-**Season-constrained, not generic color theory.** A normal color-wheel tool will happily hand you a "correct" complementary color that is wrong for your season. Here every color passes through a gamut-snap step first: it's matched to the perceptually nearest member of the season's real palette. The season's color set is the single source of truth — it doubles as both the constraint gamut and (in a later slice) the swatch picker.
+**Season-constrained, not generic color theory.** A normal color-wheel tool will happily hand you a "correct" complementary color that is wrong for your season. Here every color passes through a gamut-snap step first: it's matched to the perceptually nearest member of the season's real palette. The season's color set is the single source of truth — it doubles as both the constraint gamut and the swatch picker's options, so the two can't drift apart.
 
 **A small, pure logic core.** The engine is plain functions with no React or app state, so it's trivially unit-testable. `color-math` wraps [culori](https://culorijs.org/) for hex parsing, OKLCH conversion, and CIEDE2000 perceptual distance; `gamut-snap` returns the nearest in-season color; `harmony` rotates hue in OKLCH to find a scheme's partner colors; `palette-assembler` composes the four roles — Base is the snapped anchor, Secondary is the harmony partner snapped back in-season, Neutral is the season's lowest-chroma tone, and Accent is the color with the most contrast from Base. `season-data` holds one typed entry per season so adding the remaining ten is a data-only change.
 
 **Several schemes, de-duplicated.** The engine runs all four harmony schemes — complementary, analogous, triadic, split-complementary — and assembles a palette from each. Because every color is snapped into a finite season, two schemes whose partners land on the same shade produce identical palettes; those collapse, so each card you see is genuinely distinct. You get a small curated set rather than an overwhelming grid.
 
-**What's next.** A season selector (Light Summer and Dull Winter, with the exact palettes validated by hand), a swatch picker so you can start from a season color instead of a hex, and a polish pass — copy-to-clipboard, graceful handling of bad input, and mobile layout.
+**Two seasons, twelve-shaped.** Light Summer and Dull Winter ship today, each an entry of `id`, `name`, `blurb`, and a validated hex set. Nothing in the engine or the UI names a season: the selector iterates the data, and a unit test walks every entry checking each hex parses and each set falls in the expected size range, so a typo fails at test time rather than at render time. Adding the remaining ten is a data-only change.
+
+**What's next.** The remaining ten seasons, and swapping the standard reference palettes for the exact swatches from my own analysis.
