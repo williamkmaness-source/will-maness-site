@@ -115,7 +115,13 @@ export const SEASON_LIST: Season[] = Object.values(SEASONS);
 /** The season shown before the user picks one. */
 export const DEFAULT_SEASON_ID: SeasonId = "light-summer";
 
+// A widened view of SEASONS for arbitrary-string lookup. Going through this instead of
+// casting the id keeps the `| undefined` in `getSeason`'s return type honest: `SEASONS[id as
+// SeasonId]` tells TypeScript the result is always a Season, so a caller who dropped the
+// undefined check would compile clean and fail at runtime.
+const SEASONS_BY_ID: Readonly<Record<string, Season | undefined>> = SEASONS;
+
 /** Look up a season by id. Returns undefined for an id outside the shipped set. */
 export function getSeason(id: string): Season | undefined {
-  return SEASONS[id as SeasonId];
+  return SEASONS_BY_ID[id];
 }
