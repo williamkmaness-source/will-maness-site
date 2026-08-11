@@ -13,13 +13,13 @@ import type { DepartmentResult } from "@/app/api/311-departments/route";
 
 const STATUS_COLORS = {
   green: "var(--accent)",
-  yellow: "#C49A2A",
+  yellow: "var(--status-watch)",
   red: "var(--clay)",
 } as const;
 
 const STATUS_BG = {
   green: "var(--accent-soft)",
-  yellow: "#F5EDD4",
+  yellow: "var(--status-watch-soft)",
   red: "var(--clay-soft)",
 } as const;
 

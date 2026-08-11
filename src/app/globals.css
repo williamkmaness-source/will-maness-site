@@ -16,7 +16,7 @@
 /* ─── Raw CSS custom properties ─────────────────────────────────────────── */
 /* These are the canonical values. Everything else references them. */
 :root {
-  /* Colors */
+  /* Colors — light (default) */
   --bg: #F7F3EC;
   --bg-soft: #EFE9DD;
   --bg-code: #F1ECE0;
@@ -31,6 +31,9 @@
   --accent-soft: #ECE4D2;
   --clay: #B85C38;
   --clay-soft: #F4DDCF;
+  /* Status watch — used by 311 tracker yellow badge */
+  --status-watch: #C49A2A;
+  --status-watch-soft: #F5EDD4;
 
   /* Layout */
   --container-max: 980px;
@@ -41,6 +44,49 @@
   /* Motion */
   --duration-fast: 120ms;
   --duration-base: 200ms;
+}
+
+/* ─── Dark mode tokens ───────────────────────────────────────────────────── */
+/* Applied by .dark class (manual toggle) or system preference. The .dark
+   class takes precedence over the media query so manual overrides stick. */
+.dark {
+  --bg: #1C1A16;
+  --bg-soft: #242018;
+  --bg-code: #201E1A;
+  --ink: #EDE8DF;
+  --ink-soft: #D2CBBC;
+  --prose: #E4DDD2;
+  --muted: #928C80;
+  --hint: #6E6860;
+  --line: #2C2924;
+  --line-strong: #3C3830;
+  --accent: #6FA888;
+  --accent-soft: #1A2820;
+  --clay: #D4724A;
+  --clay-soft: #2C1810;
+  --status-watch: #D4B040;
+  --status-watch-soft: #2C2410;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #1C1A16;
+    --bg-soft: #242018;
+    --bg-code: #201E1A;
+    --ink: #EDE8DF;
+    --ink-soft: #D2CBBC;
+    --prose: #E4DDD2;
+    --muted: #928C80;
+    --hint: #6E6860;
+    --line: #2C2924;
+    --line-strong: #3C3830;
+    --accent: #6FA888;
+    --accent-soft: #1A2820;
+    --clay: #D4724A;
+    --clay-soft: #2C1810;
+    --status-watch: #D4B040;
+    --status-watch-soft: #2C2410;
+  }
 }
 
 /* ─── Tailwind v4 theme ──────────────────────────────────────────────────── */
@@ -100,4 +146,4 @@ body {
   min-height: 100dvh;
 }
 
-/* No dark mode at MVP — the cream palette needs a real design pass to go dark. */
+/* Dark mode: controlled via .dark / .light on <html> (manual) or prefers-color-scheme (system). */
