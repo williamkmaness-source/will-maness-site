@@ -58,6 +58,8 @@ export function EmberDashboard() {
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
+        // Log the raw failure for debugging; never surface it to visitors.
+        console.error("[EmberDashboard] /api/ember-data failed:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
         setLoading(false);
       });
@@ -79,7 +81,7 @@ export function EmberDashboard() {
     return (
       <div className="py-[64px] text-center">
         <p className="font-mono text-[13px] text-clay tracking-[0.04em]">
-          {error ?? "Could not load fire data. The pipeline may still be initializing."}
+          Could not load fire data. The pipeline may still be initializing.
         </p>
       </div>
     );

@@ -42,6 +42,9 @@ paragraph everywhere else in the same block.
 unchanged since the original report, `mdx-components.tsx` still has no `h1`
 override.
 
+**Update (2026-07-25 re-check):** still reproduces. A fix is now ready in
+**PR #238** (green CI, unreviewed).
+
 ## Suggested fix
 
 In `content/site.mdx`, change the leading `#` to plain text, or wrap the

@@ -35,6 +35,9 @@ manager who clicks into an in-progress project and hits a live-data error has
 no prior signal they were looking at work still in flight — it just reads as
 broken.
 
+**Update (2026-07-25 re-check):** still unaddressed; `in-progress` count
+holds at 7 of 10. A fix is now ready in **PR #237** (green CI, unreviewed).
+
 ## Suggested fix
 
 Render the status as a small label or dot on `WorkCard` (and/or the homepage

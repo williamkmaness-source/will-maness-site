@@ -1,65 +1,57 @@
 "use client";
 
-// PaletteSkeleton.tsx — interactive UI for the seasonal palette app. A hex input is
-// normalized, snapped into the season's gamut, and assembled into a four-role outfit
-// palette (Base / Secondary / Neutral / Accent) via the complementary harmony scheme.
-// Multiple schemes, the season selector, and polish arrive in later slices (#224, #223).
+// PaletteSkeleton.tsx — interactive UI for the seasonal palette app. A color arrives from
+// either input mode (hex field or swatch grid), is snapped into the season's gamut, and is
+// assembled into four-role outfit palettes across every harmony scheme. Results track the
+// last color the engine accepted, so a half-typed hex never blanks the cards.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Season } from "@/lib/palette/season-data";
 import { normalizeHex } from "@/lib/palette/color-math";
 import { buildPalettes } from "@/lib/palette/palette-assembler";
+import { ColorInput } from "./ColorInput";
 import { PaletteCard } from "./PaletteCard";
+
+const DEFAULT_COLOR = "#7fb0d0";
 
 interface PaletteSkeletonProps {
   season: Season;
 }
 
 export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
-  const [input, setInput] = useState("#7fb0d0");
+  const [input, setInput] = useState(DEFAULT_COLOR);
+  // The last color that actually parsed. Held separately from the raw field text so an
+  // in-progress or invalid entry leaves the current results standing.
+  const [resolved, setResolved] = useState(DEFAULT_COLOR);
 
-  const normalized = useMemo(() => normalizeHex(input), [input]);
+  const handleChange = useCallback((next: string) => {
+    setInput(next);
+    const normalized = normalizeHex(next);
+    if (normalized) setResolved(normalized);
+  }, []);
+
+  const invalid = useMemo(
+    () => input.trim() !== "" && normalizeHex(input) === null,
+    [input]
+  );
+
+  // Recomputes whenever the accepted color or the season's gamut changes. A season with no
+  // colors is guarded here rather than left to the assembler, which throws on an empty
+  // gamut — the empty result falls through to the message below.
   const palettes = useMemo(
-    () => (normalized ? buildPalettes(normalized, season.colors) : []),
-    [normalized, season.colors]
+    () => (season.colors.length > 0 ? buildPalettes(resolved, season.colors) : []),
+    [resolved, season.colors]
   );
 
   return (
     <div className="flex flex-col gap-[36px]">
-      <div className="flex flex-col gap-[12px] max-w-[520px]">
-        <label
-          htmlFor="palette-hex"
-          className="font-sans text-[14px] font-medium text-ink-soft"
-        >
-          Enter a color (hex)
-        </label>
-        <div className="flex items-center gap-[12px]">
-          <div
-            aria-hidden
-            className="rounded-sm border border-line-strong shrink-0"
-            style={{
-              backgroundColor: normalized ?? "transparent",
-              width: 40,
-              height: 40,
-            }}
-          />
-          <input
-            id="palette-hex"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            spellCheck={false}
-            autoComplete="off"
-            placeholder="#7fb0d0"
-            className="font-mono text-[15px] text-ink bg-bg-soft border border-line rounded-sm px-[14px] py-[10px] w-[220px] outline-none focus:border-accent"
-          />
-        </div>
-        {normalized === null && input.trim() !== "" && (
-          <span className="font-sans text-[13px] text-clay">
-            Not a color I can read — try a hex like <span className="font-mono">#7fb0d0</span>.
-          </span>
-        )}
-      </div>
+      <ColorInput
+        season={season}
+        value={input}
+        resolved={resolved}
+        invalid={invalid}
+        onChange={handleChange}
+      />
 
       <div className="flex flex-col gap-[16px]">
         <p className="font-sans text-[14px] text-hint max-w-[520px]">
@@ -75,7 +67,7 @@ export function PaletteSkeleton({ season }: PaletteSkeletonProps) {
           </div>
         ) : (
           <p className="font-serif text-[18px] text-muted">
-            Enter a valid hex to build in-season palettes.
+            No colors are defined for {season.name} yet.
           </p>
         )}
       </div>

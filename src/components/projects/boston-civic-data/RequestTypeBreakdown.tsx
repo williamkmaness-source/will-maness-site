@@ -45,6 +45,11 @@ export function RequestTypeBreakdown({ department }: { department: string }) {
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
+        // Log the raw failure for debugging; never surface it to visitors.
+        console.error(
+          "[RequestTypeBreakdown] /api/311-department-breakdown failed:",
+          err,
+        );
         setError(err instanceof Error ? err.message : "Failed to load data");
         setActiveDept(department);
       });
@@ -69,7 +74,7 @@ export function RequestTypeBreakdown({ department }: { department: string }) {
       {!loading && error && (
         <div className="h-[200px] flex items-center justify-center">
           <p className="font-mono text-[12px] text-clay tracking-[0.04em]">
-            {error}
+            Breakdown temporarily unavailable — check back shortly.
           </p>
         </div>
       )}

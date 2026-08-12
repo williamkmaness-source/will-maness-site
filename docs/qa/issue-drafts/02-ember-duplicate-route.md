@@ -21,6 +21,9 @@ crash-on-DB-hiccup failure mode.
 still returns 200 with no `noindex`, `/work/ember` still the intended
 canonical.
 
+**Update (2026-07-25 re-check):** still reproduces identically. A fix is
+now ready in **PR #236** (green CI, unreviewed).
+
 ## Suggested fix
 
 Delete `src/app/ember/page.tsx` and its route (superseded by
