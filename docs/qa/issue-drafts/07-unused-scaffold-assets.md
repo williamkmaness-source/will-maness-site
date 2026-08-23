@@ -20,6 +20,9 @@ still unreferenced.
 (2026-07-19) — `public/` now holds only `will-maness-headshot.jpg`. No
 further action needed on this draft.
 
+**Update (2026-08-23 re-check):** still fixed, no regression — `public/`
+unchanged since 07-25.
+
 ## Suggested fix
 
 ```
