@@ -35,6 +35,14 @@ the doc. `docs/quizzes/phase-1.md` still doesn't exist.
 **Update (2026-07-25 re-check):** still unaddressed on `main`. A fix is now
 ready in **PR #241** (green CI, unreviewed).
 
+**Update (2026-08-23 re-check): fixed and merged (#241).** `MEMORY.md`'s
+status table reflects Phases 0–3 as done and the post-MVP project roster;
+`docs/quizzes/phase-1.md` exists. Confirmed against today's `main`. No
+longer needs to be filed as a real issue. Kept here for the record. (Minor,
+not worth a separate finding: `MEMORY.md` is still dated "2026-07-18" and
+doesn't mention the music-analyzer or palette-swatch work merged/opened
+since — a much smaller gap than the original finding.)
+
 ## Suggested fix
 
 - Update `MEMORY.md`'s phase status table to reflect current reality.
