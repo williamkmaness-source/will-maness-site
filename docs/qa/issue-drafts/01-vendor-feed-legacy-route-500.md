@@ -39,6 +39,18 @@ later against a fresh `pnpm build && pnpm start` — unchanged.
 now ready in **PR #234** (green CI, unreviewed) — this draft can likely be
 closed once that PR merges rather than filed as a separate tracked issue.
 
+**Update (2026-08-23 re-check): fixed and merged (#234).** The route was
+kept rather than deleted (the "stay temporarily" alternative from the
+suggested fix below), guarded with a try/catch that renders a designed
+fallback instead of a 500. Confirmed against today's `main` — no longer
+needs to be filed as a real issue. Kept here for the record. Now that the
+route is staying long-term, see draft 18
+(`docs/qa/issue-drafts/18-vendor-feed-url-naming-collision.md`) for the
+follow-on naming-collision issue this creates against `/work/vendor-feed`.
+
+**Update (2026-08-30 re-check):** still fixed, confirmed via source
+(`try`/`catch` present in `page.tsx`) against today's `main`. No regression.
+
 ## Suggested fix
 
 Delete `src/app/work/vendor_feed/` entirely — it's fully superseded by the
