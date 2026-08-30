@@ -45,6 +45,16 @@ override.
 **Update (2026-07-25 re-check):** still reproduces. A fix is now ready in
 **PR #238** (green CI, unreviewed).
 
+**Update (2026-08-23 re-check): fixed and merged (#238).** `content/site.mdx`
+was restructured onto the new `siteSchema` (structured YAML frontmatter
+fields for hero/about/say-hi copy), and the stray heading line in the bio
+prose now renders as a plain paragraph. Confirmed exactly one `<h1>` in the
+`/about` DOM against today's `main`. No longer needs to be filed as a real
+issue. Kept here for the record.
+
+**Update (2026-08-30 re-check):** still fixed, confirmed via source against
+today's `main`. No regression.
+
 ## Suggested fix
 
 In `content/site.mdx`, change the leading `#` to plain text, or wrap the

@@ -24,6 +24,13 @@ exist; behavior unchanged.
 **Update (2026-07-25 re-check):** still unaddressed. A fix is now ready in
 **PR #239** (green CI, unreviewed).
 
+**Update (2026-08-23 re-check): fixed and merged (#239).** `src/app/not-found.tsx`
+exists, confirmed against today's `main`. No longer needs to be filed as a
+real issue. Kept here for the record.
+
+**Update (2026-08-30 re-check):** still fixed, confirmed against today's
+`main`. No regression.
+
 ## Suggested fix
 
 Add `src/app/not-found.tsx` reusing the existing `Container`, and rendering

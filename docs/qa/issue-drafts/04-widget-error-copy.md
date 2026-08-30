@@ -68,6 +68,17 @@ console or an error-tracking call instead.
 unchanged. A fix is now ready in **PR #235** (green CI, unreviewed). `#210`
 (expired Ember weather API key) is also still open.
 
+**Update (2026-08-23 re-check): fixed and merged (#235).** All three
+components now capture the raw thrown message in state but render a fixed,
+user-facing sentence instead ("Live data temporarily unavailable — check
+back shortly." / "Could not load fire data. The pipeline may still be
+initializing.") — the raw message is never interpolated into the render.
+Confirmed in source against today's `main`. No longer needs to be filed as
+a real issue. Kept here for the record.
+
+**Update (2026-08-30 re-check):** still fixed, confirmed via source against
+today's `main`. No regression.
+
 ## Repro
 
 1. Run without `DATABASE_URL`/relevant env vars set (or throttle/kill the DB)
