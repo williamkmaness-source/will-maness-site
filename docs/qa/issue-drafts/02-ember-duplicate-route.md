@@ -24,6 +24,17 @@ canonical.
 **Update (2026-07-25 re-check):** still reproduces identically. A fix is
 now ready in **PR #236** (green CI, unreviewed).
 
+**Update (2026-08-23 re-check): fixed and merged (#236).** `/ember` now
+ships `robots: { index: false, follow: true }` — confirmed in source
+against today's `main`. No longer needs to be filed as a real issue. Kept
+here for the record.
+
+**Update (2026-08-30 re-check):** still fixed, confirmed via source against
+today's `main`. No regression.
+
+**Update (2026-09-06 re-check):** still fixed, no regression. `main`
+unchanged since 08-01.
+
 ## Suggested fix
 
 Delete `src/app/ember/page.tsx` and its route (superseded by

@@ -30,6 +30,19 @@ unchanged (`game design`/`writing`/`art direction` tags, not `featured`).
 — this is an editorial call, not a bug; needs Will to pick one of the
 options below rather than a proposed diff.
 
+**Update (2026-08-23 re-check):** still unchanged, still the only open item
+from the original 07-11 pass alongside draft 10. One small addition: the
+file lives at the URL `/work/project-stellar` while the project is named
+"Sable" everywhere in its own copy and on the work index — worth folding
+into whichever direction you take here (e.g. option 2's "in-narrative"
+framing could also rename the slug), not a separate bug on its own.
+
+**Update (2026-08-30 re-check):** still unchanged — still an open editorial
+call, not a bug.
+
+**Update (2026-09-06 re-check):** still unchanged, still awaiting a call
+from Will.
+
 ## Options to consider
 
 1. Leave as-is — intentional range/personality signal.

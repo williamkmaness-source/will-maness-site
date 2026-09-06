@@ -38,6 +38,18 @@ broken.
 **Update (2026-07-25 re-check):** still unaddressed; `in-progress` count
 holds at 7 of 10. A fix is now ready in **PR #237** (green CI, unreviewed).
 
+**Update (2026-08-23 re-check): fixed and merged (#237).** `WorkCard.tsx`
+now has a `StatusIndicator` component rendering "In progress" / "Forthcoming"
+labels tied to `project.status`. Confirmed on `/work` and the homepage
+against today's `main`. No longer needs to be filed as a real issue. Kept
+here for the record.
+
+**Update (2026-08-30 re-check):** still fixed, confirmed via source against
+today's `main`. No regression.
+
+**Update (2026-09-06 re-check):** still fixed, no regression. `main`
+unchanged since 08-01.
+
 ## Suggested fix
 
 Render the status as a small label or dot on `WorkCard` (and/or the homepage
